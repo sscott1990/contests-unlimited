@@ -1,0 +1,83 @@
+/* General page styles */
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(135deg, #dff9fb, #c7ecee); /* soft blue-green gradient */
+  color: #2c3e50; /* dark slate blue */
+  margin: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Heading */
+h1 {
+  color: #e74c3c; /* vivid red */
+  margin-bottom: 20px;
+  font-size: 2rem;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+}
+
+/* Form container */
+form#uploadForm {
+  background: #ffffff;
+  padding: 30px 35px;
+  border-radius: 12px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+  width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  border: 2px solid #fad0c4;
+}
+
+/* Inputs and select dropdown */
+form#uploadForm input[type="text"],
+form#uploadForm select,
+form#uploadForm input[type="file"] {
+  padding: 12px 14px;
+  font-size: 1rem;
+  border: 2px solid #a29bfe; /* soft purple border */
+  border-radius: 6px;
+  background-color: #f7f1e3;
+  outline-offset: 2px;
+  transition: border-color 0.3s ease, background-color 0.3s ease;
+}
+
+form#uploadForm input[type="text"]:focus,
+form#uploadForm select:focus,
+form#uploadForm input[type="file"]:focus {
+  border-color: #6c5ce7;
+  background-color: #ffffff;
+}
+
+/* Submit button and general buttons */
+form#uploadForm button,
+button {
+  padding: 14px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: white;
+  background: linear-gradient(to right, #ff6b81, #f0932b); /* coral to orange */
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+form#uploadForm button:hover,
+button:hover {
+  background: linear-gradient(to right, #eb4d4b, #e67e22);
+}
+
+/* Back to home link */
+a {
+  margin-top: 25px;
+  color: #10ac84; /* turquoise green */
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.3s ease;
+}
+
+a:hover {
+  color: #1e7e5a;
+}

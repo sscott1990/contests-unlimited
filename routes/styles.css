@@ -1,0 +1,78 @@
+/* General page styles */
+body {
+  font-family: Arial, sans-serif;
+  background: #f0f8ff; /* light blue background */
+  color: #03396c;       /* deep blue text */
+  margin: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Heading */
+h1 {
+  color: #005b96; /* stronger blue */
+  margin-bottom: 20px;
+}
+
+/* Form container */
+form#uploadForm {
+  background: #ffffff;
+  padding: 25px 30px;
+  border-radius: 8px;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+  width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+/* Inputs and select dropdown */
+form#uploadForm input[type="text"],
+form#uploadForm select,
+form#uploadForm input[type="file"] {
+  padding: 10px 12px;
+  font-size: 1rem;
+  border: 1.8px solid #b0c4de; /* light steel blue */
+  border-radius: 4px;
+  outline-offset: 2px;
+  transition: border-color 0.3s ease;
+}
+
+form#uploadForm input[type="text"]:focus,
+form#uploadForm select:focus,
+form#uploadForm input[type="file"]:focus {
+  border-color: #007849; /* green focus */
+}
+
+/* Submit button and general buttons */
+form#uploadForm button,
+button {
+  padding: 12px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: #333;
+  background-color: #ffcc00; /* yellow */
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.25s ease;
+}
+
+form#uploadForm button:hover,
+button:hover {
+  background-color: #e6b800; /* darker yellow */
+}
+
+/* Back to home link */
+a {
+  margin-top: 25px;
+  color: #007849; /* green link */
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.3s ease;
+}
+
+a:hover {
+  color: #004d29; /* darker green on hover */
+}

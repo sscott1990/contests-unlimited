@@ -1,0 +1,50 @@
+[
+  {
+    "name": "Photo Contest",
+    "rules": [
+      "Submit one original photo related to the contest theme.",
+      "Photos must be taken by the entrant and must not be AI-generated.",
+      "No watermarks or identifying text allowed.",
+      "No copyrighted material or offensive content.",
+      "Winners will be selected based on creativity and composition.",
+      "Must be 18 years or older to enter.",
+      "Void where prohibited."
+    ]
+  },
+  {
+    "name": "Art Contest",
+    "rules": [
+      "Submit one original artwork (drawing, painting, digital, etc.).",
+      "All art must be created by the entrant and must not use AI tools.",
+      "Artwork should relate to the specified theme (if applicable).",
+      "Offensive or explicit content will be disqualified.",
+      "Entries will be judged on creativity, skill, and originality.",
+      "Must be 18 years or older to enter.",
+      "Void where prohibited."
+    ]
+  },
+  {
+    "name": "Trivia Contest",
+    "rules": [
+      "Submit answers to the official trivia questions provided.",
+      "Only one entry per person is allowed.",
+      "Answers must be submitted before the deadline to be considered.",
+      "Winners will be determined by the number of correct answers first, then time completed to the millisecond.",
+      "In the event of a tie, a random drawing will determine the winner.",
+      "Must be 18 years or older to enter.",
+      "Void where prohibited."
+    ]
+  },
+  {
+    "name": "DIY Contest",
+    "rules": [
+      "Submit one original photo or video of a DIY project you completed.",
+      "Include a short written description of the materials and process.",
+      "Submissions must showcase work done by the entrant.",
+      "Projects will be judged based on creativity, usefulness, and presentation.",
+      "No dangerous or unsafe projects will be accepted.",
+      "Must be 18 years or older to enter.",
+      "Void where prohibited."
+    ]
+  }
+]

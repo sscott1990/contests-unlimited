@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Enter Contest</title>
+<link rel="stylesheet" href="/styles.css">
+  <script src="https://js.stripe.com/v3/"></script>
+</head>
+<body>
+  <h1>Enter Contest - $5 Entry</h1>
+  <button id="checkout-button">Pay $5</button>
+
+  <script>
+    const stripe = Stripe('pk_test_51RQnn8B9LFj4omBgA0IM8ANYuQm4RW48r3ZJdiOKMonNJRcWCIAI3l4lx6SL2kmiSlHlwKdqRiT02sLg3J13vmFB00ituAcSCB'); // Replace with your Stripe public key
+
+    document.getElementById('checkout-button').addEventListener('click', () => {
+      fetch('/api/payment/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      .then(res => res.json())
+      .then(session => stripe.redirectToCheckout({ sessionId: session.id }))
+      .then(result => {
+        if (result.error) alert(result.error.message);
+      });
+    });
+  </script>
+</body>
+</html>
