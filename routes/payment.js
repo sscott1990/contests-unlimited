@@ -109,7 +109,7 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
     const entries = await loadEntries();
     entries.push({
       id: session.id,
-      paymentStatus: session.payment_status,
+      paymentStatus: session.payment_status || 'unknown',
       customerEmail: session.customer_details?.email || 'anonymous',
       timestamp: new Date().toISOString()
     });
