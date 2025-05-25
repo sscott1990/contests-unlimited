@@ -148,12 +148,13 @@ router.post('/upload', upload.single('file'), async (req, res) => {
 
     const uploads = await loadUploads();
     uploads.push({
-      userName: name,
-      contestName: contest,
-      timestamp: new Date().toISOString(),
-      triviaAnswers: parsedAnswers,
-      timeTaken: Number(timeTaken)
-    });
+  userName: name,
+  contestName: contest,
+  timestamp: new Date().toISOString(),
+  correctCount: parsedAnswers.filter(ans => ans.correct).length,
+  timeTaken: Number(timeTaken)
+});
+
     await saveUploads(uploads);
 
     matched.used = true;

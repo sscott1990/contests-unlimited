@@ -110,7 +110,7 @@ router.get('/', (req, res) => {
         </style>
       </head>
       <body>
-        <h1>Contest Website</h1>
+        <h1>Contests Unlimited</h1>
         <p>
           <button onclick="window.location.href='/payment.html'" style="padding: 10px 20px; background-color: #007849; color: white; border: none; border-radius: 5px; cursor: pointer;">
             Enter Contest
