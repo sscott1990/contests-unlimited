@@ -35,8 +35,8 @@ async function loadUploads() {
 // Basic Auth middleware (for demo purposes, use env vars in real life)
 router.use((req, res, next) => {
   const auth = {
-  login: process.env.ADMIN_USERNAME || 'admin',
-  password: process.env.ADMIN_PASSWORD || 'password'
+  login: process.env.ADMIN_USERNAME,
+  password: process.env.ADMIN_PASSWORD
 };
 
   const b64auth = (req.headers.authorization || '').split(' ')[1] || '';
@@ -126,7 +126,7 @@ router.get('/trivia', async (req, res) => {
   try {
     const uploads = await loadUploads();
 
-    const triviaData = JSON.parse(fs.readFileSync('trivia-contest.json', 'utf8'));
+    const triviaData = await loadJSONFromS3('trivia-contest.json');
     const correctAnswers = triviaData.map(q => q.answer);
 
     // Calculate score for each entry and sort
