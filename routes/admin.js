@@ -1,7 +1,21 @@
+require('dotenv').config(); // Load env vars early
+
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const AWS = require('aws-sdk');
+
 const router = express.Router();
+
+const BUCKET_NAME = process.env.S3_BUCKET_NAME || 'contests-unlimited';
+
+AWS.config.update({
+  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  region: process.env.AWS_REGION || 'us-east-2',
+});
+
+const s3 = new AWS.S3();
 
 function loadEntries() {
   try {
@@ -42,32 +56,43 @@ router.get('/entries', (req, res) => {
   res.json(entries);
 });
 
-// HTML view of uploaded files
+// ✅ REVISED HTML view of uploaded files and trivia answers with signed S3 URLs
 router.get('/uploads', (req, res) => {
-  const uploadsDir = path.join(__dirname, '..', 'uploads');
-  if (!fs.existsSync(uploadsDir)) {
-    return res.send('<h2>No uploads found</h2>');
-  }
+  const uploads = loadUploads();
 
-  const files = fs.readdirSync(uploadsDir);
-  const rows = files.map(filename => {
-    const match = filename.match(/^(.+?)_(.+?)_(\d+)_(.+)$/);
-    if (!match) {
-      return `<tr><td colspan="5">${filename} (invalid format)</td></tr>`;
+  const rows = uploads.map(entry => {
+    const date = new Date(Number(entry.timestamp)).toLocaleString();
+    const isTrivia = Array.isArray(entry.triviaAnswers);
+
+    if (isTrivia) {
+      return `
+        <tr>
+          <td>${entry.userName}</td>
+          <td>${entry.contestName}</td>
+          <td>${date}</td>
+          <td colspan="2">
+            <strong>Trivia Answers:</strong>
+            <pre>${JSON.stringify(entry.triviaAnswers, null, 2)}</pre>
+            <strong>Time Taken:</strong> ${entry.timeTaken?.toFixed(3)} sec
+          </td>
+        </tr>`;
+    } else {
+      // Generate a signed URL valid for 15 minutes
+      const signedUrl = s3.getSignedUrl('getObject', {
+        Bucket: BUCKET_NAME,
+        Key: entry.savedFilename,
+        Expires: 900, // 15 minutes
+      });
+
+      return `
+        <tr>
+          <td>${entry.userName}</td>
+          <td>${entry.contestName}</td>
+          <td>${date}</td>
+          <td>${entry.originalFilename}</td>
+          <td><a href="${signedUrl}" target="_blank" rel="noopener noreferrer">View</a></td>
+        </tr>`;
     }
-
-    const [, name, contest, timestamp, original] = match;
-    const date = new Date(Number(timestamp)).toLocaleString();
-
-    return `
-      <tr>
-        <td>${name}</td>
-        <td>${contest}</td>
-        <td>${date}</td>
-        <td>${original}</td>
-        <td><a href="/uploads/${encodeURIComponent(filename)}" target="_blank">View</a><br>
-               <img src="/uploads/${encodeURIComponent(filename)}" alt="${original}" style="max-width: 100px;"></td>    
-      </tr>`;
   }).join('');
 
   res.send(`
@@ -87,7 +112,7 @@ router.get('/uploads', (req, res) => {
         <a href="/api/admin/trivia">Trivia Results</a> |
         <a href="/api/admin/logout">Logout</a>
       </nav>
-      <h2>Uploaded Files</h2>
+      <h2>Uploaded Entries</h2>
       <table>
         <thead>
           <tr>
@@ -95,7 +120,7 @@ router.get('/uploads', (req, res) => {
             <th>Contest</th>
             <th>Date</th>
             <th>Original Filename</th>
-            <th>File</th>
+            <th>File / Answers</th>
           </tr>
         </thead>
         <tbody>
