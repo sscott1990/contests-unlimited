@@ -19,7 +19,8 @@ const s3 = new AWS.S3();
 
 function loadEntries() {
   try {
-    const data = fs.readFileSync('entries.json');
+    // Use absolute path for consistency, same as uploads.json
+    const data = fs.readFileSync(path.join(__dirname, '..', 'entries.json'));
     return JSON.parse(data);
   } catch (err) {
     return [];
@@ -28,7 +29,7 @@ function loadEntries() {
 
 function loadUploads() {
   try {
-    const data = fs.readFileSync('uploads.json');
+    const data = fs.readFileSync(path.join(__dirname, '..', 'uploads.json'));
     return JSON.parse(data);
   } catch (err) {
     return [];
@@ -143,7 +144,7 @@ router.get('/uploads', (req, res) => {
 router.get('/trivia', (req, res) => {
   const uploads = loadUploads();
 
-  const triviaData = JSON.parse(fs.readFileSync('trivia-contest.json', 'utf8'));
+  const triviaData = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'trivia-contest.json'), 'utf8'));
   const correctAnswers = triviaData.map(q => q.answer);
 
   // Calculate score for each entry and sort

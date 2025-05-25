@@ -2,9 +2,7 @@ console.log('AWS_REGION:', process.env.AWS_REGION);
 console.log('AWS_ACCESS_KEY_ID:', process.env.AWS_ACCESS_KEY_ID ? 'set' : 'missing');
 console.log('AWS_SECRET_ACCESS_KEY:', process.env.AWS_SECRET_ACCESS_KEY ? 'set' : 'missing');
 
-
 const express = require('express');
-const fs = require('fs');
 const path = require('path');
 const Stripe = require('stripe');
 const multer = require('multer');
@@ -19,7 +17,6 @@ console.log('AWS_SECRET_ACCESS_KEY:', process.env.AWS_SECRET_ACCESS_KEY ? '***' 
 console.log('AWS_REGION:', process.env.AWS_REGION || 'MISSING');
 console.log('S3_BUCKET_NAME:', process.env.S3_BUCKET_NAME || 'MISSING');
 
-
 // ✅ AWS S3 configuration
 const s3 = new AWS.S3({
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
@@ -29,34 +26,43 @@ const s3 = new AWS.S3({
 
 const BUCKET_NAME = process.env.S3_BUCKET_NAME;
 
-// ✅ JSON file paths
-const entriesFilePath = path.join(__dirname, '..', 'entries.json');
-const uploadsFilePath = path.join(__dirname, '..', 'uploads.json');
+// Replaced local file functions with async S3 functions
 
-function loadEntries() {
+async function loadJSONFromS3(key) {
   try {
-    const data = fs.readFileSync(entriesFilePath);
-    return JSON.parse(data);
+    const data = await s3.getObject({ Bucket: BUCKET_NAME, Key: key }).promise();
+    return JSON.parse(data.Body.toString('utf-8'));
   } catch (err) {
-    return [];
+    if (err.code === 'NoSuchKey') {
+      return [];
+    }
+    throw err;
   }
 }
 
-function saveEntries(entries) {
-  fs.writeFileSync(entriesFilePath, JSON.stringify(entries, null, 2));
+async function saveJSONToS3(key, data) {
+  await s3.putObject({
+    Bucket: BUCKET_NAME,
+    Key: key,
+    Body: JSON.stringify(data, null, 2),
+    ContentType: 'application/json'
+  }).promise();
 }
 
-function loadUploads() {
-  try {
-    const data = fs.readFileSync(uploadsFilePath);
-    return JSON.parse(data);
-  } catch (err) {
-    return [];
-  }
+async function loadEntries() {
+  return loadJSONFromS3('entries.json');
 }
 
-function saveUploads(uploads) {
-  fs.writeFileSync(uploadsFilePath, JSON.stringify(uploads, null, 2));
+async function saveEntries(entries) {
+  await saveJSONToS3('entries.json', entries);
+}
+
+async function loadUploads() {
+  return loadJSONFromS3('uploads.json');
+}
+
+async function saveUploads(uploads) {
+  await saveJSONToS3('uploads.json', uploads);
 }
 
 // ✅ Stripe Checkout
@@ -87,7 +93,7 @@ router.post('/create-checkout-session', async (req, res) => {
 });
 
 // ✅ Stripe Webhook
-router.post('/webhook', express.raw({ type: 'application/json' }), (req, res) => {
+router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   const sig = req.headers['stripe-signature'];
   let event;
 
@@ -100,14 +106,14 @@ router.post('/webhook', express.raw({ type: 'application/json' }), (req, res) =>
 
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
-    const entries = loadEntries();
+    const entries = await loadEntries();
     entries.push({
       id: session.id,
       paymentStatus: session.payment_status,
       customerEmail: session.customer_details?.email || 'anonymous',
       timestamp: new Date().toISOString()
     });
-    saveEntries(entries);
+    await saveEntries(entries);
   }
 
   res.json({ received: true });
@@ -122,7 +128,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
 
   if (!session_id) return res.status(400).send('Missing payment session ID.');
 
-  const entries = loadEntries();
+  const entries = await loadEntries();
   const matched = entries.find(e => e.id === session_id && e.paymentStatus === 'paid');
 
   if (!matched) return res.status(403).send('Invalid or unpaid session.');
@@ -140,7 +146,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       return res.status(400).send('Invalid trivia answers format.');
     }
 
-    const uploads = loadUploads();
+    const uploads = await loadUploads();
     uploads.push({
       userName: name,
       contestName: contest,
@@ -148,10 +154,10 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       triviaAnswers: parsedAnswers,
       timeTaken: Number(timeTaken)
     });
-    saveUploads(uploads);
+    await saveUploads(uploads);
 
     matched.used = true;
-    saveEntries(entries);
+    await saveEntries(entries);
 
     console.log('✅ Trivia entry saved for:', name);
 
@@ -185,7 +191,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     return res.status(500).send('Upload failed.');
   }
 
-  const uploads = loadUploads();
+  const uploads = await loadUploads();
   uploads.push({
     userName: name,
     contestName: contest,
@@ -193,10 +199,10 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     originalFilename: file.originalname,
     savedFilename: s3Key,
   });
-  saveUploads(uploads);
+  await saveUploads(uploads);
 
   matched.used = true;
-  saveEntries(entries);
+  await saveEntries(entries);
 
   console.log('✅ File uploaded to S3:', s3Key);
   console.log('👤 Name:', name);
