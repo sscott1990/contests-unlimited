@@ -35,9 +35,9 @@ async function loadUploads() {
 // Basic Auth middleware (for demo purposes, use env vars in real life)
 router.use((req, res, next) => {
   const auth = {
-  login: process.env.ADMIN_USERNAME,
-  password: process.env.ADMIN_PASSWORD
-};
+    login: process.env.ADMIN_USERNAME,
+    password: process.env.ADMIN_PASSWORD
+  };
 
   const b64auth = (req.headers.authorization || '').split(' ')[1] || '';
   const [login, password] = Buffer.from(b64auth, 'base64').toString().split(':');
@@ -121,28 +121,35 @@ router.get('/uploads', async (req, res) => {
   }
 });
 
-// ✅ Trivia results view (revised for sorting and time with milliseconds)
+// ✅ Trivia results view (revised for score or correctCount-based entries)
 router.get('/trivia', async (req, res) => {
   try {
     const uploads = await loadUploads();
-
     const triviaData = await loadJSONFromS3('trivia-contest.json');
     const correctAnswers = triviaData.map(q => q.answer);
 
-    // Calculate score for each entry and sort
     const scored = uploads
-      .filter(entry => Array.isArray(entry.triviaAnswers))
+      .filter(entry =>
+        (Array.isArray(entry.triviaAnswers) && entry.triviaAnswers.length > 0) ||
+        (typeof entry.correctCount === 'number' && typeof entry.timeTaken === 'number')
+      )
       .map(entry => {
-        const score = entry.triviaAnswers.reduce((sum, answer, i) => {
-          if (i >= correctAnswers.length) return sum;
-          const userAns = String(answer.selected || '').trim().toLowerCase();
-          const correctAns = String(correctAnswers[i]).trim().toLowerCase();
-          return sum + (userAns === correctAns ? 1 : 0);
-        }, 0);
+        let score = 0;
+
+        if (Array.isArray(entry.triviaAnswers)) {
+          score = entry.triviaAnswers.reduce((sum, answer, i) => {
+            if (i >= correctAnswers.length) return sum;
+            const userAns = String(answer.selected || '').trim().toLowerCase();
+            const correctAns = String(correctAnswers[i]).trim().toLowerCase();
+            return sum + (userAns === correctAns ? 1 : 0);
+          }, 0);
+        } else if (typeof entry.correctCount === 'number') {
+          score = entry.correctCount;
+        }
+
         return { ...entry, score };
       })
       .sort((a, b) => {
-        // Sort by score descending, then timeTaken ascending
         if (b.score !== a.score) return b.score - a.score;
         return a.timeTaken - b.timeTaken;
       });
