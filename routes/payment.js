@@ -1,3 +1,8 @@
+console.log('AWS_REGION:', process.env.AWS_REGION);
+console.log('AWS_ACCESS_KEY_ID:', process.env.AWS_ACCESS_KEY_ID ? 'set' : 'missing');
+console.log('AWS_SECRET_ACCESS_KEY:', process.env.AWS_SECRET_ACCESS_KEY ? 'set' : 'missing');
+
+
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
