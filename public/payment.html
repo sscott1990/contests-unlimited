@@ -2,12 +2,16 @@
 <html>
 <head>
   <title>Enter Contest</title>
-<link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/styles.css">
   <script src="https://js.stripe.com/v3/"></script>
 </head>
 <body>
   <h1>Enter Contest - $5 Entry</h1>
   <button id="checkout-button">Pay $5</button>
+
+  <p style="margin-top: 20px; font-size: 0.95em; color: #444;">
+    🏆 Winners will be contacted via email and asked to provide their full name and mailing address to issue the prize check.
+  </p>
 
   <script>
     const stripe = Stripe('pk_test_51RQnn8B9LFj4omBgA0IM8ANYuQm4RW48r3ZJdiOKMonNJRcWCIAI3l4lx6SL2kmiSlHlwKdqRiT02sLg3J13vmFB00ituAcSCB'); // Replace with your Stripe public key
