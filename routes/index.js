@@ -6,7 +6,8 @@ const router = express.Router();
 // ✅ Load uploads.json
 function loadUploads() {
   try {
-    const data = fs.readFileSync('uploads.json');
+    // Use absolute path for consistency
+    const data = fs.readFileSync(path.join(__dirname, '..', 'uploads.json'));
     return JSON.parse(data);
   } catch (err) {
     console.error('Error reading uploads.json:', err);
@@ -65,7 +66,7 @@ router.get('/', (req, res) => {
     </div>
   `).join('');
 
- res.send(`
+  res.send(`
     <!DOCTYPE html>
     <html>
     <head>
@@ -99,12 +100,11 @@ router.get('/', (req, res) => {
     </head>
     <body>
       <h1>Contest Website</h1>
-     <p>
-  <button onclick="window.location.href='/payment.html'" style="padding: 10px 20px; background-color: #007849; color: white; border: none; border-radius: 5px; cursor: pointer;">
-    Enter Contest
-  </button>
-</p>
-
+      <p>
+        <button onclick="window.location.href='/payment.html'" style="padding: 10px 20px; background-color: #007849; color: white; border: none; border-radius: 5px; cursor: pointer;">
+          Enter Contest
+        </button>
+      </p>
 
       <h2>Current Jackpot Info</h2>
       <ul>${prizeList || '<li>No entries yet</li>'}</ul>
