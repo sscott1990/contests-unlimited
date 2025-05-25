@@ -34,7 +34,10 @@ async function loadUploads() {
 
 // Basic Auth middleware (for demo purposes, use env vars in real life)
 router.use((req, res, next) => {
-  const auth = { login: 'admin', password: 'password' };
+  const auth = {
+  login: process.env.ADMIN_USERNAME || 'admin',
+  password: process.env.ADMIN_PASSWORD || 'password'
+};
 
   const b64auth = (req.headers.authorization || '').split(' ')[1] || '';
   const [login, password] = Buffer.from(b64auth, 'base64').toString().split(':');
