@@ -14,6 +14,12 @@ const router = express.Router();
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
+console.log('AWS_ACCESS_KEY_ID:', process.env.AWS_ACCESS_KEY_ID ? '***' : 'MISSING');
+console.log('AWS_SECRET_ACCESS_KEY:', process.env.AWS_SECRET_ACCESS_KEY ? '***' : 'MISSING');
+console.log('AWS_REGION:', process.env.AWS_REGION || 'MISSING');
+console.log('S3_BUCKET_NAME:', process.env.S3_BUCKET_NAME || 'MISSING');
+
+
 // ✅ AWS S3 configuration
 const s3 = new AWS.S3({
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
