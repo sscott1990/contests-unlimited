@@ -1,32 +1,26 @@
-require('dotenv').config(); // Load env vars early
-
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const AWS = require('aws-sdk');
-
 const router = express.Router();
 
-const BUCKET_NAME = process.env.S3_BUCKET_NAME || 'contests-unlimited';
-
-AWS.config.update({
+const s3 = new AWS.S3({
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  region: process.env.AWS_REGION || 'us-east-2',
+  region: process.env.AWS_REGION,
 });
-
-const s3 = new AWS.S3();
+const BUCKET_NAME = process.env.S3_BUCKET_NAME;
 
 async function loadJSONFromS3(key) {
   try {
     const data = await s3.getObject({ Bucket: BUCKET_NAME, Key: key }).promise();
     return JSON.parse(data.Body.toString('utf-8'));
   } catch (err) {
-    if (err.code === 'NoSuchKey') {
+    if (err.code === 'NoSuchKey' || err.code === 'NotFound') {
       return [];
     }
-    console.error('Error loading JSON from S3:', err);
-    return [];
+    console.error(`Error loading ${key} from S3:`, err);
+    throw err;
   }
 }
 
@@ -36,13 +30,6 @@ async function loadEntries() {
 
 async function loadUploads() {
   return loadJSONFromS3('uploads.json');
-}
-
-function formatTimestamp(ts) {
-  if (!ts) return 'No Date';
-  if (typeof ts === 'number') return new Date(ts).toLocaleString();
-  const d = new Date(ts);
-  return isNaN(d) ? 'Invalid Date' : d.toLocaleString();
 }
 
 // Basic Auth middleware (for demo purposes, use env vars in real life)
@@ -66,87 +53,68 @@ router.get('/entries', async (req, res) => {
     const entries = await loadEntries();
     res.json(entries);
   } catch (err) {
-    res.status(500).send('Error loading entries.');
+    res.status(500).json({ error: 'Failed to load entries' });
   }
 });
 
-// ✅ REVISED HTML view of uploaded files and trivia answers with signed S3 URLs
+// HTML view of uploaded files
 router.get('/uploads', async (req, res) => {
   try {
     const uploads = await loadUploads();
+    if (!uploads || uploads.length === 0) {
+      return res.send('<h2>No uploads found</h2>');
+    }
 
-    const rows = uploads.map(entry => {
-      const date = formatTimestamp(entry.timestamp);
-      const isTrivia = Array.isArray(entry.triviaAnswers);
-
-      if (isTrivia) {
-        return `
-          <tr>
-            <td>${entry.userName}</td>
-            <td>${entry.contestName}</td>
-            <td>${date}</td>
-            <td colspan="2">
-              <strong>Trivia Answers:</strong>
-              <pre>${JSON.stringify(entry.triviaAnswers, null, 2)}</pre>
-              <strong>Time Taken:</strong> ${entry.timeTaken?.toFixed(3)} sec
-            </td>
-          </tr>`;
-      } else {
-        // Generate a signed URL valid for 15 minutes
-        const signedUrl = s3.getSignedUrl('getObject', {
-          Bucket: BUCKET_NAME,
-          Key: entry.savedFilename,
-          Expires: 900, // 15 minutes
-        });
-
-        return `
-          <tr>
-            <td>${entry.userName}</td>
-            <td>${entry.contestName}</td>
-            <td>${date}</td>
-            <td>${entry.originalFilename}</td>
-            <td><a href="${signedUrl}" target="_blank" rel="noopener noreferrer">View</a></td>
-          </tr>`;
-      }
+    const rows = uploads.map(upload => {
+      const date = new Date(upload.timestamp).toLocaleString();
+      return `
+      <tr>
+        <td>${upload.userName || ''}</td>
+        <td>${upload.contestName || ''}</td>
+        <td>${date}</td>
+        <td>${upload.originalFilename || ''}</td>
+        <td><a href="https://${BUCKET_NAME}.s3.amazonaws.com/${encodeURIComponent(upload.savedFilename)}" target="_blank">View</a><br>
+            <img src="https://${BUCKET_NAME}.s3.amazonaws.com/${encodeURIComponent(upload.savedFilename)}" alt="${upload.originalFilename || ''}" style="max-width: 100px;"></td>    
+      </tr>`;
     }).join('');
 
     res.send(`
       <!DOCTYPE html>
-    <html lang="en">
-        <head>
-          <title>Admin Uploads</title>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1">
-          <link rel="stylesheet" href="/styles.css">
-        </head>
-        <body>
-          <h1>Admin Panel</h1>
-          <nav>
-            <a href="/api/admin/uploads">Uploads</a> |
-            <a href="/api/admin/entries">Entries</a> |
-            <a href="/api/admin/trivia">Trivia Results</a> |
-            <a href="/api/admin/logout">Logout</a>
-          </nav>
-          <h2>Uploaded Entries</h2>
-          <table>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Contest</th>
-                <th>Date</th>
-                <th>Original Filename</th>
-                <th>File / Answers</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${rows}
-            </tbody>
-          </table>
-        </body>
-        </html>
-      `);
+      <html lang="en">
+      <head>
+        <title>Admin Uploads</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="/styles.css">
+      </head>
+      <body>
+        <h1>Admin Panel</h1>
+        <nav>
+          <a href="/api/admin/uploads">Uploads</a> |
+          <a href="/api/admin/entries">Entries</a> |
+          <a href="/api/admin/trivia">Trivia Results</a> |
+          <a href="/api/admin/logout">Logout</a>
+        </nav>
+        <h2>Uploaded Files</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Contest</th>
+              <th>Date</th>
+              <th>Original Filename</th>
+              <th>File</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows}
+          </tbody>
+        </table>
+      </body>
+      </html>
+    `);
   } catch (err) {
-    res.status(500).send('Error loading uploads.');
+    res.status(500).send('Failed to load uploads.');
   }
 });
 
@@ -155,7 +123,7 @@ router.get('/trivia', async (req, res) => {
   try {
     const uploads = await loadUploads();
 
-    const triviaData = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'trivia-contest.json'), 'utf8'));
+    const triviaData = JSON.parse(fs.readFileSync('trivia-contest.json', 'utf8'));
     const correctAnswers = triviaData.map(q => q.answer);
 
     // Calculate score for each entry and sort
@@ -219,7 +187,7 @@ router.get('/trivia', async (req, res) => {
       </html>
     `);
   } catch (err) {
-    res.status(500).send('Error loading trivia results.');
+    res.status(500).send('Failed to load trivia results.');
   }
 });
 
