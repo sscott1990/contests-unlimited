@@ -8,9 +8,13 @@ const router = express.Router();
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
+// ✅ Updated paths to JSON files
+const entriesFilePath = path.join(__dirname, '..', 'entries.json');
+const uploadsFilePath = path.join(__dirname, '..', 'uploads.json');
+
 function loadEntries() {
   try {
-    const data = fs.readFileSync('entries.json');
+    const data = fs.readFileSync(entriesFilePath);
     return JSON.parse(data);
   } catch (err) {
     return [];
@@ -18,12 +22,12 @@ function loadEntries() {
 }
 
 function saveEntries(entries) {
-  fs.writeFileSync('entries.json', JSON.stringify(entries, null, 2));
+  fs.writeFileSync(entriesFilePath, JSON.stringify(entries, null, 2));
 }
 
 function loadUploads() {
   try {
-    const data = fs.readFileSync('uploads.json');
+    const data = fs.readFileSync(uploadsFilePath);
     return JSON.parse(data);
   } catch (err) {
     return [];
@@ -31,7 +35,7 @@ function loadUploads() {
 }
 
 function saveUploads(uploads) {
-  fs.writeFileSync('uploads.json', JSON.stringify(uploads, null, 2));
+  fs.writeFileSync(uploadsFilePath, JSON.stringify(uploads, null, 2));
 }
 
 // Create Stripe checkout session
