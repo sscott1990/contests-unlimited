@@ -35,6 +35,13 @@ function loadUploads() {
   }
 }
 
+function formatTimestamp(ts) {
+  if (!ts) return 'No Date';
+  if (typeof ts === 'number') return new Date(ts).toLocaleString();
+  const d = new Date(ts);
+  return isNaN(d) ? 'Invalid Date' : d.toLocaleString();
+}
+
 // Basic Auth middleware (for demo purposes, use env vars in real life)
 router.use((req, res, next) => {
   const auth = { login: 'admin', password: 'password' };
@@ -61,7 +68,7 @@ router.get('/uploads', (req, res) => {
   const uploads = loadUploads();
 
   const rows = uploads.map(entry => {
-    const date = new Date(Number(entry.timestamp)).toLocaleString();
+    const date = formatTimestamp(entry.timestamp);
     const isTrivia = Array.isArray(entry.triviaAnswers);
 
     if (isTrivia) {
