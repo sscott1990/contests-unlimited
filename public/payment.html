@@ -51,15 +51,13 @@
             sendToCustomer: true
           },
           collectShippingInfo: true,
+          collectCustomerInfo: true, // ✅ Added to collect name/email
           useKount: false,
           paymentMethods: [
             { type: "creditCard", use3DSecure: false },
             { type: "check" }
-          ],
-          fields: [
-            { field: "email", required: true },
-            { field: "name", required: true }
           ]
+          // ✅ Removed invalid "fields" array
         }).then(result => {
           if (result && result.error) {
             console.error('Checkout error:', result.error);
