@@ -102,7 +102,7 @@ router.post('/create-checkout-session', async (req, res) => {
   }
 });
 
-// ===== Replaced Stripe webhook verification with EPD webhook handling =====
+// ===== ✅ Revised Webhook Handler with Proper Signature Validation =====
 router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   const signatureHeader = req.headers['webhook-signature'];
 
@@ -112,7 +112,6 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
     return res.status(400).send('Missing signature');
   }
 
-  // Parse signature header: expected format "t=...,s=..."
   const parts = signatureHeader.split(',');
   const timestampPart = parts.find(p => p.startsWith('t='));
   const signaturePart = parts.find(p => p.startsWith('s='));
@@ -125,11 +124,13 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
   const timestamp = timestampPart.split('=')[1];
   const signature = signaturePart.split('=')[1];
 
-  // (Optional) Could check timestamp freshness here to avoid replay attacks
-
   const hmac = crypto.createHmac('sha256', endpointSecret);
-  hmac.update(req.body.toString('utf8'));
+  hmac.update(req.body); // 🔑 Important: raw body
   const digest = hmac.digest('hex');
+
+  // Debug logging (can be removed later)
+  console.log('🔐 Expected digest:', digest);
+  console.log('📩 Received signature:', signature);
 
   if (digest !== signature) {
     console.error('❌ Invalid webhook signature');
