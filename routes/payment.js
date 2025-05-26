@@ -166,7 +166,7 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
 // ✅ Use memory storage for S3
 const upload = multer({ storage: multer.memoryStorage() });
 
-// ✅ Unified upload handler (no changes needed)
+// ✅ Unified upload handler (enhanced)
 router.post('/upload', upload.single('file'), async (req, res) => {
   const { name, contest, triviaAnswers, timeTaken, session_id } = req.body;
 
@@ -177,6 +177,8 @@ router.post('/upload', upload.single('file'), async (req, res) => {
 
   if (!matched) return res.status(403).send('Invalid or unpaid session.');
   if (matched.used) return res.status(409).send('This payment session has already been used.');
+
+  const uploads = await loadUploads();
 
   if (contest === 'Trivia Contest') {
     if (!name || !triviaAnswers || !timeTaken) {
@@ -190,7 +192,6 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       return res.status(400).send('Invalid trivia answers format.');
     }
 
-    const uploads = await loadUploads();
     uploads.push({
       userName: name,
       contestName: contest,
@@ -236,7 +237,6 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     return res.status(500).send('Upload failed.');
   }
 
-  const uploads = await loadUploads();
   uploads.push({
     userName: name,
     contestName: contest,
