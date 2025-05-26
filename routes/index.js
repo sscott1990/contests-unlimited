@@ -126,18 +126,25 @@ router.get('/', (req, res) => {
         </div>
 
         <div style="margin-top: 40px; padding: 20px; font-size: 0.85em; color: #555; max-width: 800px; margin-left: auto; margin-right: auto;">
-          <h3>Terms and Conditions</h3>
-          <ul>
-            <li>Each contest entry costs $5.00 USD. The entry fee is non-refundable.</li>
-            <li>50% of each entry fee ($2.50) is added to the prize pool for that specific contest.</li>
-            <li>Each contest has a unique prize pool that grows with each valid entry.</li>
-            <li>At the end of the contest, one winner will be selected and awarded the full prize pool amount.</li>
-            <li>Winners will be notified and paid within 7–14 business days after verification.</li>
-            <li>Only participants aged 18 and older are eligible to enter.</li>
-            <li>Any attempt to manipulate or defraud the contest will result in disqualification.</li>
-            <li>By entering, you agree to the official rules and the final decisions of the contest administrators.</li>
-          </ul>
-        </div>
+  <h3>Terms and Conditions</h3>
+  <ul>
+    <li>Each contest entry costs $5.00 USD. The entry fee is non-refundable.</li>
+    <li>50% of each entry fee ($2.50) is added to the prize pool for that specific contest.</li>
+    <li>Each contest has a unique prize pool that grows with each valid entry.</li>
+    <li>At the end of the contest, one winner will be selected and awarded the full prize pool amount.</li>
+    <li>Winners will be notified and paid within 7–14 business days after verification.</li>
+    <li>Only participants aged 18 and older are eligible to enter.</li>
+    <li>Any attempt to manipulate or defraud the contest will result in disqualification.</li>
+    <li>By entering, you agree to the official rules and the final decisions of the contest administrators.</li>
+  </ul>
+
+  <h3>Refund Policy</h3>
+  <p>All contest entry fees are <strong>non-refundable</strong>. Once payment is submitted, no refunds will be issued under any circumstances, including disqualification or withdrawal.</p>
+
+  <h3>Privacy Policy</h3>
+  <p>We collect participant information including names, email address, uploaded files, and contest answers solely for the purpose of operating and managing contest entries. All data is securely stored and not shared, sold, or disclosed to third parties. Files are stored in AWS S3 and processed only for contest verification and winner selection. We use this information to ensure contest fairness and compliance. By participating, you consent to this data usage.</p>
+</div>
+
 
         <script>
           // Countdown script for all contests

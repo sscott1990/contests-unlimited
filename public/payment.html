@@ -3,28 +3,72 @@
 <head>
   <title>Enter Contest</title>
   <link rel="stylesheet" href="/styles.css">
-  <script src="https://js.stripe.com/v3/"></script>
+  <script 
+    src="https://secure.easypaydirectgateway.com/token/CollectCheckout.js"
+    data-checkout-key="checkout_public_WQgrRu3vwsHYQWH5sMvX6XtT796Pz67f">
+  </script>
+  <style>
+    #checkout_button {
+      display: inline-block;
+      font-family: sans-serif;
+      font-size: 20px;
+      background-color: #0BD992;
+      color: white;
+      border-radius: 4px;
+      padding: 14px 28px;
+      margin-top: 20px;
+    }
+    #checkout_button:hover {
+      cursor: pointer;
+    }
+  </style>
 </head>
 <body>
   <h1>Enter Contest - $5 Entry</h1>
-  <button id="checkout-button">Pay $5</button>
+
+  <div id="checkout_button">Pay $5</div>
 
   <p style="margin-top: 20px; font-size: 0.95em; color: #444;">
     🏆 Winners will be contacted via email and asked to provide their full name and mailing address to issue the prize check.
   </p>
 
   <script>
-    const stripe = Stripe('pk_test_51RQnn8B9LFj4omBgA0IM8ANYuQm4RW48r3ZJdiOKMonNJRcWCIAI3l4lx6SL2kmiSlHlwKdqRiT02sLg3J13vmFB00ituAcSCB'); // Replace with your Stripe public key
-
-    document.getElementById('checkout-button').addEventListener('click', () => {
-      fetch('/api/payment/create-checkout-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      })
-      .then(res => res.json())
-      .then(session => stripe.redirectToCheckout({ sessionId: session.id }))
-      .then(result => {
-        if (result.error) alert(result.error.message);
+    window.addEventListener('DOMContentLoaded', function () {
+      document.getElementById('checkout_button').addEventListener('click', function () {
+        CollectCheckout.redirectToCheckout({
+          type: "sale",
+          lineItems: [
+            {
+              lineItemType: "purchase",
+              sku: "contest-entry-may2025",
+              quantity: 1
+            }
+          ],
+          successUrl: "https://contests-unlimited.onrender.com/success",
+          cancelUrl: "https://contests-unlimited.onrender.com/cancel",
+          receipt: {
+            showReceipt: true,
+            sendToCustomer: true
+          },
+          collectShippingInfo: true,
+          useKount: false,
+          paymentMethods: [
+            { type: "creditCard", use3DSecure: false },
+            { type: "check" }
+          ],
+          fields: [
+            { id: "email", label: "Email", required: true },
+            { id: "name", label: "Full Name", required: true }
+          ]
+        }).then(result => {
+          if (result && result.error) {
+            console.error('Checkout error:', result.error);
+            alert("There was an error during checkout. Please try again.");
+          }
+        }).catch(err => {
+          console.error('Unexpected error:', err);
+          alert("Unexpected error occurred. Please try again later.");
+        });
       });
     });
   </script>

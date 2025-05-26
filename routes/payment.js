@@ -4,13 +4,16 @@ console.log('AWS_SECRET_ACCESS_KEY:', process.env.AWS_SECRET_ACCESS_KEY ? 'set' 
 
 const express = require('express');
 const path = require('path');
-const Stripe = require('stripe');
+// const Stripe = require('stripe'); // Commented out since Stripe not used now
 const multer = require('multer');
 const AWS = require('aws-sdk');
+const fetch = require('node-fetch');
+const crypto = require('crypto');
 const router = express.Router();
 
-const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
-const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+// Replace Stripe with EPD API key usage
+const epdApiKey = process.env.EPD_API_KEY || '';
+const endpointSecret = process.env.EPD_WEBHOOK_SECRET || '';
 
 console.log('AWS_ACCESS_KEY_ID:', process.env.AWS_ACCESS_KEY_ID ? '***' : 'MISSING');
 console.log('AWS_SECRET_ACCESS_KEY:', process.env.AWS_SECRET_ACCESS_KEY ? '***' : 'MISSING');
@@ -27,7 +30,6 @@ const s3 = new AWS.S3({
 const BUCKET_NAME = process.env.S3_BUCKET_NAME;
 
 // Replaced local file functions with async S3 functions
-
 async function loadJSONFromS3(key) {
   try {
     const data = await s3.getObject({ Bucket: BUCKET_NAME, Key: key }).promise();
@@ -65,52 +67,76 @@ async function saveUploads(uploads) {
   await saveJSONToS3('uploads.json', uploads);
 }
 
-// ✅ Stripe Checkout
+// ===== Replaced Stripe Checkout endpoint with EPD equivalent =====
 router.post('/create-checkout-session', async (req, res) => {
   try {
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      mode: 'payment',
-      line_items: [{
-        price_data: {
-          currency: 'usd',
-          product_data: {
-            name: 'Contest Entry',
-          },
-          unit_amount: 500,
-        },
-        quantity: 1,
-      }],
-      success_url: `${req.headers.origin}/success.html?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${req.headers.origin}/cancel.html`,
+    const payload = {
+      amount: 500,
+      currency: 'USD',
+      description: 'Contest Entry',
+      success_url: `${req.headers.origin}/success.html?session_id={SESSION_ID}`,
+      cancel_url: `${req.headers.origin}/cancel.html`
+    };
+
+    const response = await fetch('https://api.easypaymentdirect.com/v1/checkout/session', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${epdApiKey}`,
+      },
+      body: JSON.stringify(payload)
     });
-    console.log('Stripe session created:', session.id);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`EPD API error: ${response.status} ${errorText}`);
+    }
+
+    const session = await response.json();
+
+    console.log('EPD session created:', session.id);
     res.json({ id: session.id });
   } catch (error) {
-    console.error('Stripe create checkout session error:', error);
+    console.error('EPD create checkout session error:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// ✅ Stripe Webhook
+// ===== Replaced Stripe webhook verification with EPD webhook handling =====
 router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
-  const sig = req.headers['stripe-signature'];
-  let event;
-
-  try {
-    event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
-  } catch (err) {
-    console.error('Webhook signature verification failed.', err.message);
-    return res.status(400).send(`Webhook Error: ${err.message}`);
+  const signature = req.headers['x-epd-signature'];
+  if (!signature) {
+    console.error('Missing EPD signature header');
+    return res.status(400).send('Missing signature');
   }
 
-  if (event.type === 'checkout.session.completed') {
-    const session = event.data.object;
+  const hmac = crypto.createHmac('sha256', endpointSecret);
+  hmac.update(req.body.toString('utf8'));
+  const digest = hmac.digest('hex');
+
+  if (digest !== signature) {
+    console.error('Invalid webhook signature');
+    return res.status(400).send('Invalid signature');
+  }
+
+  let event;
+  try {
+    event = JSON.parse(req.body.toString('utf8'));
+  } catch (err) {
+    console.error('Webhook JSON parse error:', err);
+    return res.status(400).send('Invalid JSON');
+  }
+
+  console.log('Received EPD webhook event:', event);
+
+  if (event.type === 'payment.completed') {
+    const session = event.data;
+
     const entries = await loadEntries();
     entries.push({
       id: session.id,
-      paymentStatus: session.payment_status || 'unknown',
-      customerEmail: session.customer_details?.email || 'anonymous',
+      paymentStatus: 'paid',
+      customerEmail: session.customer_email || 'anonymous',
       timestamp: new Date().toISOString()
     });
     await saveEntries(entries);
@@ -122,7 +148,7 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
 // ✅ Use memory storage for S3
 const upload = multer({ storage: multer.memoryStorage() });
 
-// ✅ Unified upload handler
+// ✅ Unified upload handler (no changes needed)
 router.post('/upload', upload.single('file'), async (req, res) => {
   const { name, contest, triviaAnswers, timeTaken, session_id } = req.body;
 
@@ -148,12 +174,12 @@ router.post('/upload', upload.single('file'), async (req, res) => {
 
     const uploads = await loadUploads();
     uploads.push({
-  userName: name,
-  contestName: contest,
-  timestamp: new Date().toISOString(),
-  correctCount: parsedAnswers.filter(ans => ans.correct).length,
-  timeTaken: Number(timeTaken)
-});
+      userName: name,
+      contestName: contest,
+      timestamp: new Date().toISOString(),
+      correctCount: parsedAnswers.filter(ans => ans.correct).length,
+      timeTaken: Number(timeTaken)
+    });
 
     await saveUploads(uploads);
 
