@@ -126,8 +126,12 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
   console.log('🔐 Expected digest:', digest);
   console.log('📩 Received signature:', signature);
 
-  // 💾 Save payload to file for offline testing
-  fs.writeFileSync('payload.json', req.body);
+  // ✅ Save raw body buffer to a .json file
+  try {
+    fs.writeFileSync('payload.json', req.body.toString('utf8'));
+  } catch (err) {
+    console.error('❌ Failed to save payload to file:', err);
+  }
 
   if (digest !== signature) {
     console.error('❌ Invalid webhook signature');
