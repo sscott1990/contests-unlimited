@@ -35,7 +35,8 @@
   <script>
     window.addEventListener('DOMContentLoaded', function () {
       document.getElementById('checkout_button').addEventListener('click', function () {
-        CollectCheckout.redirectToCheckout({
+        // Prepare payload and log it for debugging
+        const checkoutPayload = {
           type: "sale",
           lineItems: [
             {
@@ -60,15 +61,20 @@
             { field: "email", required: true },
             { field: "name", required: true }
           ]
-        }).then(result => {
-          if (result && result.error) {
-            console.error('Checkout error:', result.error);
-            alert("There was an error during checkout. Please try again.");
-          }
-        }).catch(err => {
-          console.error('Unexpected error:', err);
-          alert("Unexpected error occurred. Please try again later.");
-        });
+        };
+
+        console.log("Submitting checkout payload:", checkoutPayload);
+
+        CollectCheckout.redirectToCheckout(checkoutPayload)
+          .then(result => {
+            if (result && result.error) {
+              console.error('Checkout error:', result.error);
+              alert("There was an error during checkout. Please try again.");
+            }
+          }).catch(err => {
+            console.error('Unexpected error:', err);
+            alert("Unexpected error occurred. Please try again later.");
+          });
       });
     });
   </script>
