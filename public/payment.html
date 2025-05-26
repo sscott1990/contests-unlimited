@@ -57,8 +57,8 @@
             { type: "check" }
           ],
           fields: [
-            { field: "email" },
-            { field: "name" }
+            { field: "email", required: true },
+            { field: "name", required: true }
           ]
         }).then(result => {
           if (result && result.error) {
