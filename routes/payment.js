@@ -105,8 +105,10 @@ router.post('/create-checkout-session', async (req, res) => {
 // ===== Replaced Stripe webhook verification with EPD webhook handling =====
 router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   const signature = req.headers['x-epd-signature'];
+
   if (!signature) {
-    console.error('Missing EPD signature header');
+    console.error('❌ Missing EPD signature header');
+    console.log('📩 Incoming webhook headers:', req.headers);
     return res.status(400).send('Missing signature');
   }
 
@@ -115,7 +117,7 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
   const digest = hmac.digest('hex');
 
   if (digest !== signature) {
-    console.error('Invalid webhook signature');
+    console.error('❌ Invalid webhook signature');
     return res.status(400).send('Invalid signature');
   }
 
@@ -123,11 +125,11 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
   try {
     event = JSON.parse(req.body.toString('utf8'));
   } catch (err) {
-    console.error('Webhook JSON parse error:', err);
+    console.error('❌ Webhook JSON parse error:', err);
     return res.status(400).send('Invalid JSON');
   }
 
-  console.log('Received EPD webhook event:', event);
+  console.log('✅ Received EPD webhook event:', event);
 
   if (event.type === 'payment.completed') {
     const session = event.data;
