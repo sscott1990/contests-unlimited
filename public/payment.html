@@ -46,19 +46,9 @@
           ],
           successUrl: "https://contests-unlimited.onrender.com/success",
           cancelUrl: "https://contests-unlimited.onrender.com/cancel",
-          receipt: {
-            showReceipt: true,
-            sendToCustomer: true
-          },
-          collectShippingInfo: true,
-          useKount: false,
           paymentMethods: [
             { type: "creditCard", use3DSecure: false },
             { type: "check" }
-          ],
-          fields: [
-            { field: "email", required: true },
-            { field: "name", required: true }
           ]
         }).then(result => {
           if (result && result.error) {
