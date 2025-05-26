@@ -11,7 +11,6 @@ const fetch = require('node-fetch');
 const crypto = require('crypto');
 const router = express.Router();
 
-// Replace Stripe with EPD API key usage
 const epdApiKey = process.env.EPD_API_KEY || '';
 const endpointSecret = process.env.EPD_WEBHOOK_SECRET || '';
 
@@ -20,7 +19,6 @@ console.log('AWS_SECRET_ACCESS_KEY:', process.env.AWS_SECRET_ACCESS_KEY ? '***' 
 console.log('AWS_REGION:', process.env.AWS_REGION || 'MISSING');
 console.log('S3_BUCKET_NAME:', process.env.S3_BUCKET_NAME || 'MISSING');
 
-// ✅ AWS S3 configuration
 const s3 = new AWS.S3({
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
@@ -29,7 +27,6 @@ const s3 = new AWS.S3({
 
 const BUCKET_NAME = process.env.S3_BUCKET_NAME;
 
-// Replaced local file functions with async S3 functions
 async function loadJSONFromS3(key) {
   try {
     const data = await s3.getObject({ Bucket: BUCKET_NAME, Key: key }).promise();
@@ -67,7 +64,6 @@ async function saveUploads(uploads) {
   await saveJSONToS3('uploads.json', uploads);
 }
 
-// ===== Replaced Stripe Checkout endpoint with EPD equivalent =====
 router.post('/create-checkout-session', async (req, res) => {
   try {
     const payload = {
@@ -102,9 +98,13 @@ router.post('/create-checkout-session', async (req, res) => {
   }
 });
 
-// ===== Replaced Stripe webhook verification with EPD webhook handling =====
 router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  console.log('🧪 Webhook hit!');
+  console.log('Headers:', req.headers);
+  console.log('Raw body:', req.body.toString('utf8'));
+
   const signature = req.headers['x-epd-signature'];
+  console.log('Signature from header:', signature);
   if (!signature) {
     console.error('Missing EPD signature header');
     return res.status(400).send('Missing signature');
@@ -113,9 +113,10 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
   const hmac = crypto.createHmac('sha256', endpointSecret);
   hmac.update(req.body.toString('utf8'));
   const digest = hmac.digest('hex');
+  console.log('Computed HMAC digest:', digest);
 
   if (digest !== signature) {
-    console.error('Invalid webhook signature');
+    console.error('❌ Invalid webhook signature');
     return res.status(400).send('Invalid signature');
   }
 
@@ -127,7 +128,7 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
     return res.status(400).send('Invalid JSON');
   }
 
-  console.log('Received EPD webhook event:', event);
+  console.log('✅ Received EPD webhook event:', event);
 
   if (event.type === 'payment.completed') {
     const session = event.data;
@@ -145,10 +146,31 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
   res.json({ received: true });
 });
 
-// ✅ Use memory storage for S3
+// 🚧 Test route to simulate a webhook manually
+router.post('/webhook-test', async (req, res) => {
+  const fakeEvent = {
+    type: 'payment.completed',
+    data: {
+      id: 'test_session_id_12345',
+      customer_email: 'test@example.com'
+    }
+  };
+
+  const entries = await loadEntries();
+  entries.push({
+    id: fakeEvent.data.id,
+    paymentStatus: 'paid',
+    customerEmail: fakeEvent.data.customer_email,
+    timestamp: new Date().toISOString()
+  });
+  await saveEntries(entries);
+
+  console.log('✅ Test payment session injected.');
+  res.send('✅ Webhook test injected');
+});
+
 const upload = multer({ storage: multer.memoryStorage() });
 
-// ✅ Unified upload handler (no changes needed)
 router.post('/upload', upload.single('file'), async (req, res) => {
   const { name, contest, triviaAnswers, timeTaken, session_id } = req.body;
 
