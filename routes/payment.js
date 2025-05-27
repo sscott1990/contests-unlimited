@@ -46,7 +46,7 @@ async function loadUploads() { return loadJSONFromS3('uploads.json'); }
 async function saveUploads(uploads) { return saveJSONToS3('uploads.json', uploads); }
 
 // === ✅ Create EasyPayDirect session endpoint
-router.post('/create-session', async (req, res) => {
+router.post('/create-checkout-session', async (req, res) => {
   try {
     const response = await fetch('https://api.easypaydirectgateway.com/v1/sessions', {
       method: 'POST',
