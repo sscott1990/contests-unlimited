@@ -2,11 +2,11 @@ console.log('AWS_REGION:', process.env.AWS_REGION);
 console.log('AWS_ACCESS_KEY_ID:', process.env.AWS_ACCESS_KEY_ID ? 'set' : 'missing');
 console.log('AWS_SECRET_ACCESS_KEY:', process.env.AWS_SECRET_ACCESS_KEY ? 'set' : 'missing');
 
+const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 const express = require('express');
 const path = require('path');
 const multer = require('multer');
 const AWS = require('aws-sdk');
-const fetch = require('node-fetch');
 const crypto = require('crypto');
 const fs = require('fs');
 const router = express.Router();
