@@ -100,7 +100,8 @@ router.post('/create-checkout-session', async (req, res) => {
 });
 
 // === ✅ Webhook Handler with Signature Verification & Payload Capture ===
-router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+// Changed here: removed express.raw() middleware to rely on app.js raw parser
+router.post('/webhook', async (req, res) => {
   const signatureHeader = req.headers['webhook-signature'];
 
   if (!signatureHeader) {

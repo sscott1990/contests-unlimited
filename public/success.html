@@ -32,7 +32,7 @@
     </select>
 
     <input type="file" name="file" id="fileInput" accept="image/*" required>
-    <input type="hidden" name="refId" id="sessionIdInput"> <!-- updated name -->
+    <input type="hidden" name="session_id" id="sessionIdInput"> <!-- updated name -->
 
     <div id="triviaSection">
       <p><strong>Trivia (10 minutes to complete):</strong></p>
@@ -61,14 +61,14 @@
     let timerStarted = false;
 
     const urlParams = new URLSearchParams(window.location.search);
-    const sessionId = urlParams.get('refId'); // <- corrected to match EasyPayDirect's injected query param
+const sessionId = urlParams.get('session_id'); // Correct query param
 
-    if (!sessionId) {
-      alert('Missing session ID. Please return to the homepage and try again.');
-      document.getElementById('uploadForm').style.display = 'none';
-    } else {
-      sessionIdInput.value = sessionId;
-    }
+if (!sessionId) {
+  alert('Missing session ID. Please return to the homepage and try again.');
+  document.getElementById('uploadForm').style.display = 'none';
+} else {
+  sessionIdInput.value = sessionId;
+}
 
     contestSelect.addEventListener('change', async function () {
       if (this.value === 'Trivia Contest') {

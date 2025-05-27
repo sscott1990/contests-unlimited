@@ -34,31 +34,46 @@
 
   <script>
     window.addEventListener('DOMContentLoaded', function () {
-      document.getElementById('checkout_button').addEventListener('click', function () {
-        CollectCheckout.redirectToCheckout({
-          type: "sale",
-          lineItems: [
-            {
-              lineItemType: "purchase",
-              sku: "contest-entry-may2025",
-              quantity: 1
-            }
-          ],
-          successUrl: "https://contests-unlimited.onrender.com/success.html?refId={refId}",
-          cancelUrl: "https://contests-unlimited.onrender.com/cancel.html",
-          paymentMethods: [
-            { type: "creditCard", use3DSecure: false },
-            { type: "check" }
-          ]
-        }).then(result => {
-          if (result && result.error) {
-            console.error('Checkout error:', result.error);
-            alert("There was an error during checkout. Please try again.");
+      document.getElementById('checkout_button').addEventListener('click', async function () {
+        try {
+          // Call your backend to create a checkout session
+          const response = await fetch('/api/payment/create-checkout-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          if (!response.ok) {
+            throw new Error('Failed to create checkout session');
           }
-        }).catch(err => {
-          console.error('Unexpected error:', err);
-          alert("Unexpected error occurred. Please try again later.");
-        });
+          const data = await response.json();
+          const sessionId = data.id;
+          if (!sessionId) {
+            throw new Error('No session ID returned');
+          }
+
+          // Redirect user to EasyPayDirect checkout using the session ID
+          CollectCheckout.redirectToCheckout({
+            type: "sale",
+            sessionId: sessionId,  // Use sessionId here
+            successUrl: `https://contests-unlimited.onrender.com/success.html?session_id=${sessionId}`,
+            cancelUrl: "https://contests-unlimited.onrender.com/cancel.html",
+            paymentMethods: [
+              { type: "creditCard", use3DSecure: false },
+              { type: "check" }
+            ]
+          }).then(result => {
+            if (result && result.error) {
+              console.error('Checkout error:', result.error);
+              alert("There was an error during checkout. Please try again.");
+            }
+          }).catch(err => {
+            console.error('Unexpected error:', err);
+            alert("Unexpected error occurred. Please try again later.");
+          });
+
+        } catch (error) {
+          console.error('Error creating checkout session:', error);
+          alert("Unable to start payment. Please try again later.");
+        }
       });
     });
   </script>
