@@ -15,6 +15,9 @@
       margin-top: 20px;
       cursor: pointer;
     }
+    #checkout_button:hover {
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -23,61 +26,67 @@
   <p style="margin-top: 20px; font-size: 0.95em; color: #444;">
     🏆 Winners will be contacted via email and asked to provide their full name and mailing address to issue the prize check.
   </p>
-<div id="checkout_button">Check Out</div>
-<script
-src="https://secure.easypaydirectgateway.com/token/CollectCheckout.js"
-data-checkout-key="checkout_public_2828BnDCyj2J74bs2Hr7FT5wFN37qg2S"
-></script>
-<script>
-window.addEventListener('DOMContentLoaded', function(e) {
-document.getElementById('checkout_button').addEventListener('click', function(e) {
-CollectCheckout.redirectToCheckout({
-type: "sale",
-lineItems: [
-{
-lineItemType: "purchase",
-sku: "contest-entry-may2025",
-quantity: 1
-},
-],
-successUrl: 'https://contests-unlimited.onrender.com/success.html?session_id=${session.id}',
-cancelUrl: 'https://contests-unlimited.onrender.com/cancel.html',
-receipt: {
-showReceipt: false,
-sendToCustomer: true,
-},
-collectShippingInfo: true,
-useKount: false,
-paymentMethods: [
-{
-type: "creditCard",
-use3DSecure: false,
-},
-{
-type: "check",
-},
-],
-fields: [
-],
-}).then((error) => {
-console.log(error);
-});
-});
-});
-</script>
-<style>
-#checkout_button {
-display: inline-block;
-font-family: sans-serif;
-font-size: 20px;
-background-color: #0BD992;
-color: white;
-border-radius: 4px;
-padding: 14px 28px;
-}
-#checkout_button:hover {
-cursor: pointer;
-}
-</style>
+
+  <div id="checkout_button">Check Out</div>
+
+  <script
+    src="https://secure.easypaydirectgateway.com/token/CollectCheckout.js"
+    data-checkout-key="checkout_public_2828BnDCyj2J74bs2Hr7FT5wFN37qg2S"
+  ></script>
+
+  <script>
+    window.addEventListener('DOMContentLoaded', function() {
+      document.getElementById('checkout_button').addEventListener('click', async function() {
+        try {
+          // Call your backend to create a session and get the session ID
+          const response = await fetch('/api/create-session', { method: 'POST' });
+          const data = await response.json();
+
+          if (!data.sessionId) {
+            alert('Failed to create payment session.');
+            return;
+          }
+
+          // Use the sessionId in the successUrl
+          CollectCheckout.redirectToCheckout({
+            type: "sale",
+            lineItems: [
+              {
+                lineItemType: "purchase",
+                sku: "contest-entry-may2025",
+                quantity: 1
+              },
+            ],
+            successUrl: `https://contests-unlimited.onrender.com/success.html?session_id=${data.sessionId}`,
+            cancelUrl: 'https://contests-unlimited.onrender.com/cancel.html',
+            receipt: {
+              showReceipt: false,
+              sendToCustomer: true,
+            },
+            collectShippingInfo: true,
+            useKount: false,
+            paymentMethods: [
+              {
+                type: "creditCard",
+                use3DSecure: false,
+              },
+              {
+                type: "check",
+              },
+            ],
+            fields: [],
+          }).then((error) => {
+            if (error) {
+              console.error('Checkout redirect error:', error);
+            }
+          });
+
+        } catch (error) {
+          console.error('Error creating session:', error);
+          alert('Error initiating checkout session.');
+        }
+      });
+    });
+  </script>
 </body>
 </html>

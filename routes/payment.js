@@ -8,10 +8,12 @@ const multer = require('multer');
 const AWS = require('aws-sdk');
 const crypto = require('crypto');
 const fs = require('fs');
+const fetch = require('node-fetch');  // npm install node-fetch@2
 const router = express.Router();
 
 const endpointSecret = process.env.EPD_WEBHOOK_SECRET || '';
 const BUCKET_NAME = process.env.S3_BUCKET_NAME;
+const EASY_PAY_DIRECT_SECRET = process.env.EPD_API_KEY; // your private key for API calls
 
 // === ✅ AWS S3 configuration
 const s3 = new AWS.S3({
@@ -42,6 +44,42 @@ async function loadEntries() { return loadJSONFromS3('entries.json'); }
 async function saveEntries(entries) { return saveJSONToS3('entries.json', entries); }
 async function loadUploads() { return loadJSONFromS3('uploads.json'); }
 async function saveUploads(uploads) { return saveJSONToS3('uploads.json', uploads); }
+
+// === ✅ Create EasyPayDirect session endpoint
+router.post('/create-session', async (req, res) => {
+  try {
+    const response = await fetch('https://api.easypaydirectgateway.com/v1/sessions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${EASY_PAY_DIRECT_SECRET}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        type: 'sale',
+        lineItems: [
+          {
+            lineItemType: 'purchase',
+            sku: 'contest-entry-may2025',
+            quantity: 1,
+          },
+        ],
+        // Add any other session parameters you need here
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error('EasyPayDirect session creation failed:', errorData);
+      return res.status(500).json({ error: 'Failed to create session', details: errorData });
+    }
+
+    const data = await response.json();
+    res.json({ sessionId: data.id });
+  } catch (err) {
+    console.error('Create session error:', err);
+    res.status(500).json({ error: 'Server error creating session' });
+  }
+});
 
 // === ✅ Webhook Handler
 router.post('/webhook', async (req, res) => {
