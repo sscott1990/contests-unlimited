@@ -3,10 +3,6 @@
 <head>
   <title>Enter Contest</title>
   <link rel="stylesheet" href="/styles.css">
-  <script 
-    src="https://secure.easypaydirectgateway.com/token/CollectCheckout.js"
-    data-checkout-key="checkout_public_2828BnDCyj2J74bs2Hr7FT5wFN37qg2S">
-  </script>
   <style>
     #checkout_button {
       display: inline-block;
@@ -24,46 +20,49 @@
 <body>
   <h1>Enter Contest - $5 Entry</h1>
 
-  <div id="checkout_button">Pay $5</div>
-
   <p style="margin-top: 20px; font-size: 0.95em; color: #444;">
     🏆 Winners will be contacted via email and asked to provide their full name and mailing address to issue the prize check.
   </p>
+<div id="checkout_button">Check Out</div>
+<script
+src="https://secure.easypaydirectgateway.com/token/CollectCheckout.js"
+data-checkout-key="checkout_public_2828BnDCyj2J74bs2Hr7FT5wFN37qg2S"
+></script>
 <script>
 window.addEventListener('DOMContentLoaded', function(e) {
-  document.getElementById('checkout_button').addEventListener('click', function(e) {
-    CollectCheckout.redirectToCheckout({
-      type: "sale",
-      lineItems: [
-        {
-          lineItemType: "purchase",
-          sku: "contest-entry-may2025",
-          quantity: 1
-        },
-      ],
-      successUrl: 'https://contests-unlimited.onrender.com/success/?session_id=test123',
-      cancelUrl: 'https://contests-unlimited.onrender.com/cancel',
-      receipt: {
-        showReceipt: true,
-        sendToCustomer: true,
-      },
-      collectShippingInfo: true,
-      useKount: false,
-      paymentMethods: [
-        {
-          type: "creditCard",
-          use3DSecure: false,
-        },
-        {
-          type: "check",
-        },
-      ],
-      fields: [
-      ],
-    }).then((error) => {
-      console.log(error);
-    });
-  });
+document.getElementById('checkout_button').addEventListener('click', function(e) {
+CollectCheckout.redirectToCheckout({
+type: "sale",
+lineItems: [
+{
+lineItemType: "purchase",
+sku: "contest-entry-may2025",
+quantity: 1
+},
+],
+successUrl: 'https://contests-unlimited.onrender.com/success',
+cancelUrl: 'https://contests-unlimited.onrender.com/cancel',
+receipt: {
+showReceipt: true,
+sendToCustomer: true,
+},
+collectShippingInfo: true,
+useKount: false,
+paymentMethods: [
+{
+type: "creditCard",
+use3DSecure: false,
+},
+{
+type: "check",
+},
+],
+fields: [
+],
+}).then((error) => {
+console.log(error);
+});
+});
 });
 </script>
 <style>
