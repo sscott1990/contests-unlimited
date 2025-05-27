@@ -72,8 +72,8 @@ router.post('/create-checkout-session', async (req, res) => {
       type: 'sale',
       amount: '5.00',
       description: 'Contest Entry',
-      redirect_url: `${req.headers.origin}/success.html?session_id={SESSION_ID}`,
-      cancel_url: `${req.headers.origin}/cancel.html`,
+      redirect_url: `https://contests-unlimited.onrender.com/success.html?session_id={SESSION_ID}`,
+      cancel_url: `https://contests-unlimited.onrender.com/cancel.html`,
       security_key: epdApiKey,
     };
 
