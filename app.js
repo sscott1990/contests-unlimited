@@ -29,7 +29,7 @@ const adminRoutes = require('./routes/admin');
 const triviaRoute = require('./routes/trivia');
 
 app.use('/', indexRoutes);
-app.use('/api', paymentRoutes);
+app.use('/api/payment', paymentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/trivia', triviaRoute);
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
