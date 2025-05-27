@@ -76,7 +76,7 @@ router.post('/create-checkout-session', async (req, res) => {
       cancel_url: `${req.headers.origin}/cancel.html`
     };
 
-    const response = await fetch('https://api.easypaymentdirect.com/v1/checkout/session', {
+    const response = await fetch('https://api.easypaydirect.com/v1/checkout/session', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
