@@ -39,7 +39,7 @@
       document.getElementById('checkout_button').addEventListener('click', async function() {
         try {
           // Call your backend to create a session and get the session ID
-          const response = await fetch('/api/create-session', { method: 'POST' });
+          const response = await fetch('/api/create-checkout-session', { method: 'POST' });
           const data = await response.json();
 
           if (!data.sessionId) {
