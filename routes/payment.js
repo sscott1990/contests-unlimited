@@ -13,6 +13,7 @@ const router = express.Router();
 
 const epdApiKey = process.env.EPD_API_KEY || '';
 const endpointSecret = process.env.EPD_WEBHOOK_SECRET || '';
+console.log('🔑 Loaded webhook secret (first 6 chars):', endpointSecret.slice(0, 6));
 
 console.log('AWS_ACCESS_KEY_ID:', process.env.AWS_ACCESS_KEY_ID ? '***' : 'MISSING');
 console.log('AWS_SECRET_ACCESS_KEY:', process.env.AWS_SECRET_ACCESS_KEY ? '***' : 'MISSING');
