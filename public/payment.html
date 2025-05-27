@@ -29,38 +29,56 @@
   <p style="margin-top: 20px; font-size: 0.95em; color: #444;">
     🏆 Winners will be contacted via email and asked to provide their full name and mailing address to issue the prize check.
   </p>
-
-  <script>
-    window.addEventListener('DOMContentLoaded', function() {
-      const button = document.getElementById('checkout_button');
-      button.addEventListener('click', function() {
-        CollectCheckout.redirectToCheckout({
-          type: "sale",
-          lineItems: [
-            {
-              lineItemType: "customPayment",
-              description: "Contest Entry May 2025",
-              currency: "USD"
-            }
-          ],
-          successUrl: "https://contests-unlimited.onrender.com/success.html",
-          cancelUrl: "https://contests-unlimited.onrender.com/cancel.html",
-          receipt: {
-            showReceipt: true,
-            sendToCustomer: true
-          },
-          collectShippingInfo: true,
-          useKount: false,
-          paymentMethods: [
-            { type: "creditCard", use3DSecure: false },
-            { type: "check" }
-          ],
-          fields: []
-        }).then((error) => {
-          if (error) console.error("CollectCheckout error:", error);
-        });
-      });
+<script>
+window.addEventListener('DOMContentLoaded', function(e) {
+  document.getElementById('checkout_button').addEventListener('click', function(e) {
+    CollectCheckout.redirectToCheckout({
+      type: "sale",
+      lineItems: [
+        {
+          lineItemType: "purchase",
+          sku: "contest-entry-may2025",
+          quantity: 1
+        },
+      ],
+      successUrl: window.location.origin + '/success.html?session_id={SESSION_ID}',
+      cancelUrl: window.location.origin + '/cancel.html',
+      receipt: {
+        showReceipt: true,
+        sendToCustomer: true,
+      },
+      collectShippingInfo: true,
+      useKount: false,
+      paymentMethods: [
+        {
+          type: "creditCard",
+          use3DSecure: false,
+        },
+        {
+          type: "check",
+        },
+      ],
+      fields: [
+      ],
+    }).then((error) => {
+      console.log(error);
     });
-  </script>
+  });
+});
+</script>
+<style>
+#checkout_button {
+display: inline-block;
+font-family: sans-serif;
+font-size: 20px;
+background-color: #0BD992;
+color: white;
+border-radius: 4px;
+padding: 14px 28px;
+}
+#checkout_button:hover {
+cursor: pointer;
+}
+</style>
 </body>
 </html>
