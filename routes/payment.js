@@ -13,12 +13,13 @@ const router = express.Router();
 
 const epdApiKey = process.env.EPD_API_KEY || '';
 const endpointSecret = process.env.EPD_WEBHOOK_SECRET || '';
-console.log('🔑 Loaded webhook secret (first 6 chars):', endpointSecret.slice(0, 6));
+const BUCKET_NAME = process.env.S3_BUCKET_NAME;
 
+console.log('🔑 Loaded webhook secret (first 6 chars):', endpointSecret.slice(0, 6));
 console.log('AWS_ACCESS_KEY_ID:', process.env.AWS_ACCESS_KEY_ID ? '***' : 'MISSING');
 console.log('AWS_SECRET_ACCESS_KEY:', process.env.AWS_SECRET_ACCESS_KEY ? '***' : 'MISSING');
 console.log('AWS_REGION:', process.env.AWS_REGION || 'MISSING');
-console.log('S3_BUCKET_NAME:', process.env.S3_BUCKET_NAME || 'MISSING');
+console.log('S3_BUCKET_NAME:', BUCKET_NAME || 'MISSING');
 
 // ✅ AWS S3 configuration
 const s3 = new AWS.S3({
@@ -27,9 +28,7 @@ const s3 = new AWS.S3({
   region: process.env.AWS_REGION
 });
 
-const BUCKET_NAME = process.env.S3_BUCKET_NAME;
-
-// === S3 helper functions ===
+// === S3 JSON Helpers ===
 async function loadJSONFromS3(key) {
   try {
     const data = await s3.getObject({ Bucket: BUCKET_NAME, Key: key }).promise();
@@ -39,7 +38,6 @@ async function loadJSONFromS3(key) {
     throw err;
   }
 }
-
 async function saveJSONToS3(key, data) {
   await s3.putObject({
     Bucket: BUCKET_NAME,
@@ -48,32 +46,37 @@ async function saveJSONToS3(key, data) {
     ContentType: 'application/json'
   }).promise();
 }
+async function loadEntries() { return loadJSONFromS3('entries.json'); }
+async function saveEntries(entries) { return saveJSONToS3('entries.json', entries); }
+async function loadUploads() { return loadJSONFromS3('uploads.json'); }
+async function saveUploads(uploads) { return saveJSONToS3('uploads.json', uploads); }
 
-async function loadEntries() {
-  return loadJSONFromS3('entries.json');
-}
-
-async function saveEntries(entries) {
-  await saveJSONToS3('entries.json', entries);
-}
-
-async function loadUploads() {
-  return loadJSONFromS3('uploads.json');
-}
-
-async function saveUploads(uploads) {
-  await saveJSONToS3('uploads.json', uploads);
-}
-
-// === EPD Checkout Session Creation ===
+// === ✅ Create Checkout Session with session_id ===
 router.post('/create-checkout-session', async (req, res) => {
   try {
+    const { name = 'anonymous', contest = 'unknown' } = req.body;
+    const sessionId = crypto.randomUUID();
+
+    const entries = await loadEntries();
+    entries.push({
+      id: sessionId,
+      paymentStatus: 'pending',
+      name,
+      contest,
+      used: false,
+      createdAt: new Date().toISOString()
+    });
+    await saveEntries(entries);
+
+    const redirectUrl = `https://contests-unlimited.onrender.com/success.html?session_id=${sessionId}`;
+    const cancelUrl = `https://contests-unlimited.onrender.com/cancel.html`;
+
     const payload = {
       type: 'sale',
       amount: '5.00',
       description: 'Contest Entry',
-      redirect_url: `https://contests-unlimited.onrender.com/success.html?session_id={SESSION_ID}`,
-      cancel_url: `https://contests-unlimited.onrender.com/cancel.html`,
+      redirect_url: redirectUrl,
+      cancel_url: cancelUrl,
       security_key: epdApiKey,
     };
 
@@ -81,21 +84,13 @@ router.post('/create-checkout-session', async (req, res) => {
 
     const response = await fetch('https://secure.easypaydirectgateway.com/api/transact.php', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: params.toString()
     });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`EPD API error: ${response.status} ${errorText}`);
-    }
 
     const text = await response.text();
     console.log('EPD raw response:', text);
 
-    // Parse response (this assumes key=value&key2=value2 format)
     const result = Object.fromEntries(new URLSearchParams(text));
     if (!result.redirect_url) {
       throw new Error(`EPD response missing redirect_url: ${JSON.stringify(result)}`);
@@ -108,34 +103,22 @@ router.post('/create-checkout-session', async (req, res) => {
   }
 });
 
-// === ✅ Webhook Handler with Signature Verification & Payload Capture ===
-// Changed here: removed express.raw() middleware to rely on app.js raw parser
+// === ✅ Webhook Handler ===
 router.post('/webhook', async (req, res) => {
   const signatureHeader = req.headers['webhook-signature'];
 
-  if (!signatureHeader) {
-    console.error('❌ Missing EPD signature header');
-    return res.status(400).send('Missing signature');
-  }
+  if (!signatureHeader) return res.status(400).send('Missing signature');
 
   const parts = signatureHeader.split(',').map(p => p.trim());
   const timestampPart = parts.find(p => p.startsWith('t='));
   const signaturePart = parts.find(p => p.startsWith('s='));
-
-  if (!timestampPart || !signaturePart) {
-    console.error('❌ Malformed signature header');
-    return res.status(400).send('Malformed signature');
-  }
+  if (!timestampPart || !signaturePart) return res.status(400).send('Malformed signature');
 
   const timestamp = timestampPart.split('=')[1];
   const signature = signaturePart.split('=')[1];
 
-  // Check timestamp freshness (within last 5 minutes)
-  const timestampInt = parseInt(timestamp, 10);
   const currentUnix = Math.floor(Date.now() / 1000);
-  const FIVE_MINUTES = 5 * 60;
-  if (Math.abs(currentUnix - timestampInt) > FIVE_MINUTES) {
-    console.error('❌ Webhook signature timestamp too old or too far in the future');
+  if (Math.abs(currentUnix - parseInt(timestamp)) > 300) {
     return res.status(400).send('Invalid timestamp');
   }
 
@@ -143,63 +126,53 @@ router.post('/webhook', async (req, res) => {
   hmac.update(req.body);
   const digest = hmac.digest('hex');
 
-  console.log('🔐 Expected digest:', digest);
-  console.log('📩 Received signature:', signature);
-
-  try {
-    const ts = new Date().toISOString().replace(/[:.]/g, '-');
-    fs.writeFileSync(`payload_${ts}.json`, req.body.toString('utf8'));
-  } catch (err) {
-    console.error('❌ Failed to save payload to file:', err);
+  if (digest !== signature) {
+    return res.status(400).send('Invalid signature');
   }
 
-  if (digest !== signature) {
-    console.error('❌ Invalid webhook signature');
-    return res.status(400).send('Invalid signature');
+  try {
+    fs.writeFileSync(`payload_${new Date().toISOString().replace(/[:.]/g, '-')}.json`, req.body.toString('utf8'));
+  } catch (err) {
+    console.error('Failed to write payload to file:', err);
   }
 
   let event;
   try {
     event = JSON.parse(req.body.toString('utf8'));
   } catch (err) {
-    console.error('❌ Webhook JSON parse error:', err);
     return res.status(400).send('Invalid JSON');
   }
 
-  console.log('✅ Received EPD webhook event:', event);
-
   if (event.type === 'payment.completed') {
     const session = event.data;
+    const sessionId = session.id;
 
     const entries = await loadEntries();
-    entries.push({
-      id: session.id,
-      paymentStatus: 'paid',
-      customerEmail: session.customer_email || 'anonymous',
-      timestamp: new Date().toISOString()
-    });
-    await saveEntries(entries);
+    const match = entries.find(e => e.id === sessionId);
+    if (match) {
+      match.paymentStatus = 'paid';
+      await saveEntries(entries);
+    }
   }
 
   res.json({ received: true });
 });
 
-// ✅ Upload handler (memory-based)
+// === ✅ Upload handler ===
 const upload = multer({ storage: multer.memoryStorage() });
 
 router.post('/upload', upload.single('file'), async (req, res) => {
   const { name, contest, triviaAnswers, timeTaken, session_id } = req.body;
-
   if (!session_id) return res.status(400).send('Missing payment session ID.');
 
   const entries = await loadEntries();
   const matched = entries.find(e => e.id === session_id && e.paymentStatus === 'paid');
-
   if (!matched) return res.status(403).send('Invalid or unpaid session.');
   if (matched.used) return res.status(409).send('This payment session has already been used.');
 
   const uploads = await loadUploads();
 
+  // 🎯 Trivia handler
   if (contest === 'Trivia Contest') {
     if (!name || !triviaAnswers || !timeTaken) {
       return res.status(400).send('Missing trivia submission data.');
@@ -221,11 +194,8 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     });
 
     await saveUploads(uploads);
-
     matched.used = true;
     await saveEntries(entries);
-
-    console.log('✅ Trivia entry saved for:', name);
 
     return res.send(`
       <!DOCTYPE html>
@@ -236,6 +206,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     `);
   }
 
+  // 📤 File upload handler
   const file = req.file;
   if (!file) return res.status(400).send('No file uploaded.');
 
@@ -268,10 +239,6 @@ router.post('/upload', upload.single('file'), async (req, res) => {
 
   matched.used = true;
   await saveEntries(entries);
-
-  console.log('✅ File uploaded to S3:', s3Key);
-  console.log('👤 Name:', name);
-  console.log('🏆 Contest:', contest);
 
   res.send(`
     <!DOCTYPE html>
