@@ -32,7 +32,7 @@
     </select>
 
     <input type="file" name="file" id="fileInput" accept="image/*" required>
-    <input type="hidden" name="session_id" id="sessionIdInput">
+    <input type="hidden" name="refId" id="sessionIdInput"> <!-- updated name -->
 
     <div id="triviaSection">
       <p><strong>Trivia (10 minutes to complete):</strong></p>
@@ -61,8 +61,7 @@
     let timerStarted = false;
 
     const urlParams = new URLSearchParams(window.location.search);
-    // Updated this line to get the correct param name:
-    const sessionId = urlParams.get('session_id');
+    const sessionId = urlParams.get('refId'); // <- corrected to match EasyPayDirect's injected query param
 
     if (!sessionId) {
       alert('Missing session ID. Please return to the homepage and try again.');

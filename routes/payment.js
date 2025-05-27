@@ -126,7 +126,6 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
   console.log('🔐 Expected digest:', digest);
   console.log('📩 Received signature:', signature);
 
-  // ✅ Save raw body buffer to a .json file
   try {
     fs.writeFileSync('payload.json', req.body.toString('utf8'));
   } catch (err) {
@@ -260,40 +259,6 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     <script>setTimeout(()=>{window.location.href='/'},2000);</script>
     </head><body><h1>✅ Upload Successful!</h1><p>Redirecting to homepage...</p></body></html>
   `);
-});
-
-// === Polling route: check payment status by session ID ===
-router.get('/payment-status/:session_id', async (req, res) => {
-  const sessionId = req.params.session_id;
-
-  if (!sessionId) {
-    return res.status(400).json({ error: 'Missing session ID' });
-  }
-
-  try {
-    const response = await fetch(`https://api.easypaymentdirect.com/v1/checkout/session/${sessionId}`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${epdApiKey}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      return res.status(response.status).json({ error: `EPD API error: ${errorText}` });
-    }
-
-    const session = await response.json();
-
-    // Adjust as per actual response fields from EPD
-    const paid = session.payment_status === 'paid' || session.status === 'paid';
-
-    res.json({ paid, session });
-  } catch (error) {
-    console.error('Error checking payment status:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
 });
 
 module.exports = router;
