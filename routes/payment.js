@@ -69,20 +69,22 @@ async function saveUploads(uploads) {
 router.post('/create-checkout-session', async (req, res) => {
   try {
     const payload = {
-      amount: 500,
-      currency: 'USD',
+      type: 'sale',
+      amount: '5.00',
       description: 'Contest Entry',
-      success_url: `${req.headers.origin}/success.html?session_id={SESSION_ID}`,
-      cancel_url: `${req.headers.origin}/cancel.html`
+      redirect_url: `${req.headers.origin}/success.html?session_id={SESSION_ID}`,
+      cancel_url: `${req.headers.origin}/cancel.html`,
+      security_key: epdApiKey,
     };
 
-    const response = await fetch('https://api.easypaydirect.com/v1/checkout/session', {
+    const params = new URLSearchParams(payload);
+
+    const response = await fetch('https://secure.easypaydirectgateway.com/api/transact.php', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${epdApiKey}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: JSON.stringify(payload)
+      body: params.toString()
     });
 
     if (!response.ok) {
@@ -90,9 +92,16 @@ router.post('/create-checkout-session', async (req, res) => {
       throw new Error(`EPD API error: ${response.status} ${errorText}`);
     }
 
-    const session = await response.json();
-    console.log('EPD session created:', session.id);
-    res.json({ id: session.id });
+    const text = await response.text();
+    console.log('EPD raw response:', text);
+
+    // Parse response (this assumes key=value&key2=value2 format)
+    const result = Object.fromEntries(new URLSearchParams(text));
+    if (!result.redirect_url) {
+      throw new Error(`EPD response missing redirect_url: ${JSON.stringify(result)}`);
+    }
+
+    res.json({ redirect_url: result.redirect_url });
   } catch (error) {
     console.error('EPD create checkout session error:', error);
     res.status(500).json({ error: error.message });
@@ -131,14 +140,12 @@ router.post('/webhook', async (req, res) => {
   }
 
   const hmac = crypto.createHmac('sha256', endpointSecret);
-  // req.body is a Buffer (raw body)
   hmac.update(req.body);
   const digest = hmac.digest('hex');
 
   console.log('🔐 Expected digest:', digest);
   console.log('📩 Received signature:', signature);
 
-  // Write payload with timestamped filename for debugging
   try {
     const ts = new Date().toISOString().replace(/[:.]/g, '-');
     fs.writeFileSync(`payload_${ts}.json`, req.body.toString('utf8'));
