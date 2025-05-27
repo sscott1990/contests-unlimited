@@ -11,10 +11,11 @@ app.use(express.static('public'));
 
 // Use JSON parser for all routes except the webhook
 const jsonParser = bodyParser.json();
+const rawBodyParser = bodyParser.raw({ type: '*/*' });
 
 app.use((req, res, next) => {
   if (req.originalUrl === '/api/payment/webhook') {
-    next(); // We'll handle this route separately with raw body if needed
+    rawBodyParser(req, res, next);
   } else {
     jsonParser(req, res, next);
   }

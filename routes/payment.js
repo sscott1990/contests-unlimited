@@ -107,7 +107,7 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
     return res.status(400).send('Missing signature');
   }
 
-  const parts = signatureHeader.split(',');
+  const parts = signatureHeader.split(',').map(p => p.trim());
   const timestampPart = parts.find(p => p.startsWith('t='));
   const signaturePart = parts.find(p => p.startsWith('s='));
 
@@ -119,15 +119,27 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
   const timestamp = timestampPart.split('=')[1];
   const signature = signaturePart.split('=')[1];
 
+  // Check timestamp freshness (within last 5 minutes)
+  const timestampInt = parseInt(timestamp, 10);
+  const currentUnix = Math.floor(Date.now() / 1000);
+  const FIVE_MINUTES = 5 * 60;
+  if (Math.abs(currentUnix - timestampInt) > FIVE_MINUTES) {
+    console.error('❌ Webhook signature timestamp too old or too far in the future');
+    return res.status(400).send('Invalid timestamp');
+  }
+
   const hmac = crypto.createHmac('sha256', endpointSecret);
-  hmac.update(req.body); // Raw body
+  // req.body is a Buffer (raw body)
+  hmac.update(req.body);
   const digest = hmac.digest('hex');
 
   console.log('🔐 Expected digest:', digest);
   console.log('📩 Received signature:', signature);
 
+  // Write payload with timestamped filename for debugging
   try {
-    fs.writeFileSync('payload.json', req.body.toString('utf8'));
+    const ts = new Date().toISOString().replace(/[:.]/g, '-');
+    fs.writeFileSync(`payload_${ts}.json`, req.body.toString('utf8'));
   } catch (err) {
     console.error('❌ Failed to save payload to file:', err);
   }
@@ -250,12 +262,12 @@ router.post('/upload', upload.single('file'), async (req, res) => {
 
   console.log('✅ File uploaded to S3:', s3Key);
   console.log('👤 Name:', name);
-  console.log('🎯 Contest:', contest);
+  console.log('🏆 Contest:', contest);
 
   res.send(`
     <!DOCTYPE html>
     <html><head><meta charset="UTF-8"><title>Upload Successful</title>
-    <style>body{font-family:Arial;text-align:center;margin-top:50px;background:#f0f8ff;color:#005b96;}</style>
+    <style>body{font-family:Arial;text-align:center;margin-top:50px;background:#e6ffed;color:#2d662d;}</style>
     <script>setTimeout(()=>{window.location.href='/'},2000);</script>
     </head><body><h1>✅ Upload Successful!</h1><p>Redirecting to homepage...</p></body></html>
   `);
