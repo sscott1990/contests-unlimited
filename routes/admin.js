@@ -60,7 +60,7 @@ router.get('/entries', async (req, res) => {
   }
 });
 
-// HTML view of uploaded files
+// HTML view of uploaded files — UPDATED to match app.js keys
 router.get('/uploads', async (req, res) => {
   try {
     const uploads = await loadUploads();
@@ -72,12 +72,14 @@ router.get('/uploads', async (req, res) => {
       const date = new Date(upload.timestamp).toLocaleString();
       return `
       <tr>
-        <td>${upload.userName || ''}</td>
-        <td>${upload.contestName || ''}</td>
+        <td>${upload.name || ''}</td>
+        <td>${upload.contest || ''}</td>
         <td>${date}</td>
-        <td>${upload.originalFilename || ''}</td>
-        <td><a href="https://${BUCKET_NAME}.s3.amazonaws.com/${encodeURIComponent(upload.savedFilename)}" target="_blank">View</a><br>
-            <img src="https://${BUCKET_NAME}.s3.amazonaws.com/${encodeURIComponent(upload.savedFilename)}" alt="${upload.originalFilename || ''}" style="max-width: 100px;"></td>    
+        <td>${upload.fileUrl ? upload.fileUrl.split('/').pop() : ''}</td>
+        <td>
+          <a href="${upload.fileUrl || '#'}" target="_blank">View</a><br>
+          <img src="${upload.fileUrl || ''}" alt="${upload.fileUrl ? upload.fileUrl.split('/').pop() : ''}" style="max-width: 100px;">
+        </td>
       </tr>`;
     }).join('');
 
