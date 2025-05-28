@@ -3,6 +3,7 @@ const bodyParser = require('body-parser');
 const path = require('path');
 const fetch = require('node-fetch');
 const AWS = require('aws-sdk');
+const multer = require('multer');  // <-- Add multer for file uploads
 const { v4: uuidv4 } = require('uuid'); // For UUID generation
 require('dotenv').config();
 
@@ -16,6 +17,7 @@ const s3 = new AWS.S3({
 
 const ENTRIES_BUCKET = process.env.S3_BUCKET_NAME;
 const ENTRIES_KEY = 'entries.json';
+const UPLOADS_KEY = 'uploads.json';  // <-- uploads.json key
 
 // Serve static files
 app.use(express.static('public'));
@@ -32,6 +34,9 @@ app.use((req, res, next) => {
     jsonParser(req, res, next);
   }
 });
+
+// Multer memory storage for uploads
+const upload = multer({ storage: multer.memoryStorage() });
 
 // === 🔑 Generate a UUID for new checkout session ===
 app.get('/api/session', (req, res) => {
@@ -58,6 +63,29 @@ async function saveEntries(entries) {
     Bucket: ENTRIES_BUCKET,
     Key: ENTRIES_KEY,
     Body: JSON.stringify(entries, null, 2),
+    ContentType: 'application/json',
+  }).promise();
+}
+
+// New helper: getUploads and saveUploads for uploads.json
+async function getUploads() {
+  try {
+    const data = await s3.getObject({
+      Bucket: ENTRIES_BUCKET,
+      Key: UPLOADS_KEY,
+    }).promise();
+    return JSON.parse(data.Body.toString('utf-8'));
+  } catch (err) {
+    if (err.code === 'NoSuchKey') return [];
+    throw err;
+  }
+}
+
+async function saveUploads(uploads) {
+  await s3.putObject({
+    Bucket: ENTRIES_BUCKET,
+    Key: UPLOADS_KEY,
+    Body: JSON.stringify(uploads, null, 2),
     ContentType: 'application/json',
   }).promise();
 }
@@ -98,6 +126,50 @@ app.post('/api/payment/webhook', rawBodyParser, async (req, res) => {
   } catch (err) {
     console.error('❌ Webhook error:', err);
     res.status(400).send('Webhook processing failed');
+  }
+});
+
+// === 🚩 New route for handling uploads ===
+app.post('/api/payment/upload', upload.single('file'), async (req, res) => {
+  try {
+    const { name, contest, session_id, triviaAnswers, timeTaken } = req.body;
+    const file = req.file;
+
+    if (!session_id) {
+      return res.status(400).json({ error: 'Missing session_id' });
+    }
+
+    let fileUrl = null;
+    if (file) {
+      const s3Key = `uploads/${session_id}/${Date.now()}_${file.originalname}`;
+      await s3.putObject({
+        Bucket: ENTRIES_BUCKET,
+        Key: s3Key,
+        Body: file.buffer,
+        ContentType: file.mimetype,
+      }).promise();
+
+      fileUrl = `https://${ENTRIES_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${s3Key}`;
+    }
+
+    const uploads = await getUploads();
+
+    uploads.push({
+      sessionId: session_id,
+      name,
+      contest,
+      fileUrl,
+      triviaAnswers: triviaAnswers ? JSON.parse(triviaAnswers) : null,
+      timeTaken: timeTaken || null,
+      timestamp: new Date().toISOString(),
+    });
+
+    await saveUploads(uploads);
+
+    res.redirect('/success-submitted.html');
+  } catch (err) {
+    console.error('Upload error:', err);
+    res.status(500).json({ error: 'Upload failed' });
   }
 });
 
