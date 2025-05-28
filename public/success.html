@@ -47,111 +47,110 @@
   </form>
 
   <a href="/">Back to Home</a>
-
   <script>
-    const contestSelect = document.getElementById('contestSelect');
-    const fileInput = document.getElementById('fileInput');
-    const triviaSection = document.getElementById('triviaSection');
-    const triviaQuestionsDiv = document.getElementById('triviaQuestions');
-    const triviaAnswersInput = document.getElementById('triviaAnswers');
-    const timeTakenInput = document.getElementById('timeTaken');
-    const sessionIdInput = document.getElementById('sessionIdInput');
+  const contestSelect = document.getElementById('contestSelect');
+  const fileInput = document.getElementById('fileInput');
+  const triviaSection = document.getElementById('triviaSection');
+  const triviaQuestionsDiv = document.getElementById('triviaQuestions');
+  const triviaAnswersInput = document.getElementById('triviaAnswers');
+  const timeTakenInput = document.getElementById('timeTaken');
+  const sessionIdInput = document.getElementById('sessionIdInput');
 
-    let timer, startTime, triviaQuestions = [];
-    let timerStarted = false;
+  let timer, startTime, triviaQuestions = [];
+  let timerStarted = false;
 
-    const urlParams = new URLSearchParams(window.location.search);
-const sessionId = urlParams.get('id'); // Correct query param
+  const urlParams = new URLSearchParams(window.location.search);
+  const sessionId = urlParams.get('session_id'); // Fix here: match query param from payment.html
 
-if (!sessionId) {
-  alert('Missing session ID. Please return to the homepage and try again.');
-  document.getElementById('uploadForm').style.display = 'none';
-} else {
-  sessionIdInput.value = sessionId;
-}
+  if (!sessionId) {
+    alert('Missing session ID. Please return to the homepage and try again.');
+    document.getElementById('uploadForm').style.display = 'none';
+  } else {
+    sessionIdInput.value = sessionId;
+  }
 
-    contestSelect.addEventListener('change', async function () {
-      if (this.value === 'Trivia Contest') {
-        fileInput.disabled = true;
-        fileInput.style.display = 'none';
-        fileInput.required = false;
-        triviaSection.style.display = 'block';
+  contestSelect.addEventListener('change', async function () {
+    if (this.value === 'Trivia Contest') {
+      fileInput.disabled = true;
+      fileInput.style.display = 'none';
+      fileInput.required = false;
+      triviaSection.style.display = 'block';
 
-        if (!timerStarted) {
-          await loadTriviaQuestions();
-          startTimer();
-          timerStarted = true;
-        }
-      } else {
-        fileInput.disabled = false;
-        fileInput.style.display = '';
-        fileInput.required = true;
-        triviaSection.style.display = 'none';
+      if (!timerStarted) {
+        await loadTriviaQuestions();
+        startTimer();
+        timerStarted = true;
+      }
+    } else {
+      fileInput.disabled = false;
+      fileInput.style.display = '';
+      fileInput.required = true;
+      triviaSection.style.display = 'none';
+      clearInterval(timer);
+      timerStarted = false;
+    }
+  });
+
+  async function loadTriviaQuestions() {
+    try {
+      const response = await fetch('/api/trivia');
+      triviaQuestions = await response.json();
+
+      triviaQuestionsDiv.innerHTML = '';
+      triviaQuestions.forEach((q, index) => {
+        const div = document.createElement('div');
+        div.classList.add('question');
+
+        const optionsHtml = Object.entries(q.options).map(([key, val]) => `
+          <label><input type="radio" name="q${index}" value="${key}" required> ${val}</label><br>
+        `).join('');
+
+        div.innerHTML = `<p>${index + 1}. ${q.question}</p>${optionsHtml}`;
+        triviaQuestionsDiv.appendChild(div);
+      });
+    } catch (err) {
+      console.error('Error loading trivia:', err);
+      triviaQuestionsDiv.innerHTML = '<p>Failed to load trivia questions. Please try again later.</p>';
+      document.querySelector('button[type="submit"]').disabled = true;
+    }
+  }
+
+  function startTimer() {
+    let timeLeft = 600;
+    startTime = Date.now();
+
+    timer = setInterval(() => {
+      timeLeft--;
+      const minutes = String(Math.floor(timeLeft / 60)).padStart(2, '0');
+      const seconds = String(timeLeft % 60).padStart(2, '0');
+      document.getElementById('timer').textContent = `${minutes}:${seconds}`;
+      if (timeLeft <= 0) {
         clearInterval(timer);
-        timerStarted = false;
+        lockAnswers();
       }
-    });
+    }, 1000);
+  }
 
-    async function loadTriviaQuestions() {
-      try {
-        const response = await fetch('/api/trivia');
-        triviaQuestions = await response.json();
+  function lockAnswers() {
+    const inputs = triviaSection.querySelectorAll('input[type="radio"]');
+    inputs.forEach(input => input.disabled = true);
+    alert('Time is up! Answers are now locked.');
+  }
 
-        triviaQuestionsDiv.innerHTML = '';
-        triviaQuestions.forEach((q, index) => {
-          const div = document.createElement('div');
-          div.classList.add('question');
-
-          const optionsHtml = Object.entries(q.options).map(([key, val]) => `
-            <label><input type="radio" name="q${index}" value="${key}" required> ${val}</label><br>
-          `).join('');
-
-          div.innerHTML = `<p>${index + 1}. ${q.question}</p>${optionsHtml}`;
-          triviaQuestionsDiv.appendChild(div);
-        });
-      } catch (err) {
-        console.error('Error loading trivia:', err);
-        triviaQuestionsDiv.innerHTML = '<p>Failed to load trivia questions. Please try again later.</p>';
-        document.querySelector('button[type="submit"]').disabled = true;
-      }
+  document.getElementById('uploadForm').addEventListener('submit', function () {
+    if (contestSelect.value === 'Trivia Contest') {
+      const answers = triviaQuestions.map((q, i) => {
+        const selected = document.querySelector(`input[name="q${i}"]:checked`);
+        return {
+          question: q.question,
+          selected: selected ? selected.value : null,
+          correct: selected ? selected.value === q.answer : false
+        };
+      });
+      triviaAnswersInput.value = JSON.stringify(answers);
+      timeTakenInput.value = ((Date.now() - startTime) / 1000).toFixed(3);
     }
-
-    function startTimer() {
-      let timeLeft = 600;
-      startTime = Date.now();
-
-      timer = setInterval(() => {
-        timeLeft--;
-        const minutes = String(Math.floor(timeLeft / 60)).padStart(2, '0');
-        const seconds = String(timeLeft % 60).padStart(2, '0');
-        document.getElementById('timer').textContent = `${minutes}:${seconds}`;
-        if (timeLeft <= 0) {
-          clearInterval(timer);
-          lockAnswers();
-        }
-      }, 1000);
-    }
-
-    function lockAnswers() {
-      const inputs = triviaSection.querySelectorAll('input[type="radio"]');
-      inputs.forEach(input => input.disabled = true);
-      alert('Time is up! Answers are now locked.');
-    }
-
-    document.getElementById('uploadForm').addEventListener('submit', function () {
-      if (contestSelect.value === 'Trivia Contest') {
-        const answers = triviaQuestions.map((q, i) => {
-          const selected = document.querySelector(`input[name="q${i}"]:checked`);
-          return {
-            question: q.question,
-            selected: selected ? selected.value : null,
-            correct: selected ? selected.value === q.answer : false
-          };
-        });
-        triviaAnswersInput.value = JSON.stringify(answers);
-        timeTakenInput.value = ((Date.now() - startTime) / 1000).toFixed(3);
-      }
-    });
-  </script>
+  });
+</script>
 </body>
 </html>

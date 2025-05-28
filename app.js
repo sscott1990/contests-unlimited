@@ -1,8 +1,9 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const path = require('path');
-const fetch = require('node-fetch'); // npm install node-fetch
+const fetch = require('node-fetch');
 const AWS = require('aws-sdk');
+const { v4: uuidv4 } = require('uuid'); // For UUID generation
 require('dotenv').config();
 
 const app = express();
@@ -13,7 +14,6 @@ const s3 = new AWS.S3({
   region: process.env.AWS_REGION,
 });
 
-// S3 bucket and file key for payment entries
 const ENTRIES_BUCKET = process.env.S3_BUCKET_NAME;
 const ENTRIES_KEY = 'entries.json';
 
@@ -24,8 +24,8 @@ app.use(express.static('public'));
 const jsonParser = bodyParser.json();
 const rawBodyParser = bodyParser.raw({ type: 'application/json' });
 
+// Smart parser switch based on route
 app.use((req, res, next) => {
-  console.log('Incoming request URL:', req.originalUrl);
   if (req.originalUrl === '/api/payment/webhook') {
     rawBodyParser(req, res, next);
   } else {
@@ -33,7 +33,13 @@ app.use((req, res, next) => {
   }
 });
 
-// Helper to get entries.json from S3
+// === 🔑 Generate a UUID for new checkout session ===
+app.get('/api/session', (req, res) => {
+  const uuid = uuidv4();
+  res.json({ sessionId: uuid });
+});
+
+// === 📦 Helpers for S3 file access ===
 async function getEntries() {
   try {
     const data = await s3.getObject({
@@ -42,12 +48,11 @@ async function getEntries() {
     }).promise();
     return JSON.parse(data.Body.toString('utf-8'));
   } catch (err) {
-    if (err.code === 'NoSuchKey') return []; // If file doesn't exist yet, start empty
+    if (err.code === 'NoSuchKey') return []; // File doesn't exist yet
     throw err;
   }
 }
 
-// Helper to save entries.json back to S3
 async function saveEntries(entries) {
   await s3.putObject({
     Bucket: ENTRIES_BUCKET,
@@ -65,14 +70,15 @@ app.post('/api/payment/webhook', rawBodyParser, async (req, res) => {
 
     const webhookData = JSON.parse(rawBody);
 
-    // Example: only handle successful sale transactions
     if (
       webhookData.event_type === 'transaction.sale.success' &&
       webhookData.event_body &&
       webhookData.event_body.transaction_id
     ) {
+      const sessionId = webhookData.event_body.transaction_id;
+
       const paymentRecord = {
-        transactionId: webhookData.event_body.transaction_id,
+        sessionId, // Also used as a reference for uploads
         amount: webhookData.event_body.action.amount,
         status: webhookData.event_body.action.success === "1" ? 'success' : 'failed',
         timestamp: new Date().toISOString(),
@@ -81,17 +87,16 @@ app.post('/api/payment/webhook', rawBodyParser, async (req, res) => {
         shippingAddress: webhookData.event_body.shipping_address || {},
       };
 
-      // Load existing entries, append new, save back
       const entries = await getEntries();
       entries.push(paymentRecord);
       await saveEntries(entries);
 
-      console.log('Payment record saved to entries.json');
+      console.log(`✅ Payment record saved with sessionId: ${sessionId}`);
     }
 
     res.status(200).send('OK');
   } catch (err) {
-    console.error('Webhook error:', err);
+    console.error('❌ Webhook error:', err);
     res.status(400).send('Webhook processing failed');
   }
 });

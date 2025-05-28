@@ -36,42 +36,53 @@
   ></script>
 
   <script>
-    document.getElementById('checkout_button').addEventListener('click', function () {
-      // ✅ This does NOT require an API call to your backend unless you're generating dynamic session tokens
-      CollectCheckout.redirectToCheckout({
-        type: "sale",
-        lineItems: [
-          {
-            lineItemType: "purchase",
-            sku: "contest-entry-may2025",
-            quantity: 1
+    document.getElementById('checkout_button').addEventListener('click', async function () {
+      try {
+        // Fetch sessionId (UUID) from backend
+        const response = await fetch('/api/session');
+        if (!response.ok) throw new Error('Failed to get session ID');
+        const data = await response.json();
+        const sessionId = data.sessionId;
+
+        // Redirect to checkout with sessionId in successUrl
+        CollectCheckout.redirectToCheckout({
+          type: "sale",
+          lineItems: [
+            {
+              lineItemType: "purchase",
+              sku: "contest-entry-may2025",
+              quantity: 1
+            },
+          ],
+          successUrl: `https://contests-unlimited.onrender.com/success.html?session_id=${sessionId}`,
+          cancelUrl: "https://contests-unlimited.onrender.com/cancel.html",
+          receipt: {
+            showReceipt: false,
+            sendToCustomer: true,
           },
-        ],
-        successUrl: "https://contests-unlimited.onrender.com/success.html?paid=true",
-        cancelUrl: "https://contests-unlimited.onrender.com/cancel.html",
-        receipt: {
-          showReceipt: false,
-          sendToCustomer: true,
-        },
-        collectShippingInfo: true,
-        useKount: false,
-        paymentMethods: [
-          {
-            type: "creditCard",
-            use3DSecure: false,
-          },
-          {
-            type: "check",
-          },
-        ],
-        fields: [
-          // Optional: additional fields to collect
-        ],
-      }).then((error) => {
-        if (error) {
-          console.error("Checkout redirect error:", error);
-        }
-      });
+          collectShippingInfo: true,
+          useKount: false,
+          paymentMethods: [
+            {
+              type: "creditCard",
+              use3DSecure: false,
+            },
+            {
+              type: "check",
+            },
+          ],
+          fields: [
+            // Optional: additional fields to collect
+          ],
+        }).then((error) => {
+          if (error) {
+            console.error("Checkout redirect error:", error);
+          }
+        });
+      } catch (err) {
+        console.error('Error fetching session ID:', err);
+        alert('Failed to start checkout session. Please try again.');
+      }
     });
   </script>
 </body>
