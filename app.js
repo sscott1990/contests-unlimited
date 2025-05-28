@@ -132,12 +132,17 @@ app.post('/api/payment/webhook', rawBodyParser, async (req, res) => {
 // === 🚩 New route for handling uploads ===
 app.post('/api/payment/upload', upload.single('file'), async (req, res) => {
   try {
-    const { name, contest, session_id, triviaAnswers, timeTaken } = req.body;
+    const { name, contest, session_id, triviaAnswers } = req.body;
+    let { timeTaken } = req.body;
     const file = req.file;
 
     if (!session_id) {
       return res.status(400).json({ error: 'Missing session_id' });
     }
+
+    // Parse timeTaken safely as a float
+    timeTaken = parseFloat(timeTaken);
+    if (isNaN(timeTaken)) timeTaken = null;
 
     let fileUrl = null;
     if (file) {
@@ -160,7 +165,7 @@ app.post('/api/payment/upload', upload.single('file'), async (req, res) => {
       contest,
       fileUrl,
       triviaAnswers: triviaAnswers ? JSON.parse(triviaAnswers) : null,
-      timeTaken: timeTaken || null,
+      timeTaken,
       timestamp: new Date().toISOString(),
     });
 
