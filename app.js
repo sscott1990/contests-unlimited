@@ -158,6 +158,10 @@ app.post('/api/payment/upload', upload.single('file'), async (req, res) => {
     }
 
     const uploads = await getUploads();
+const alreadyUploaded = uploads.find(u => u.sessionId === session_id);
+if (alreadyUploaded) {
+  return res.status(400).json({ error: 'Upload already completed for this session.' });
+}
 
     uploads.push({
       sessionId: session_id,
