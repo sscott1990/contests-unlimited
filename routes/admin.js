@@ -1,8 +1,7 @@
 const express = require('express');
-const fs = require('fs');
-const path = require('path');
 const AWS = require('aws-sdk');
 const router = express.Router();
+const { loadJSONFromS3 } = require('../utils/s3Utils'); // Adjust path as needed
 
 const s3 = new AWS.S3({
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
@@ -10,19 +9,6 @@ const s3 = new AWS.S3({
   region: process.env.AWS_REGION,
 });
 const BUCKET_NAME = process.env.S3_BUCKET_NAME;
-
-async function loadJSONFromS3(key) {
-  try {
-    const data = await s3.getObject({ Bucket: BUCKET_NAME, Key: key }).promise();
-    return JSON.parse(data.Body.toString('utf-8'));
-  } catch (err) {
-    if (err.code === 'NoSuchKey' || err.code === 'NotFound') {
-      return [];
-    }
-    console.error(`Error loading ${key} from S3:`, err);
-    throw err;
-  }
-}
 
 async function loadEntries() {
   return loadJSONFromS3('entries.json');
@@ -34,11 +20,11 @@ async function loadUploads() {
 
 // Generate a pre-signed URL for an S3 object key (valid for 15 minutes)
 function getPresignedUrl(key) {
-  const params = { Bucket: BUCKET_NAME, Key: key, Expires: 900 }; // 900 seconds = 15 minutes
+  const params = { Bucket: BUCKET_NAME, Key: key, Expires: 900 };
   return s3.getSignedUrlPromise('getObject', params);
 }
 
-// Basic Auth middleware (for demo purposes, use env vars in real life)
+// Basic Auth middleware
 router.use((req, res, next) => {
   const auth = {
     login: process.env.ADMIN_USERNAME,
@@ -66,7 +52,7 @@ router.get('/entries', async (req, res) => {
   }
 });
 
-// HTML view of uploaded files — UPDATED to use pre-signed URLs
+// HTML view of uploaded files
 router.get('/uploads', async (req, res) => {
   try {
     const uploads = await loadUploads();
@@ -74,16 +60,10 @@ router.get('/uploads', async (req, res) => {
       return res.send('<h2>No uploads found</h2>');
     }
 
-    // Generate presigned URLs for each upload
     const uploadsWithPresignedUrls = await Promise.all(
       uploads.map(async (upload) => {
         if (!upload.fileUrl) return upload;
-
-        // Extract S3 key from fileUrl
-        // Example URL:
-        // https://contests-unlimited.s3.us-east-2.amazonaws.com/uploads/86d67ab2-9943-474e-85f8-18577fc89d28/1748402508086_2025-05-17.png
         const url = new URL(upload.fileUrl);
-        // Remove leading slash from pathname
         const key = url.pathname.startsWith('/') ? url.pathname.slice(1) : url.pathname;
 
         try {
@@ -91,7 +71,7 @@ router.get('/uploads', async (req, res) => {
           return { ...upload, presignedUrl };
         } catch (err) {
           console.error('Error generating presigned URL:', err);
-          return { ...upload, presignedUrl: upload.fileUrl }; // fallback to original URL
+          return { ...upload, presignedUrl: upload.fileUrl };
         }
       })
     );
@@ -122,43 +102,15 @@ router.get('/uploads', async (req, res) => {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
-  body {
-    font-family: Arial, sans-serif;
-    margin: 1rem;
-    background: #f9f9f9;
-    color: #333;
-  }
-  h1, h2 {
-    color: #444;
-  }
-  nav a {
-    margin-right: 1rem;
-    text-decoration: none;
-    color: #007bff;
-  }
-  nav a:hover {
-    text-decoration: underline;
-  }
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 1rem;
-  }
-  th, td {
-    border: 1px solid #ddd;
-    padding: 0.5rem;
-    text-align: left;
-  }
-  th {
-    background: #eee;
-  }
-  img {
-    max-width: 100px;
-    border-radius: 4px;
-    margin-top: 0.5rem;
-  }
-</style>
-
+          body { font-family: Arial, sans-serif; margin: 1rem; background: #f9f9f9; color: #333; }
+          h1, h2 { color: #444; }
+          nav a { margin-right: 1rem; text-decoration: none; color: #007bff; }
+          nav a:hover { text-decoration: underline; }
+          table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+          th, td { border: 1px solid #ddd; padding: 0.5rem; text-align: left; }
+          th { background: #eee; }
+          img { max-width: 100px; border-radius: 4px; margin-top: 0.5rem; }
+        </style>
       </head>
       <body>
         <h1>Admin Panel</h1>
@@ -191,7 +143,7 @@ router.get('/uploads', async (req, res) => {
   }
 });
 
-// ✅ Trivia results view (revised for score or correctCount-based entries)
+// Trivia results view
 router.get('/trivia', async (req, res) => {
   try {
     const uploads = await loadUploads();
@@ -271,7 +223,7 @@ router.get('/trivia', async (req, res) => {
   }
 });
 
-// Add logout route to clear Basic Auth cached credentials
+// Logout route
 router.get('/logout', (req, res) => {
   res.set('WWW-Authenticate', 'Basic realm="401"');
   res.status(401).send(`
