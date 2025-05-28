@@ -1,7 +1,7 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const path = require('path');
-const fetch = require('node-fetch'); // Make sure to install this: npm install node-fetch
+const fetch = require('node-fetch'); // npm install node-fetch
 require('dotenv').config();
 
 const app = express();
@@ -23,45 +23,19 @@ app.use((req, res, next) => {
   }
 });
 
-// === ✅ EPD Create Checkout Session Route ===
-app.post('/api/payment/create-checkout-session', async (req, res) => {
-  try {
-    const response = await fetch('https://api.easypaydirectgateway.com/v1/sessions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.EPD_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        type: 'sale',
-        lineItems: [
-          {
-            lineItemType: 'purchase',
-            sku: 'contest-entry-may2025',
-            quantity: 1,
-          },
-        ],
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('EPD session creation failed:', errorText);
-      return res.status(500).json({ error: 'Failed to create session' });
-    }
-
-    const data = await response.json();
-    res.json({ sessionId: data.id });
-  } catch (err) {
-    console.error('Checkout session error:', err);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// === ✅ Optional: EPD Webhook Receiver (for future use) ===
+// === ✅ EPD Webhook Receiver ===
 app.post('/api/payment/webhook', rawBodyParser, (req, res) => {
-  console.log('EPD Webhook received:', req.body);
-  res.status(200).send('OK');
+  try {
+    const rawBody = req.body.toString(); // Buffer to string
+    console.log('🔔 EPD Webhook received:', rawBody);
+
+    // You can parse and verify webhook payload here if needed
+
+    res.status(200).send('OK');
+  } catch (err) {
+    console.error('Webhook error:', err);
+    res.status(400).send('Webhook processing failed');
+  }
 });
 
 // === 🔁 All other routes ===
