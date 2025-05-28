@@ -52,7 +52,7 @@ router.get('/entries', async (req, res) => {
   }
 });
 
-// HTML view of uploaded files
+// HTML view of uploaded files with pagination
 router.get('/uploads', async (req, res) => {
   try {
     const uploads = await loadUploads();
@@ -60,8 +60,16 @@ router.get('/uploads', async (req, res) => {
       return res.send('<h2>No uploads found</h2>');
     }
 
+    // Pagination logic
+    const page = parseInt(req.query.page) || 1;
+    const perPage = 25;
+    const totalUploads = uploads.length;
+    const totalPages = Math.ceil(totalUploads / perPage);
+    const start = (page - 1) * perPage;
+    const paginatedUploads = uploads.slice(start, start + perPage);
+
     const uploadsWithPresignedUrls = await Promise.all(
-      uploads.map(async (upload) => {
+      paginatedUploads.map(async (upload) => {
         if (!upload.fileUrl) return upload;
         const url = new URL(upload.fileUrl);
         const key = url.pathname.startsWith('/') ? url.pathname.slice(1) : url.pathname;
@@ -94,6 +102,17 @@ router.get('/uploads', async (req, res) => {
       </tr>`;
     }).join('');
 
+    // Pagination controls html
+    let paginationControls = `<div style="margin-top: 1rem;">`;
+    if (page > 1) {
+      paginationControls += `<a href="?page=${page - 1}">Previous</a> `;
+    }
+    paginationControls += `Page ${page} of ${totalPages}`;
+    if (page < totalPages) {
+      paginationControls += ` <a href="?page=${page + 1}">Next</a>`;
+    }
+    paginationControls += `</div>`;
+
     res.send(`
       <!DOCTYPE html>
       <html lang="en">
@@ -110,6 +129,7 @@ router.get('/uploads', async (req, res) => {
           th, td { border: 1px solid #ddd; padding: 0.5rem; text-align: left; }
           th { background: #eee; }
           img { max-width: 100px; border-radius: 4px; margin-top: 0.5rem; }
+          div.pagination { margin-top: 1rem; }
         </style>
       </head>
       <body>
@@ -135,6 +155,7 @@ router.get('/uploads', async (req, res) => {
             ${rows}
           </tbody>
         </table>
+        ${paginationControls}
       </body>
       </html>
     `);
