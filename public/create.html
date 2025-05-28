@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Create a Contest</title>
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    form {
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 20px;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      background: #f9f9f9;
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+    }
+    input, textarea {
+      width: 100%;
+      padding: 10px;
+      margin-top: 5px;
+    }
+    button {
+      margin-top: 20px;
+      background-color: #007849;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h1 style="text-align: center;">Submit Your Contest</h1>
+  <form action="/create-contest" method="POST">
+    <label>Contest Name:</label>
+    <input type="text" name="name" required>
+
+    <label>Description:</label>
+    <textarea name="description" rows="5" required></textarea>
+
+    <label>Your Name:</label>
+    <input type="text" name="creator" required>
+
+    <label>Email Address:</label>
+    <input type="email" name="email" required>
+
+    <label>Do you agree that you're responsible for your own taxes and operations (not our employee)?</label>
+    <input type="checkbox" name="agree" required> Yes, I agree
+
+    <p><strong>Entry fee: $50 (non-refundable if contest is approved)</strong></p>
+
+    <button type="submit">Submit Contest</button>
+  </form>
+</body>
+</html>

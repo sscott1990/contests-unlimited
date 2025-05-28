@@ -132,7 +132,23 @@ router.get('/', (req, res) => {
           ${rulesHtml || '<p>No rules available.</p>'}
         </div>
 
-        <div style="margin-top: 40px; padding: 20px; font-size: 0.85em; color: #555; max-width: 800px; margin-left: auto; margin-right: auto;">
+        <!-- New section promoting contest creation -->
+<div style="margin-top: 40px; text-align: center;">
+  <h2>Start Your Own Contest</h2>
+  <p style="font-size: 1.1em; max-width: 600px; margin: 0 auto;">
+    Create your own contest to earn <strong>$1 per entry!</strong><br>
+    <em>Subject to approval. Refunds only if denied. You are responsible for chargeback fees.</em>
+  </p>
+  <p style="margin-top: 20px;">
+    <button onclick="window.location.href='/create.html'" style="padding: 12px 24px; background-color: #005b96; color: white; border: none; border-radius: 5px; font-size: 1em; cursor: pointer;">
+      Create Contest
+    </button>
+  </p>
+</div>
+
+<!-- Original Terms and Conditions Section -->
+<div style="margin-top: 40px; padding: 20px; font-size: 0.85em; color: #555; max-width: 800px; margin-left: auto; margin-right: auto;">
+
           <h3>Terms and Conditions</h3>
           <ul>
             <li>Each contest entry costs $5.00 USD. The entry fee is non-refundable.</li>
