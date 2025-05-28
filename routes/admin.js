@@ -150,6 +150,7 @@ router.get('/trivia', async (req, res) => {
     const triviaData = await loadJSONFromS3('trivia-contest.json');
     const correctAnswers = triviaData.map(q => q.answer);
 
+    // Updated logic to support correctCount fallback if triviaAnswers is missing
     const scored = uploads
       .filter(entry =>
         (Array.isArray(entry.triviaAnswers) && entry.triviaAnswers.length > 0) ||
