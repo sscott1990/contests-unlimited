@@ -2,211 +2,211 @@
   {
     "question": "What is the capital of France?",
     "options": {
-      "a": "Paris",
-      "b": "Berlin",
-      "c": "Madrid",
-      "d": "Rome"
+      "A": "Paris",
+      "B": "Berlin",
+      "C": "Madrid",
+      "D": "Rome"
     },
-    "answer": "a"
+    "answer": "A"
   },
   {
     "question": "Which planet is known as the Red Planet?",
     "options": {
-      "a": "Mars",
-      "b": "Jupiter",
-      "c": "Venus",
-      "d": "Saturn"
+      "A": "Mars",
+      "B": "Jupiter",
+      "C": "Venus",
+      "D": "Saturn"
     },
-    "answer": "a"
+    "answer": "A"
   },
   {
     "question": "How many continents are there?",
     "options": {
-      "a": "5",
-      "b": "6",
-      "c": "7",
-      "d": "8"
+      "A": "5",
+      "B": "6",
+      "C": "7",
+      "D": "8"
     },
-    "answer": "c"
+    "answer": "C"
   },
   {
     "question": "What is the largest ocean on Earth?",
     "options": {
-      "a": "Atlantic Ocean",
-      "b": "Indian Ocean",
-      "c": "Pacific Ocean",
-      "d": "Arctic Ocean"
+      "A": "Atlantic Ocean",
+      "B": "Indian Ocean",
+      "C": "Pacific Ocean",
+      "D": "Arctic Ocean"
     },
-    "answer": "c"
+    "answer": "C"
   },
   {
     "question": "Who wrote the play 'Romeo and Juliet'?",
     "options": {
-      "a": "Charles Dickens",
-      "b": "William Shakespeare",
-      "c": "Leo Tolstoy",
-      "d": "Mark Twain"
+      "A": "Charles Dickens",
+      "B": "William Shakespeare",
+      "C": "Leo Tolstoy",
+      "D": "Mark Twain"
     },
-    "answer": "b"
+    "answer": "B"
   },
   {
     "question": "What is the chemical symbol for gold?",
     "options": {
-      "a": "Au",
-      "b": "Ag",
-      "c": "Gd",
-      "d": "Go"
+      "A": "Au",
+      "B": "Ag",
+      "C": "Gd",
+      "D": "Go"
     },
-    "answer": "a"
+    "answer": "A"
   },
   {
     "question": "Which country hosted the 2016 Summer Olympics?",
     "options": {
-      "a": "China",
-      "b": "Brazil",
-      "c": "UK",
-      "d": "Russia"
+      "A": "China",
+      "B": "Brazil",
+      "C": "UK",
+      "D": "Russia"
     },
-    "answer": "b"
+    "answer": "B"
   },
   {
     "question": "What is the tallest mountain in the world?",
     "options": {
-      "a": "K2",
-      "b": "Mount Everest",
-      "c": "Kangchenjunga",
-      "d": "Lhotse"
+      "A": "K2",
+      "B": "Mount Everest",
+      "C": "Kangchenjunga",
+      "D": "Lhotse"
     },
-    "answer": "b"
+    "answer": "B"
   },
   {
     "question": "Which language has the most native speakers worldwide?",
     "options": {
-      "a": "English",
-      "b": "Spanish",
-      "c": "Mandarin Chinese",
-      "d": "Hindi"
+      "A": "English",
+      "B": "Spanish",
+      "C": "Mandarin Chinese",
+      "D": "Hindi"
     },
-    "answer": "c"
+    "answer": "C"
   },
   {
     "question": "In which year did the Titanic sink?",
     "options": {
-      "a": "1905",
-      "b": "1912",
-      "c": "1920",
-      "d": "1918"
+      "A": "1905",
+      "B": "1912",
+      "C": "1920",
+      "D": "1918"
     },
-    "answer": "b"
+    "answer": "B"
   },
   {
     "question": "Who painted the Mona Lisa?",
     "options": {
-      "a": "Vincent van Gogh",
-      "b": "Pablo Picasso",
-      "c": "Leonardo da Vinci",
-      "d": "Michelangelo"
+      "A": "Vincent van Gogh",
+      "B": "Pablo Picasso",
+      "C": "Leonardo da Vinci",
+      "D": "Michelangelo"
     },
-    "answer": "c"
+    "answer": "C"
   },
   {
     "question": "What is the smallest prime number?",
     "options": {
-      "a": "0",
-      "b": "1",
-      "c": "2",
-      "d": "3"
+      "A": "0",
+      "B": "1",
+      "C": "2",
+      "D": "3"
     },
-    "answer": "c"
+    "answer": "C"
   },
   {
     "question": "Which planet has the most moons?",
     "options": {
-      "a": "Jupiter",
-      "b": "Saturn",
-      "c": "Uranus",
-      "d": "Neptune"
+      "A": "Jupiter",
+      "B": "Saturn",
+      "C": "Uranus",
+      "D": "Neptune"
     },
-    "answer": "a"
+    "answer": "A"
   },
   {
     "question": "What is the hardest natural substance on Earth?",
     "options": {
-      "a": "Gold",
-      "b": "Iron",
-      "c": "Diamond",
-      "d": "Quartz"
+      "A": "Gold",
+      "B": "Iron",
+      "C": "Diamond",
+      "D": "Quartz"
     },
-    "answer": "c"
+    "answer": "C"
   },
   {
     "question": "Who discovered penicillin?",
     "options": {
-      "a": "Marie Curie",
-      "b": "Alexander Fleming",
-      "c": "Louis Pasteur",
-      "d": "Gregor Mendel"
+      "A": "Marie Curie",
+      "B": "Alexander Fleming",
+      "C": "Louis Pasteur",
+      "D": "Gregor Mendel"
     },
-    "answer": "b"
+    "answer": "B"
   },
   {
     "question": "What is the main ingredient in traditional Japanese miso soup?",
     "options": {
-      "a": "Seaweed",
-      "b": "Soybeans",
-      "c": "Rice",
-      "d": "Fish"
+      "A": "Seaweed",
+      "B": "Soybeans",
+      "C": "Rice",
+      "D": "Fish"
     },
-    "answer": "b"
+    "answer": "B"
   },
   {
     "question": "Which city is known as the 'Big Apple'?",
     "options": {
-      "a": "Los Angeles",
-      "b": "Chicago",
-      "c": "New York City",
-      "d": "San Francisco"
+      "A": "Los Angeles",
+      "B": "Chicago",
+      "C": "New York City",
+      "D": "San Francisco"
     },
-    "answer": "c"
+    "answer": "C"
   },
   {
     "question": "What is the chemical formula of water?",
     "options": {
-      "a": "CO2",
-      "b": "H2O",
-      "c": "O2",
-      "d": "NaCl"
+      "A": "CO2",
+      "B": "H2O",
+      "C": "O2",
+      "D": "NaCl"
     },
-    "answer": "b"
+    "answer": "B"
   },
   {
     "question": "Who was the first President of the United States?",
     "options": {
-      "a": "Thomas Jefferson",
-      "b": "John Adams",
-      "c": "George Washington",
-      "d": "Benjamin Franklin"
+      "A": "Thomas Jefferson",
+      "B": "John Adams",
+      "C": "George Washington",
+      "D": "Benjamin Franklin"
     },
-    "answer": "c"
+    "answer": "C"
   },
   {
     "question": "Which element has the atomic number 1?",
     "options": {
-      "a": "Oxygen",
-      "b": "Hydrogen",
-      "c": "Helium",
-      "d": "Carbon"
+      "A": "Oxygen",
+      "B": "Hydrogen",
+      "C": "Helium",
+      "D": "Carbon"
     },
-    "answer": "b"
+    "answer": "B"
   },
   {
     "question": "Which continent is the Sahara Desert located on?",
     "options": {
-      "a": "Asia",
-      "b": "Africa",
-      "c": "Australia",
-      "d": "South America"
+      "A": "Asia",
+      "B": "Africa",
+      "C": "Australia",
+      "D": "South America"
     },
-    "answer": "b"
+    "answer": "B"
   }
 ]
