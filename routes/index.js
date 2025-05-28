@@ -107,6 +107,12 @@ router.get('/', (req, res) => {
             padding-left: 20px;
             text-align: left;
           }
+          .admin-link {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            font-size: 14px;
+          }
         </style>
       </head>
       <body>
@@ -145,6 +151,7 @@ router.get('/', (req, res) => {
   <p>We collect participant information including names, email address, uploaded files, and contest answers solely for the purpose of operating and managing contest entries. All data is securely stored and not shared, sold, or disclosed to third parties. Files are stored in AWS S3 and processed only for contest verification and winner selection. We use this information to ensure contest fairness and compliance. By participating, you consent to this data usage.</p>
 </div>
 
+        <a class="admin-link" href="/api/admin/uploads">Admin</a>
 
         <script>
           // Countdown script for all contests
