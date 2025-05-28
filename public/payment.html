@@ -16,7 +16,7 @@
       cursor: pointer;
     }
     #checkout_button:hover {
-      cursor: pointer;
+      background-color: #0AC982;
     }
   </style>
 </head>
@@ -29,61 +29,47 @@
 
   <div id="checkout_button">Check Out</div>
 
+  <!-- ✅ EPD Checkout Script -->
   <script
     src="https://secure.easypaydirectgateway.com/token/CollectCheckout.js"
     data-checkout-key="checkout_public_2828BnDCyj2J74bs2Hr7FT5wFN37qg2S"
   ></script>
 
   <script>
-    window.addEventListener('DOMContentLoaded', function() {
-      document.getElementById('checkout_button').addEventListener('click', async function() {
-        try {
-          // Call your backend to create a session and get the session ID
-          const response = await fetch('/api/payment/create-checkout-session', { method: 'POST' });
-          const data = await response.json();
-
-          if (!data.sessionId) {
-            alert('Failed to create payment session.');
-            return;
-          }
-
-          // Use the sessionId in the successUrl
-          CollectCheckout.redirectToCheckout({
-            type: "sale",
-            lineItems: [
-              {
-                lineItemType: "purchase",
-                sku: "contest-entry-may2025",
-                quantity: 1
-              },
-            ],
-            successUrl: `https://contests-unlimited.onrender.com/success.html?session_id=${data.sessionId}`,
-            cancelUrl: 'https://contests-unlimited.onrender.com/cancel.html',
-            receipt: {
-              showReceipt: false,
-              sendToCustomer: true,
-            },
-            collectShippingInfo: true,
-            useKount: false,
-            paymentMethods: [
-              {
-                type: "creditCard",
-                use3DSecure: false,
-              },
-              {
-                type: "check",
-              },
-            ],
-            fields: [],
-          }).then((error) => {
-            if (error) {
-              console.error('Checkout redirect error:', error);
-            }
-          });
-
-        } catch (error) {
-          console.error('Error creating session:', error);
-          alert('Error initiating checkout session.');
+    document.getElementById('checkout_button').addEventListener('click', function () {
+      // ✅ This does NOT require an API call to your backend unless you're generating dynamic session tokens
+      CollectCheckout.redirectToCheckout({
+        type: "sale",
+        lineItems: [
+          {
+            lineItemType: "purchase",
+            sku: "contest-entry-may2025",
+            quantity: 1
+          },
+        ],
+        successUrl: "https://contests-unlimited.onrender.com/success.html",
+        cancelUrl: "https://contests-unlimited.onrender.com/cancel.html",
+        receipt: {
+          showReceipt: false,
+          sendToCustomer: true,
+        },
+        collectShippingInfo: true,
+        useKount: false,
+        paymentMethods: [
+          {
+            type: "creditCard",
+            use3DSecure: false,
+          },
+          {
+            type: "check",
+          },
+        ],
+        fields: [
+          // Optional: additional fields to collect
+        ],
+      }).then((error) => {
+        if (error) {
+          console.error("Checkout redirect error:", error);
         }
       });
     });
