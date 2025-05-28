@@ -181,7 +181,7 @@ router.get('/trivia', async (req, res) => {
         <td>${entry.name}</td>
         <td>${entry.contest}</td>
         <td>${entry.score} / ${correctAnswers.length}</td>
-        <td>${(entry.timeTaken).toFixed(3)} sec</td>
+        <td>${typeof entry.timeTaken === 'number' ? entry.timeTaken.toFixed(3) + ' sec' : 'N/A'}</td>
       </tr>
     `).join('');
 
