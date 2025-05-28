@@ -36,7 +36,12 @@ app.use((req, res, next) => {
 });
 
 // Multer memory storage for uploads
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5 MB limit
+  },
+});
 
 // === 🔑 Generate a UUID for new checkout session ===
 app.get('/api/session', (req, res) => {
