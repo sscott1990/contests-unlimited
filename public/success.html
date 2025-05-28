@@ -61,7 +61,7 @@
     let timerStarted = false;
 
     const urlParams = new URLSearchParams(window.location.search);
-const sessionId = urlParams.get('session_id'); // Correct query param
+const sessionId = urlParams.get('id'); // Correct query param
 
 if (!sessionId) {
   alert('Missing session ID. Please return to the homepage and try again.');
