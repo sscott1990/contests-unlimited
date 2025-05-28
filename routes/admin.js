@@ -121,7 +121,44 @@ router.get('/uploads', async (req, res) => {
         <title>Admin Uploads</title>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <link rel="stylesheet" href="/styles.css">
+        <style>
+  body {
+    font-family: Arial, sans-serif;
+    margin: 1rem;
+    background: #f9f9f9;
+    color: #333;
+  }
+  h1, h2 {
+    color: #444;
+  }
+  nav a {
+    margin-right: 1rem;
+    text-decoration: none;
+    color: #007bff;
+  }
+  nav a:hover {
+    text-decoration: underline;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+  }
+  th, td {
+    border: 1px solid #ddd;
+    padding: 0.5rem;
+    text-align: left;
+  }
+  th {
+    background: #eee;
+  }
+  img {
+    max-width: 100px;
+    border-radius: 4px;
+    margin-top: 0.5rem;
+  }
+</style>
+
       </head>
       <body>
         <h1>Admin Panel</h1>
@@ -189,8 +226,8 @@ router.get('/trivia', async (req, res) => {
 
     const rows = scored.map(entry => `
       <tr>
-        <td>${entry.userName}</td>
-        <td>${entry.contestName}</td>
+        <td>${entry.name}</td>
+        <td>${entry.contest}</td>
         <td>${entry.score} / ${correctAnswers.length}</td>
         <td>${(entry.timeTaken).toFixed(3)} sec</td>
       </tr>
