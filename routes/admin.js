@@ -32,6 +32,12 @@ async function loadUploads() {
   return loadJSONFromS3('uploads.json');
 }
 
+// Generate a pre-signed URL for an S3 object key (valid for 15 minutes)
+function getPresignedUrl(key) {
+  const params = { Bucket: BUCKET_NAME, Key: key, Expires: 900 }; // 900 seconds = 15 minutes
+  return s3.getSignedUrlPromise('getObject', params);
+}
+
 // Basic Auth middleware (for demo purposes, use env vars in real life)
 router.use((req, res, next) => {
   const auth = {
@@ -60,7 +66,7 @@ router.get('/entries', async (req, res) => {
   }
 });
 
-// HTML view of uploaded files — UPDATED to match app.js keys
+// HTML view of uploaded files — UPDATED to use pre-signed URLs
 router.get('/uploads', async (req, res) => {
   try {
     const uploads = await loadUploads();
@@ -68,17 +74,42 @@ router.get('/uploads', async (req, res) => {
       return res.send('<h2>No uploads found</h2>');
     }
 
-    const rows = uploads.map(upload => {
+    // Generate presigned URLs for each upload
+    const uploadsWithPresignedUrls = await Promise.all(
+      uploads.map(async (upload) => {
+        if (!upload.fileUrl) return upload;
+
+        // Extract S3 key from fileUrl
+        // Example URL:
+        // https://contests-unlimited.s3.us-east-2.amazonaws.com/uploads/86d67ab2-9943-474e-85f8-18577fc89d28/1748402508086_2025-05-17.png
+        const url = new URL(upload.fileUrl);
+        // Remove leading slash from pathname
+        const key = url.pathname.startsWith('/') ? url.pathname.slice(1) : url.pathname;
+
+        try {
+          const presignedUrl = await getPresignedUrl(key);
+          return { ...upload, presignedUrl };
+        } catch (err) {
+          console.error('Error generating presigned URL:', err);
+          return { ...upload, presignedUrl: upload.fileUrl }; // fallback to original URL
+        }
+      })
+    );
+
+    const rows = uploadsWithPresignedUrls.map(upload => {
       const date = new Date(upload.timestamp).toLocaleString();
+      const filename = upload.fileUrl ? upload.fileUrl.split('/').pop() : '';
+      const viewUrl = upload.presignedUrl || upload.fileUrl || '#';
+
       return `
       <tr>
         <td>${upload.name || ''}</td>
         <td>${upload.contest || ''}</td>
         <td>${date}</td>
-        <td>${upload.fileUrl ? upload.fileUrl.split('/').pop() : ''}</td>
+        <td>${filename}</td>
         <td>
-          <a href="${upload.fileUrl || '#'}" target="_blank">View</a><br>
-          <img src="${upload.fileUrl || ''}" alt="${upload.fileUrl ? upload.fileUrl.split('/').pop() : ''}" style="max-width: 100px;">
+          <a href="${viewUrl}" target="_blank">View</a><br>
+          <img src="${viewUrl}" alt="${filename}" style="max-width: 100px;">
         </td>
       </tr>`;
     }).join('');
