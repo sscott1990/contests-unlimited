@@ -289,7 +289,7 @@ router.get('/creators', async (req, res) => {
       <tr>
         <td>${creator.creator || ''}</td>
         <td>${creator.email || ''}</td>
-        <td>${creator.contestName || ''}</td>
+        <td>${creator.contestTitle || ''}</td>
         <td>${creator.description || ''}</td>
         <td>${new Date(creator.timestamp).toLocaleString()}</td>
       </tr>
