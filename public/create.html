@@ -1,83 +1,146 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Create a Contest</title>
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    form {
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 20px;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      background: #f9f9f9;
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+    }
+    input, textarea, select {
+      width: 100%;
+      padding: 10px;
+      margin-top: 5px;
+    }
+    .alert {
+      margin-top: 10px;
+      color: red;
+      font-size: 0.9em;
+    }
+    #checkout_button {
+      display: none;
+      font-family: sans-serif;
+      font-size: 20px;
+      background-color: #0BD992;
+      color: white;
+      border-radius: 4px;
+      padding: 14px 28px;
+      margin-top: 20px;
+      cursor: pointer;
+      text-align: center;
+    }
+  </style>
 </head>
 <body>
-  <h1>Create a Contest</h1>
+  <h1 style="text-align: center;">Submit Your Contest</h1>
+  <form id="contestForm" onsubmit="return false;">
+    <label>Contest Name:</label>
+    <input type="text" name="name" required>
 
-  <form id="creatorForm" action="/api/creator/upload" method="POST">
-    <input type="hidden" id="session_id" name="session_id" />
+    <label>Description:</label>
+    <textarea name="description" rows="5" required></textarea>
 
-    <label for="name">Your Name:</label>
-    <input type="text" name="name" required />
+    <label>Your Name:</label>
+    <input type="text" name="creator" required>
 
-    <label for="email">Your Email:</label>
-    <input type="email" name="email" required />
+    <label>Email Address:</label>
+    <input type="email" name="email" required>
 
-    <label for="contestTitle">Contest Title:</label>
-    <input type="text" name="contestTitle" required />
-
-    <label for="description">Contest Description:</label>
-    <textarea name="description" required></textarea>
-
-    <label for="prizeModel">Prize Model:</label>
-    <select name="prizeModel" required>
-      <option value="$1/entry to you, $2.50 to prize pool, $1.50 to us">
-        $1/entry to you, $2.50 to prize pool, $1.50 to us
-      </option>
+    <label>Select Your Home State:</label>
+    <select name="state" id="state" required>
+      <option value="">-- Select a State --</option>
+      <option value="CA">California</option>
+      <option value="TX">Texas</option>
+      <option value="FL">Florida</option>
+      <option value="IL">Illinois</option>
+      <!-- Add more as needed -->
+      <option value="NY">New York</option>
+      <option value="NJ">New Jersey</option>
+      <option value="WA">Washington</option>
     </select>
+    <div id="stateAlert" class="alert" style="display: none;">Contests for cash are not available in your state.</div>
 
-    <button type="submit">Submit Contest Info</button>
+    <label>
+      <input type="checkbox" id="agreeTax" required>
+      I agree that I am responsible for my own taxes and operations (not an employee).
+    </label>
+
+    <label>
+      <input type="checkbox" id="agree18" required>
+      I confirm that I am 18 years of age or older.
+    </label>
+
+    <label>
+      <input type="checkbox" id="agreeFees" required>
+      I understand the $50 fee is non-refundable unless denied, and a $10 admin fee applies if I issue a chargeback.
+    </label>
+
+    <p><strong>Entry Fee: $50 (non-refundable if approved)</strong></p>
+
+    <div id="checkout_button">Check Out & Submit</div>
   </form>
 
-  <button id="payButton">Pay $50 to Create Contest</button>
+  <script src="https://secure.easypaydirectgateway.com/token/CollectCheckout.js"
+    data-checkout-key="checkout_public_WQgrRu3vwsHYQWH5sMvX6XtT796Pz67f"></script>
 
-  <script src="https://secure.easypaydirectgateway.com/js/collectcheckout.js"></script>
   <script>
-    let creatorSessionId = null;
+    const restrictedStates = ['NY', 'WA', 'NJ']; // Modify as needed
+    const stateSelect = document.getElementById('state');
+    const checkoutButton = document.getElementById('checkout_button');
+    const stateAlert = document.getElementById('stateAlert');
 
-    // Step 1: Fetch session ID when page loads
-    window.addEventListener('DOMContentLoaded', async () => {
-      try {
-        const res = await fetch('/api/creator/session');
-        const data = await res.json();
-        creatorSessionId = data.creatorSessionId;
+    const checkboxes = ['agreeTax', 'agree18', 'agreeFees'].map(id => document.getElementById(id));
 
-        // Populate the hidden input
-        document.getElementById('session_id').value = creatorSessionId;
-      } catch (err) {
-        console.error('Failed to fetch creator session ID:', err);
-        alert('Error preparing contest session. Please try again.');
+    function updateCheckoutButton() {
+      const allChecked = checkboxes.every(cb => cb.checked);
+      const selectedState = stateSelect.value;
+      const isRestricted = restrictedStates.includes(selectedState);
+
+      if (!selectedState || isRestricted) {
+        stateAlert.style.display = isRestricted ? 'block' : 'none';
+        checkoutButton.style.display = 'none';
+      } else {
+        stateAlert.style.display = 'none';
+        checkoutButton.style.display = allChecked ? 'block' : 'none';
       }
-    });
+    }
 
-    // Step 2: Handle payment button click
-    document.getElementById('payButton').addEventListener('click', function () {
-      if (!creatorSessionId) {
-        alert("Session ID not ready. Try again in a moment.");
-        return;
-      }
+    stateSelect.addEventListener('change', updateCheckoutButton);
+    checkboxes.forEach(cb => cb.addEventListener('change', updateCheckoutButton));
 
-// Save form values before redirecting to payment
-const form = document.getElementById('creatorForm');
-localStorage.setItem('creator_name', form.name.value);
-localStorage.setItem('creator_email', form.email.value);
-localStorage.setItem('creator_contestTitle', form.contestTitle.value);
-localStorage.setItem('creator_description', form.description.value);
-localStorage.setItem('creator_prizeModel', form.prizeModel.value);
-
+    checkoutButton.addEventListener('click', function () {
       CollectCheckout.redirectToCheckout({
-        paymentGatewayId: "GG8TL79V38",
-        amount: 5000, // $50 in cents
-        currency: "USD",
-        billingAddressRequired: true,
-        collectShippingAddress: false,
-        successUrl: `https://contests-unlimited.onrender.com/success-creator-submitted.html?session_id=${creatorSessionId}`,
-        cancelUrl: "https://contests-unlimited.onrender.com/cancel.html"
+        type: "sale",
+        lineItems: [{
+          lineItemType: "purchase",
+          sku: "1000", // This should correspond to your EasyPayDirect product/price
+          quantity: 1
+        }],
+        successUrl: "https://contests-unlimited.onrender.com/success-creator-submitted.html",
+        cancelUrl: "https://contests-unlimited.onrender.com/cancel.html",
+        customerVault: { addCustomer: true },
+        receipt: {
+          showReceipt: false,
+          sendToCustomer: true
+        },
+        useKount: false,
+        paymentMethods: [
+          { type: "creditCard", use3DSecure: false },
+          { type: "check" }
+        ]
+      }).then((error) => {
+        if (error) {
+          console.error('Payment error:', error);
+        }
       });
     });
   </script>
