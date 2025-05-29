@@ -2,7 +2,6 @@ const express = require('express');
 const AWS = require('aws-sdk');
 const router = express.Router();
 const { loadJSONFromS3 } = require('../utils/s3Utils'); // Adjust path as needed
-const slugify = require('slugify');
 
 const s3 = new AWS.S3({
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
@@ -379,7 +378,7 @@ router.get('/creators', async (req, res) => {
         // Add or update the link cell
         let linkCell = row.querySelector('td:nth-child(7)');
         if (linkCell) {
-          linkCell.innerHTML = '<a href="/api/admin/contest/' + result.slug + '" target="_blank">View Contest</a>';
+          linkCell.innerHTML = '<a href="/contest/' + result.slug + '" target="_blank">View Contest</a>';
         }
       } else {
         // Remove link if rejected
@@ -448,40 +447,6 @@ router.post('/update-status', express.json(), async (req, res) => {
   }
 });
 
-// NEW ROUTE: Display individual contest by slug using updated route path
-router.get('/api/admin/contest/:slug', async (req, res) => {
-  const { slug } = req.params;
-
-  try {
-    const creators = await loadCreators();
-    const creator = creators.find(c => c.slug === slug);
-
-    if (!creator) {
-      return res.status(404).send('Contest not found');
-    }
-
-    res.send(`
-      <!DOCTYPE html>
-      <html lang="en">
-      <head>
-        <meta charset="UTF-8" />
-        <title>${creator.contestName}</title>
-        <style>
-          body { font-family: Arial, sans-serif; margin: 2rem; background: #f9f9f9; color: #333; }
-          h1 { color: #444; }
-          p { margin: 0.5rem 0; }
-        </style>
-      </head>
-      <body>
-        <h1>${creator.contestName}</h1>
-        <p><strong>Hosted by:</strong> ${creator.name}</p>
-        <p><strong>Email:</strong> ${creator.email}</p>
-        <p><strong>Description:</strong></p>
-        <p>${creator.description}</p>
-        <p><strong>Status:</strong> ${creator.status}</p>
-      </body>
-      </html>
-    `);
   } catch (err) {
     console.error('Error loading contest page:', err);
     res.status(500).send('Internal server error');
