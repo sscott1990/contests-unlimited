@@ -44,7 +44,7 @@
   <h1 style="text-align: center;">Submit Your Contest</h1>
   <form id="contestForm" onsubmit="return false;">
     <label>Select Contest Type:</label>
-    <select name="name" required>
+    <select name="contestName" required>
       <option value="">-- Select a Contest Type --</option>
       <option value="Art Contest">Art Contest</option>
       <option value="Photo Contest">Photo Contest</option>
@@ -140,7 +140,7 @@
       // Save form data in localStorage for retrieval after payment success
       const form = document.getElementById('contestForm');
       const formData = {
-        name: form.elements['name'].value,
+        contestName: form.elements['contestName'].value,
         description: form.elements['description'].value,
         creator: form.elements['creator'].value,
         email: form.elements['email'].value,
