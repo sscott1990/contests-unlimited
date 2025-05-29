@@ -57,16 +57,19 @@ router.get('/', (req, res) => {
     loadJsonFromS3('creator.json', (creatorsArray) => {
       // creatorsArray is an array like:
       // [
-      //   { slug: 'contest-2025-05-29t140134595z', creator: 'test bob', ... },
+      //   { slug: 'contest-2025-05-29t140134595z', creator: 'test bob', contestTitle: 'Art Contest', ... },
       //   ...
       // ]
       if (!Array.isArray(creatorsArray)) creatorsArray = [];
 
-      // Build a map from slug -> creator
-      const creators = {};
+      // Build a map from slug -> {creator, contestTitle}
+      const contestInfoMap = {};
       for (const c of creatorsArray) {
-        if (c.slug && c.creator) {
-          creators[c.slug] = c.creator;
+        if (c.slug) {
+          contestInfoMap[c.slug] = {
+            creator: c.creator || 'Contests Unlimited',
+            contestTitle: c.contestTitle || c.slug
+          };
         }
       }
 
@@ -83,12 +86,12 @@ router.get('/', (req, res) => {
       );
       const contestEndTimestamp = nextYearMidnight.getTime();
 
-      // Build prizeList: show entries + host
+      // Build prizeList: show contestTitle + host
       const prizeList = Object.entries(prizes).map(([contestSlug, total]) => {
-        const hostName = creators[contestSlug] || 'Contests Unlimited';
+        const info = contestInfoMap[contestSlug] || { creator: 'Contests Unlimited', contestTitle: contestSlug };
         return `<li>
-          <strong>${contestSlug}</strong>: $${total.toFixed(2)} — Entries: ${Math.floor(total / 2.5)}
-          <em style="color: #666; font-size: 0.9em;">(Hosted by ${hostName})</em>
+          <strong>${info.contestTitle}</strong>: $${total.toFixed(2)} — Entries: ${Math.floor(total / 2.5)}
+          <em style="color: #666; font-size: 0.9em;">(Hosted by ${info.creator})</em>
         </li>`;
       }).join('');
 
