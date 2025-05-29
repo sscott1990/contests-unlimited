@@ -231,9 +231,9 @@ app.post('/api/creator/upload', upload.none(), async (req, res) => {
 
    creators.push({
   sessionId: session_id,
-  creator: name,
+  creator: contestTitle,
   email,
-  name: contestTitle,
+  name: name,
   description,
   prizeModel,
   approved: false,
