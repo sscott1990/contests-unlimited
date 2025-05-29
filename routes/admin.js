@@ -447,12 +447,6 @@ router.post('/update-status', express.json(), async (req, res) => {
   }
 });
 
-  } catch (err) {
-    console.error('Error loading contest page:', err);
-    res.status(500).send('Internal server error');
-  }
-});
-
 module.exports = router;
 
 
