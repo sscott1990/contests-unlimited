@@ -2,6 +2,7 @@ const express = require('express');
 const AWS = require('aws-sdk');
 const router = express.Router();
 const { loadJSONFromS3 } = require('../utils/s3Utils'); // Adjust path as needed
+const slugify = require('slugify');
 
 const s3 = new AWS.S3({
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
@@ -310,7 +311,7 @@ router.get('/creators', async (req, res) => {
     }
     paginationControls += `</div>`;
 
-    res.send(`
+   res.send(`
       <!DOCTYPE html>
       <html lang="en">
       <head>
@@ -346,6 +347,7 @@ router.get('/creators', async (req, res) => {
               <th>Description</th>
               <th>Submitted</th>
               <th>Status</th>
+              <th>Link</th> <!-- new header for the contest link -->
             </tr>
           </thead>
           <tbody>
@@ -363,11 +365,29 @@ router.get('/creators', async (req, res) => {
       body: JSON.stringify({ id, status })
     });
 
+    const result = await response.json();
+
     if (response.ok) {
       alert('Marked as ' + status);
-      // Optional: visually update the row or disable buttons
-     const row = document.querySelector('tr[data-id="' + id + '"]');
+      const row = document.querySelector('tr[data-id="' + id + '"]');
       row.style.backgroundColor = status === 'approved' ? '#d4edda' : '#f8d7da';
+
+      if (status === 'approved' && result.slug) {
+        // Add or update the link cell
+        let linkCell = row.querySelector('td.link-cell');
+        if (!linkCell) {
+          linkCell = document.createElement('td');
+          linkCell.classList.add('link-cell');
+          row.appendChild(linkCell);
+        }
+        linkCell.innerHTML = '<a href="/creator/' + result.slug + '" target="_blank">View Contest</a>';
+      } else {
+        // Remove link if rejected
+        let linkCell = row.querySelector('td.link-cell');
+        if (linkCell) {
+          linkCell.innerHTML = '';
+        }
+      }
     } else {
       alert('Failed to update status.');
     }
@@ -401,6 +421,16 @@ router.post('/update-status', express.json(), async (req, res) => {
 
     creators[index].status = status;
 
+    let slug = null;
+    if (status === 'approved') {
+      // Generate slug from creator's contest name (adjust property name as needed)
+      slug = slugify(creators[index].contestName || 'contest-' + id, { lower: true, strict: true });
+      creators[index].slug = slug;
+    } else {
+      // Remove slug if status changed from approved to something else
+      delete creators[index].slug;
+    }
+
     // Save back to S3
     const params = {
       Bucket: BUCKET_NAME,
@@ -410,7 +440,7 @@ router.post('/update-status', express.json(), async (req, res) => {
     };
 
     await s3.putObject(params).promise();
-    res.json({ success: true });
+    res.json({ success: true, slug });
   } catch (err) {
     console.error('Error updating creator status:', err);
     res.status(500).json({ error: 'Internal server error' });
@@ -418,3 +448,4 @@ router.post('/update-status', express.json(), async (req, res) => {
 });
 
 module.exports = router;
+
