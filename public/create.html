@@ -100,12 +100,14 @@
 
     const checkboxes = ['agreeTax', 'agree18', 'agreeFees'].map(id => document.getElementById(id));
 
+    let creatorSessionId = null;
+
     function updateCheckoutButton() {
       const allChecked = checkboxes.every(cb => cb.checked);
       const selectedState = stateSelect.value;
       const isRestricted = restrictedStates.includes(selectedState);
 
-      if (!selectedState || isRestricted) {
+      if (!selectedState || isRestricted || !creatorSessionId) {
         stateAlert.style.display = isRestricted ? 'block' : 'none';
         checkoutButton.style.display = 'none';
       } else {
@@ -114,10 +116,32 @@
       }
     }
 
+    // Fetch creatorSessionId from backend before enabling checkout
+    fetch('/api/creator/session')
+      .then(res => res.json())
+      .then(data => {
+        creatorSessionId = data.creatorSessionId;
+        updateCheckoutButton();
+      })
+      .catch(err => {
+        console.error('Failed to fetch creator session ID:', err);
+      });
+
     stateSelect.addEventListener('change', updateCheckoutButton);
     checkboxes.forEach(cb => cb.addEventListener('change', updateCheckoutButton));
 
     checkoutButton.addEventListener('click', function () {
+      // Save form data in localStorage for retrieval after payment success
+      const form = document.getElementById('contestForm');
+      const formData = {
+        name: form.elements['name'].value,
+        description: form.elements['description'].value,
+        creator: form.elements['creator'].value,
+        email: form.elements['email'].value,
+        state: form.elements['state'].value,
+      };
+      localStorage.setItem('creatorFormData', JSON.stringify(formData));
+
       CollectCheckout.redirectToCheckout({
         type: "sale",
         lineItems: [{
