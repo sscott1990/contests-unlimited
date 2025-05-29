@@ -219,7 +219,8 @@ if (alreadyUploaded) {
 
 app.post('/api/creator/upload', upload.none(), async (req, res) => {
   try {
-    const { name, email, contestTitle, session_id, description, prizeModel } = req.body;
+    const { name, email, contestTitle, creatorSessionId, description, prizeModel } = req.body;
+const session_id = creatorSessionId;
 
     if (!session_id) {
       return res.status(400).json({ error: 'Missing session_id' });
