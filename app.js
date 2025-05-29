@@ -258,7 +258,7 @@ app.get('/api/contests/approved', async (req, res) => {
     }).promise();
 
     const creators = JSON.parse(data.Body.toString());
-    const approved = creators.filter(entry => entry.approved === true && entry.slug);
+    const approved = creators.filter(c => c.status === 'approved');
 
     res.json(approved.map(entry => ({
       name: entry.contestTitle,
