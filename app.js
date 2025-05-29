@@ -216,7 +216,7 @@ app.post('/api/payment/upload', upload.single('file'), async (req, res) => {
 
 app.post('/api/creator/upload', upload.none(), async (req, res) => {
   try {
-    const { name, email, contestTitle, creatorSessionId, description, prizeModel } = req.body;
+    const { name: contestTitle, creator: name, email, description, creatorSessionId, prizeModel } = req.body;
     const session_id = creatorSessionId;
 
     if (!session_id) {
@@ -231,9 +231,9 @@ app.post('/api/creator/upload', upload.none(), async (req, res) => {
 
    creators.push({
   sessionId: session_id,
-  creator: contestTitle,
+  creator: name,
   email,
-  name: name,
+  contestTitle,
   description,
   prizeModel,
   approved: false,
