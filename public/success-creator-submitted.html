@@ -57,18 +57,21 @@
   const sessionId = urlParams.get('session_id');
 
   if (storedData && sessionId) {
-    fetch('/api/creator/save', {
+    const formData = JSON.parse(storedData);
+    // Add sessionId as creatorSessionId, and merge all fields
+    const postData = {
+      ...formData,
+      creatorSessionId: sessionId
+    };
+
+    fetch('/api/creator/upload', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        sessionId: sessionId,
-        formData: JSON.parse(storedData)
-      })
+      body: JSON.stringify(postData)
     }).then(res => {
       if (!res.ok) throw new Error('Failed to save creator data');
-      // Optionally clear localStorage
       localStorage.removeItem('creatorFormData');
     }).catch(err => {
       console.error('Error saving contest:', err);
