@@ -364,9 +364,9 @@ router.get('/creators', async (req, res) => {
     });
 
     if (response.ok) {
-      alert(`Marked as ${status}`);
+      alert('Marked as ' + status);
       // Optional: visually update the row or disable buttons
-      const row = document.querySelector(`tr[data-id="${id}"]`);
+     const row = document.querySelector('tr[data-id="' + id + '"]');
       row.style.backgroundColor = status === 'approved' ? '#d4edda' : '#f8d7da';
     } else {
       alert('Failed to update status.');
