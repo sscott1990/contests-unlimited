@@ -51,14 +51,24 @@ function loadRules() {
 
 // Serve home page with jackpot info, contest rules, and hosted by info
 router.get('/', (req, res) => {
-  // Load both uploads.json and creator.json from S3
   loadJsonFromS3('uploads.json', (uploads) => {
     if (!uploads) uploads = [];
 
-    loadJsonFromS3('creator.json', (creators) => {
-      // creators expected to be an object like:
-      // { "contest-2025-05-29t140134595z": "Alice", "another-contest-slug": "Bob", ... }
-      if (!creators) creators = {};
+    loadJsonFromS3('creator.json', (creatorsArray) => {
+      // creatorsArray is an array like:
+      // [
+      //   { slug: 'contest-2025-05-29t140134595z', creator: 'test bob', ... },
+      //   ...
+      // ]
+      if (!Array.isArray(creatorsArray)) creatorsArray = [];
+
+      // Build a map from slug -> creator
+      const creators = {};
+      for (const c of creatorsArray) {
+        if (c.slug && c.creator) {
+          creators[c.slug] = c.creator;
+        }
+      }
 
       const prizes = calculatePrizesByContest(uploads);
       const rules = loadRules();
@@ -71,11 +81,10 @@ router.get('/', (req, res) => {
         now.getDate(),
         0, 0, 0, 0
       );
-      const contestEndTimestamp = nextYearMidnight.getTime(); // milliseconds
+      const contestEndTimestamp = nextYearMidnight.getTime();
 
       // Build prizeList: show entries + host
       const prizeList = Object.entries(prizes).map(([contestSlug, total]) => {
-        // Host is creator from creator.json or default "Contests Unlimited"
         const hostName = creators[contestSlug] || 'Contests Unlimited';
         return `<li>
           <strong>${contestSlug}</strong>: $${total.toFixed(2)} — Entries: ${Math.floor(total / 2.5)}
