@@ -103,7 +103,7 @@ router.get('/uploads', async (req, res) => {
       return `
       <tr>
         <td>${upload.name || ''}</td>
-        <td>${upload.contest || ''}</td>
+        <td>${upload.contestName || ''}</td>
         <td>${date}</td>
         <td>${filename}</td>
         <td>
@@ -215,7 +215,7 @@ router.get('/trivia', async (req, res) => {
     const rows = scored.map(entry => `
       <tr>
         <td>${entry.name}</td>
-        <td>${entry.contest}</td>
+        <td>${entry.contestName}</td>
         <td>${entry.score} / ${correctAnswers.length}</td>
         <td>${typeof entry.timeTaken === 'number' ? entry.timeTaken.toFixed(3) + ' sec' : 'N/A'}</td>
       </tr>
