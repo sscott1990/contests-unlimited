@@ -287,9 +287,9 @@ router.get('/creators', async (req, res) => {
 
     const rows = paginatedCreators.map(creator => `
       <tr>
-        <td>${creator.name || ''}</td>
+        <td>${creator.creator || ''}</td>
         <td>${creator.email || ''}</td>
-        <td>${creator.contestName || ''}</td>
+        <td>${creator.name || ''}</td>
         <td>${creator.description || ''}</td>
         <td>${new Date(creator.timestamp).toLocaleString()}</td>
       </tr>
