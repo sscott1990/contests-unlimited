@@ -286,12 +286,17 @@ router.get('/creators', async (req, res) => {
     const paginatedCreators = creators.slice(start, start + perPage);
 
     const rows = paginatedCreators.map(creator => `
-      <tr>
+      <tr data-id="${creator.id || creator.timestamp}">
         <td>${creator.creator || ''}</td>
         <td>${creator.email || ''}</td>
         <td>${creator.contestTitle || ''}</td>
         <td>${creator.description || ''}</td>
         <td>${new Date(creator.timestamp).toLocaleString()}</td>
+        <td>${creator.status || 'Pending'}</td>
+        <td>
+      <button onclick="handleStatus('${creator.id || creator.timestamp}', 'approved')">Approve</button>
+      <button onclick="handleStatus('${creator.id || creator.timestamp}', 'rejected')">Reject</button>
+        </td>
       </tr>
     `).join('');
 
@@ -340,6 +345,7 @@ router.get('/creators', async (req, res) => {
               <th>Contest Name</th>
               <th>Description</th>
               <th>Submitted</th>
+              <th>Status</th>
             </tr>
           </thead>
           <tbody>
@@ -347,6 +353,26 @@ router.get('/creators', async (req, res) => {
           </tbody>
         </table>
         ${paginationControls}
+<script>
+  async function handleStatus(id, status) {
+    const response = await fetch('/api/admin/update-status', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ id, status })
+    });
+
+    if (response.ok) {
+      alert(`Marked as ${status}`);
+      // Optional: visually update the row or disable buttons
+      const row = document.querySelector(`tr[data-id="${id}"]`);
+      row.style.backgroundColor = status === 'approved' ? '#d4edda' : '#f8d7da';
+    } else {
+      alert('Failed to update status.');
+    }
+  }
+</script>
       </body>
       </html>
     `);
@@ -360,6 +386,35 @@ router.get('/creators', async (req, res) => {
 router.get('/logout', (req, res) => {
   res.set('WWW-Authenticate', 'Basic realm="401"');
   res.status(401).send('Logged out');
+});
+
+router.post('/update-status', express.json(), async (req, res) => {
+  const { id, status } = req.body;
+
+  if (!id || !status) return res.status(400).json({ error: 'Missing id or status' });
+
+  try {
+    const creators = await loadCreators();
+    const index = creators.findIndex(entry => entry.id === id || entry.timestamp === id);
+
+    if (index === -1) return res.status(404).json({ error: 'Submission not found' });
+
+    creators[index].status = status;
+
+    // Save back to S3
+    const params = {
+      Bucket: BUCKET_NAME,
+      Key: 'creator.json',
+      Body: JSON.stringify(creators, null, 2),
+      ContentType: 'application/json',
+    };
+
+    await s3.putObject(params).promise();
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Error updating creator status:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 module.exports = router;
