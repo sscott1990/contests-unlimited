@@ -13,26 +13,25 @@
     <input type="hidden" id="session_id" name="session_id" />
 
     <label for="name">Your Name:</label>
-    <input type="text" id="name" name="name" required />
+    <input type="text" name="name" required />
 
     <label for="email">Your Email:</label>
-    <input type="email" id="email" name="email" required />
+    <input type="email" name="email" required />
 
     <label for="contestTitle">Contest Title:</label>
-    <input type="text" id="contestTitle" name="contestTitle" required />
+    <input type="text" name="contestTitle" required />
 
     <label for="description">Contest Description:</label>
-    <textarea id="description" name="description" required></textarea>
+    <textarea name="description" required></textarea>
 
     <label for="prizeModel">Prize Model:</label>
-    <select id="prizeModel" name="prizeModel" required>
+    <select name="prizeModel" required>
       <option value="$1/entry to you, $2.50 to prize pool, $1.50 to us">
         $1/entry to you, $2.50 to prize pool, $1.50 to us
       </option>
     </select>
 
-    <!-- You can remove this if you’re only using the payment button -->
-    <button type="submit" style="display: none;">Submit Contest Info</button>
+    <button type="submit">Submit Contest Info</button>
   </form>
 
   <button id="payButton">Pay $50 to Create Contest</button>
@@ -41,12 +40,14 @@
   <script>
     let creatorSessionId = null;
 
-    // Fetch session ID when page loads
+    // Step 1: Fetch session ID when page loads
     window.addEventListener('DOMContentLoaded', async () => {
       try {
         const res = await fetch('/api/creator/session');
         const data = await res.json();
         creatorSessionId = data.creatorSessionId;
+
+        // Populate the hidden input
         document.getElementById('session_id').value = creatorSessionId;
       } catch (err) {
         console.error('Failed to fetch creator session ID:', err);
@@ -54,24 +55,24 @@
       }
     });
 
-    // Payment button logic
+    // Step 2: Handle payment button click
     document.getElementById('payButton').addEventListener('click', function () {
       if (!creatorSessionId) {
         alert("Session ID not ready. Try again in a moment.");
         return;
       }
 
-      // Save form values to localStorage
-      const form = document.getElementById('creatorForm');
-      localStorage.setItem('creator_name', form.name.value);
-      localStorage.setItem('creator_email', form.email.value);
-      localStorage.setItem('creator_contestTitle', form.contestTitle.value);
-      localStorage.setItem('creator_description', form.description.value);
-      localStorage.setItem('creator_prizeModel', form.prizeModel.value);
+// Save form values before redirecting to payment
+const form = document.getElementById('creatorForm');
+localStorage.setItem('creator_name', form.name.value);
+localStorage.setItem('creator_email', form.email.value);
+localStorage.setItem('creator_contestTitle', form.contestTitle.value);
+localStorage.setItem('creator_description', form.description.value);
+localStorage.setItem('creator_prizeModel', form.prizeModel.value);
 
       CollectCheckout.redirectToCheckout({
         paymentGatewayId: "GG8TL79V38",
-        amount: 5000,
+        amount: 5000, // $50 in cents
         currency: "USD",
         billingAddressRequired: true,
         collectShippingAddress: false,
