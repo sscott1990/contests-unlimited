@@ -20,4 +20,19 @@ async function loadJSONFromS3(key) {
   }
 }
 
-module.exports = { loadJSONFromS3 };
+async function saveJSONToS3(key, jsonData) {
+  try {
+    const params = {
+      Bucket: BUCKET_NAME,
+      Key: key,
+      Body: JSON.stringify(jsonData, null, 2),
+      ContentType: 'application/json',
+    };
+    await s3.putObject(params).promise();
+  } catch (err) {
+    console.error(`Error saving ${key} to S3:`, err);
+    throw err;
+  }
+}
+
+module.exports = { loadJSONFromS3, saveJSONToS3 };
