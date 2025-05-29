@@ -30,16 +30,6 @@ function getPresignedUrl(key) {
   return s3.getSignedUrlPromise('getObject', params);
 }
 
-// Generate slug from name
-function generateSlug(name) {
-  return name
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, '') // Remove special chars except spaces and hyphens
-    .replace(/\s+/g, '-')     // Replace spaces with hyphens
-    .replace(/-+/g, '-');     // Merge multiple hyphens
-}
-
 // Basic Auth middleware for all admin routes
 router.use((req, res, next) => {
   const auth = {
@@ -236,28 +226,32 @@ router.get('/trivia', async (req, res) => {
       <head>
         <title>Trivia Results</title>
         <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <style>
-          body { font-family: Arial, sans-serif; margin: 1rem; }
-          table { border-collapse: collapse; width: 100%; }
-          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-          th { background-color: #f2f2f2; }
-          nav a { margin-right: 1rem; }
+          body { font-family: Arial, sans-serif; margin: 1rem; background: #f9f9f9; color: #333; }
+          h1, h2 { color: #444; }
+          nav a { margin-right: 1rem; text-decoration: none; color: #007bff; }
+          nav a:hover { text-decoration: underline; }
+          table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+          th, td { border: 1px solid #ddd; padding: 0.5rem; text-align: left; }
+          th { background: #eee; }
         </style>
       </head>
       <body>
+        <h1>Trivia Contest Submissions</h1>
         <nav>
           <a href="/api/admin/uploads">Uploads</a> |
           <a href="/api/admin/entries">Entries</a> |
+          <a href="/api/admin/trivia">Trivia Results</a> |
           <a href="/api/admin/creators">Creators</a> |
           <a href="/api/admin/logout">Logout</a>
         </nav>
-        <h1>Trivia Results</h1>
         <table>
           <thead>
             <tr>
               <th>Name</th>
               <th>Contest</th>
-              <th>Score</th>
+              <th>Correct Answers</th>
               <th>Time Taken</th>
             </tr>
           </thead>
@@ -269,55 +263,76 @@ router.get('/trivia', async (req, res) => {
       </html>
     `);
   } catch (err) {
-    res.status(500).send('Failed to load trivia results.');
+    console.error('Failed to load trivia submissions:', err);
+    res.status(500).send('Failed to load trivia submissions.');
   }
 });
 
-// Creators view and editing
+// Creators management view with status update form
 router.get('/creators', async (req, res) => {
   try {
     const creators = await loadCreators();
 
-    const rows = creators.map(c => `
+    const rows = creators.map(c => {
+      const date = new Date(c.timestamp).toLocaleString();
+      return `
       <tr>
-        <td>${c.name}</td>
-        <td>${c.slug}</td>
+        <td>${c.id || ''}</td>
+        <td>${c.name || ''}</td>
         <td>${c.email || ''}</td>
-        <td>${c.website || ''}</td>
-        <td>${c.bio || ''}</td>
-      </tr>
-    `).join('');
+        <td>${c.status || 'pending'}</td>
+        <td>${date}</td>
+        <td>
+          <form method="POST" action="/api/admin/update-status" style="display:inline;">
+            <input type="hidden" name="id" value="${c.id || c.timestamp}" />
+            <select name="status">
+              <option value="pending" ${c.status === 'pending' ? 'selected' : ''}>Pending</option>
+              <option value="approved" ${c.status === 'approved' ? 'selected' : ''}>Approved</option>
+              <option value="denied" ${c.status === 'denied' ? 'selected' : ''}>Denied</option>
+            </select>
+            <button type="submit">Update</button>
+          </form>
+        </td>
+      </tr>`;
+    }).join('');
 
     res.send(`
       <!DOCTYPE html>
       <html lang="en">
       <head>
-        <title>Contest Creators</title>
+        <title>Contest Creators Management</title>
         <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <style>
-          body { font-family: Arial, sans-serif; margin: 1rem; }
-          table { border-collapse: collapse; width: 100%; }
-          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-          th { background-color: #f2f2f2; }
-          nav a { margin-right: 1rem; }
+          body { font-family: Arial, sans-serif; margin: 1rem; background: #f9f9f9; color: #333; }
+          h1, h2 { color: #444; }
+          nav a { margin-right: 1rem; text-decoration: none; color: #007bff; }
+          nav a:hover { text-decoration: underline; }
+          table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+          th, td { border: 1px solid #ddd; padding: 0.5rem; text-align: left; }
+          th { background: #eee; }
+          form { margin: 0; }
+          select { margin-right: 0.5rem; }
         </style>
       </head>
       <body>
+        <h1>Contest Creators</h1>
         <nav>
           <a href="/api/admin/uploads">Uploads</a> |
           <a href="/api/admin/entries">Entries</a> |
           <a href="/api/admin/trivia">Trivia Results</a> |
+          <a href="/api/admin/creators">Creators</a> |
           <a href="/api/admin/logout">Logout</a>
         </nav>
-        <h1>Contest Creators</h1>
         <table>
           <thead>
             <tr>
+              <th>ID / Timestamp</th>
               <th>Name</th>
-              <th>Slug</th>
               <th>Email</th>
-              <th>Website</th>
-              <th>Bio</th>
+              <th>Status</th>
+              <th>Submitted</th>
+              <th>Update Status</th>
             </tr>
           </thead>
           <tbody>
@@ -328,74 +343,41 @@ router.get('/creators', async (req, res) => {
       </html>
     `);
   } catch (err) {
-    res.status(500).send('Failed to load creators.');
+    console.error('Failed to load creators:', err);
+    res.status(500).send('Failed to load contest creators.');
   }
 });
 
-// POST /update-status to approve/deny uploads and update status
-router.post('/update-status', express.json(), async (req, res) => {
-  const { id, status } = req.body;
-
-  if (!id || !status) {
-    return res.status(400).json({ error: 'Missing id or status' });
-  }
-
+// Handle status updates for creators
+router.post('/update-status', express.urlencoded({ extended: true }), async (req, res) => {
   try {
-    const uploads = await loadUploads();
-    const idx = uploads.findIndex(u => u.id === id);
-
-    if (idx === -1) {
-      return res.status(404).json({ error: 'Upload not found' });
+    const { id, status } = req.body;
+    if (!id || !status) {
+      return res.status(400).send('Missing id or status.');
     }
 
-    uploads[idx].status = status;
-
-    // If approved, add to creators.json if not exists
-    if (status === 'approved') {
-      // Prepare new creator data from the upload
-      const upload = uploads[idx];
-
-      // Load creators list
-      let creators = [];
-      try {
-        creators = await loadCreators();
-      } catch {
-        creators = [];
-      }
-
-      // Check if creator already exists by name or slug
-      const slug = generateSlug(upload.contestName || upload.name || 'unknown');
-      const existingIndex = creators.findIndex(c => c.slug === slug || c.name === upload.contestName);
-
-      if (existingIndex === -1) {
-        // Add new creator entry
-        const newCreator = {
-          name: upload.contestName || upload.name || 'Unnamed Contest',
-          slug,
-          email: upload.email || '',
-          website: upload.website || '',
-          bio: upload.bio || '',
-          createdAt: new Date().toISOString(),
-        };
-
-        creators.push(newCreator);
-      } else {
-        // Optional: update existing creator fields if you want
-        // creators[existingIndex] = { ...creators[existingIndex], ...updates };
-      }
-
-      // Save updated creators list back to S3
-      await saveJSONToS3('creator.json', creators);
+    const creators = await loadCreators();
+    const index = creators.findIndex(c => c.id === id || c.timestamp === id);
+    if (index === -1) {
+      return res.status(404).send('Creator not found.');
     }
 
-    // Save updated uploads back to S3
-    await saveJSONToS3('uploads.json', uploads);
+    creators[index].status = status;
 
-    res.json({ success: true });
+    // Save updated creators back to S3
+    await saveJSONToS3('creator.json', creators);
+
+    res.redirect('/api/admin/creators');
   } catch (err) {
-    console.error('Error updating status:', err);
-    res.status(500).json({ error: 'Failed to update status' });
+    console.error('Error updating creator status:', err);
+    res.status(500).send('Failed to update creator status.');
   }
+});
+
+// Logout route to clear auth (force 401)
+router.get('/logout', (req, res) => {
+  res.set('WWW-Authenticate', 'Basic realm="401"');
+  res.status(401).send('Logged out');
 });
 
 module.exports = router;
