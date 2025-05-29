@@ -18,6 +18,10 @@ async function loadUploads() {
   return loadJSONFromS3('uploads.json');
 }
 
+async function loadCreators() {
+  return loadJSONFromS3('creator.json');
+}
+
 // Generate a pre-signed URL for an S3 object key (valid for 15 minutes)
 function getPresignedUrl(key) {
   const params = { Bucket: BUCKET_NAME, Key: key, Expires: 900 };
@@ -138,6 +142,7 @@ router.get('/uploads', async (req, res) => {
           <a href="/api/admin/uploads">Uploads</a> |
           <a href="/api/admin/entries">Entries</a> |
           <a href="/api/admin/trivia">Trivia Results</a> |
+          <a href="/api/admin/creators">Creators</a> |
           <a href="/api/admin/logout">Logout</a>
         </nav>
         <h2>Uploaded Files</h2>
@@ -214,7 +219,15 @@ router.get('/trivia', async (req, res) => {
         <title>Trivia Results</title>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <link rel="stylesheet" href="/styles.css">
+        <style>
+          body { font-family: Arial, sans-serif; margin: 1rem; background: #f9f9f9; color: #333; }
+          h1, h2 { color: #444; }
+          nav a { margin-right: 1rem; text-decoration: none; color: #007bff; }
+          nav a:hover { text-decoration: underline; }
+          table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+          th, td { border: 1px solid #ddd; padding: 0.5rem; text-align: left; }
+          th { background: #eee; }
+        </style>
       </head>
       <body>
         <h1>Trivia Contest Submissions</h1>
@@ -222,6 +235,7 @@ router.get('/trivia', async (req, res) => {
           <a href="/api/admin/uploads">Uploads</a> |
           <a href="/api/admin/entries">Entries</a> |
           <a href="/api/admin/trivia">Trivia Results</a> |
+          <a href="/api/admin/creators">Creators</a> |
           <a href="/api/admin/logout">Logout</a>
         </nav>
         <table>
@@ -241,26 +255,100 @@ router.get('/trivia', async (req, res) => {
       </html>
     `);
   } catch (err) {
-    res.status(500).send('Failed to load trivia results.');
+    console.error('Failed to load trivia submissions:', err);
+    res.status(500).send('Failed to load trivia submissions.');
   }
 });
 
-// Logout route
+// New route: Creators view with pagination
+router.get('/creators', async (req, res) => {
+  try {
+    const creators = await loadCreators();
+
+    if (!creators || creators.length === 0) {
+      return res.send('<h2>No creator submissions found</h2>');
+    }
+
+    const page = parseInt(req.query.page) || 1;
+    const perPage = 25;
+    const totalCreators = creators.length;
+    const totalPages = Math.ceil(totalCreators / perPage);
+    const start = (page - 1) * perPage;
+    const paginatedCreators = creators.slice(start, start + perPage);
+
+    const rows = paginatedCreators.map(creator => {
+      const date = new Date(creator.timestamp).toLocaleString();
+      return `
+      <tr>
+        <td>${creator.name || ''}</td>
+        <td>${creator.contestName || ''}</td>
+        <td>${creator.email || ''}</td>
+        <td>${date}</td>
+        <td>${creator.creatorSessionId || ''}</td>
+      </tr>`;
+    }).join('');
+
+    let paginationControls = `<div style="margin-top: 1rem;">`;
+    if (page > 1) paginationControls += `<a href="?page=${page - 1}">Previous</a> `;
+    paginationControls += `Page ${page} of ${totalPages}`;
+    if (page < totalPages) paginationControls += ` <a href="?page=${page + 1}">Next</a>`;
+    paginationControls += `</div>`;
+
+    res.send(`
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <title>Creator Submissions</title>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <style>
+          body { font-family: Arial, sans-serif; margin: 1rem; background: #f9f9f9; color: #333; }
+          h1, h2 { color: #444; }
+          nav a { margin-right: 1rem; text-decoration: none; color: #007bff; }
+          nav a:hover { text-decoration: underline; }
+          table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+          th, td { border: 1px solid #ddd; padding: 0.5rem; text-align: left; }
+          th { background: #eee; }
+          div.pagination { margin-top: 1rem; }
+        </style>
+      </head>
+      <body>
+        <h1>Creator Contest Submissions</h1>
+        <nav>
+          <a href="/api/admin/uploads">Uploads</a> |
+          <a href="/api/admin/entries">Entries</a> |
+          <a href="/api/admin/trivia">Trivia Results</a> |
+          <a href="/api/admin/creators">Creators</a> |
+          <a href="/api/admin/logout">Logout</a>
+        </nav>
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Contest Name</th>
+              <th>Email</th>
+              <th>Submitted At</th>
+              <th>Session ID</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows}
+          </tbody>
+        </table>
+        ${paginationControls}
+      </body>
+      </html>
+    `);
+  } catch (err) {
+    console.error('Failed to load creators:', err);
+    res.status(500).send('Failed to load creator submissions.');
+  }
+});
+
+// Logout route clears basic auth (forces browser prompt next time)
 router.get('/logout', (req, res) => {
   res.set('WWW-Authenticate', 'Basic realm="401"');
-  res.status(401).send(`
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-      <meta charset="UTF-8">
-      <title>Logged Out</title>
-    </head>
-    <body>
-      <h1>You have been logged out.</h1>
-      <p><a href="/api/admin/uploads">Log back in</a></p>
-    </body>
-    </html>
-  `);
+  res.status(401).send('Logged out');
 });
 
 module.exports = router;
