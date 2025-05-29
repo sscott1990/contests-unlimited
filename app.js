@@ -20,7 +20,6 @@ const ENTRIES_KEY = 'entries.json';
 const UPLOADS_KEY = 'uploads.json';
 const CREATORS_KEY = 'creator.json';
 
-
 // Serve static files
 app.use(express.static('public'));
 
@@ -66,7 +65,7 @@ async function getEntries() {
     }).promise();
     return JSON.parse(data.Body.toString('utf-8'));
   } catch (err) {
-    if (err.code === 'NoSuchKey') return []; // File doesn't exist yet
+    if (err.code === 'NoSuchKey') return [];
     throw err;
   }
 }
@@ -80,7 +79,6 @@ async function saveEntries(entries) {
   }).promise();
 }
 
-// New helper: getUploads and saveUploads for uploads.json
 async function getUploads() {
   try {
     const data = await s3.getObject({
@@ -141,7 +139,7 @@ app.post('/api/payment/webhook', rawBodyParser, async (req, res) => {
       const sessionId = webhookData.event_body.transaction_id;
 
       const paymentRecord = {
-        sessionId, // Also used as a reference for uploads
+        sessionId,
         amount: webhookData.event_body.action.amount,
         status: webhookData.event_body.action.success === "1" ? 'success' : 'failed',
         timestamp: new Date().toISOString(),
@@ -175,7 +173,6 @@ app.post('/api/payment/upload', upload.single('file'), async (req, res) => {
       return res.status(400).json({ error: 'Missing session_id' });
     }
 
-    // Parse timeTaken safely as a float
     timeTaken = parseFloat(timeTaken);
     if (isNaN(timeTaken)) timeTaken = null;
 
@@ -193,10 +190,10 @@ app.post('/api/payment/upload', upload.single('file'), async (req, res) => {
     }
 
     const uploads = await getUploads();
-const alreadyUploaded = uploads.find(u => u.sessionId === session_id);
-if (alreadyUploaded) {
-  return res.status(400).json({ error: 'Upload already completed for this session.' });
-}
+    const alreadyUploaded = uploads.find(u => u.sessionId === session_id);
+    if (alreadyUploaded) {
+      return res.status(400).json({ error: 'Upload already completed for this session.' });
+    }
 
     uploads.push({
       sessionId: session_id,
@@ -220,7 +217,7 @@ if (alreadyUploaded) {
 app.post('/api/creator/upload', upload.none(), async (req, res) => {
   try {
     const { name, email, contestTitle, creatorSessionId, description, prizeModel } = req.body;
-const session_id = creatorSessionId;
+    const session_id = creatorSessionId;
 
     if (!session_id) {
       return res.status(400).json({ error: 'Missing session_id' });
@@ -260,7 +257,29 @@ const triviaRoute = require('./routes/trivia');
 app.use('/', indexRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/trivia', triviaRoute);
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// ⛳ Serve uploaded files via S3 proxy
+app.get('/uploads/:sessionId/:fileName', async (req, res) => {
+  const { sessionId, fileName } = req.params;
+  const key = `uploads/${sessionId}/${fileName}`;
+
+  try {
+    const fileStream = s3.getObject({
+      Bucket: ENTRIES_BUCKET,
+      Key: key,
+    }).createReadStream();
+
+    fileStream.on('error', err => {
+      console.error('S3 stream error:', err);
+      res.status(404).send('File not found');
+    });
+
+    fileStream.pipe(res);
+  } catch (err) {
+    console.error('File serving error:', err);
+    res.status(500).send('Failed to retrieve file');
+  }
+});
 
 // === 🚀 Start server ===
 app.listen(PORT, () => {

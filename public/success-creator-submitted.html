@@ -51,5 +51,29 @@
     <p>You’ll receive an email once it’s approved or if any changes are needed.</p>
     <a href="/">Back to Home</a>
   </div>
+<script>
+  const storedData = localStorage.getItem('creatorFormData');
+  const urlParams = new URLSearchParams(window.location.search);
+  const sessionId = urlParams.get('session_id');
+
+  if (storedData && sessionId) {
+    fetch('/api/creator/save', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        sessionId: sessionId,
+        formData: JSON.parse(storedData)
+      })
+    }).then(res => {
+      if (!res.ok) throw new Error('Failed to save creator data');
+      // Optionally clear localStorage
+      localStorage.removeItem('creatorFormData');
+    }).catch(err => {
+      console.error('Error saving contest:', err);
+    });
+  }
+</script>
 </body>
 </html>
