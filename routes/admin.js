@@ -295,6 +295,9 @@ router.get('/creators', async (req, res) => {
         <td>${new Date(creator.timestamp).toLocaleString()}</td>
         <td>${creator.status || 'Pending'}</td>
         <td>
+      ${creator.slug ? `<a href="/contest/${creator.slug}" target="_blank">Go to Contest</a>` : ''}
+        </td>
+        <td>
       <button onclick="handleStatus('${creator.id || creator.timestamp}', 'approved')">Approve</button>
       <button onclick="handleStatus('${creator.id || creator.timestamp}', 'rejected')">Reject</button>
         </td>
@@ -374,20 +377,18 @@ router.get('/creators', async (req, res) => {
 
       if (status === 'approved' && result.slug) {
         // Add or update the link cell
-        let linkCell = row.querySelector('td.link-cell');
-        if (!linkCell) {
-          linkCell = document.createElement('td');
-          linkCell.classList.add('link-cell');
-          row.appendChild(linkCell);
-        }
-        linkCell.innerHTML = '<a href="/creator/' + result.slug + '" target="_blank">View Contest</a>';
-      } else {
-        // Remove link if rejected
-        let linkCell = row.querySelector('td.link-cell');
-        if (linkCell) {
-          linkCell.innerHTML = '';
-        }
-      }
+let linkCell = row.querySelector('td:nth-child(7)');
+if (linkCell) {
+  linkCell.innerHTML = '<a href="/contest/' + result.slug + '" target="_blank">View Contest</a>';
+}
+} else {
+// Remove link if rejected
+let linkCell = row.querySelector('td:nth-child(7)');
+if (linkCell) {
+  linkCell.innerHTML = '';
+}
+}
+
     } else {
       alert('Failed to update status.');
     }
