@@ -314,7 +314,7 @@ router.get('/creators', async (req, res) => {
     }
     paginationControls += `</div>`;
 
-  res.send(`
+ res.send(`
       <!DOCTYPE html>
       <html lang="en">
       <head>
@@ -379,7 +379,7 @@ router.get('/creators', async (req, res) => {
         // Add or update the link cell
         let linkCell = row.querySelector('td:nth-child(7)');
         if (linkCell) {
-          linkCell.innerHTML = '<a href="/contest/' + result.slug + '" target="_blank">View Contest</a>';
+          linkCell.innerHTML = '<a href="/api/admin/contest/' + result.slug + '" target="_blank">View Contest</a>';
         }
       } else {
         // Remove link if rejected
@@ -424,8 +424,8 @@ router.post('/update-status', express.json(), async (req, res) => {
 
     let slug = null;
     if (status === 'approved') {
-      // Generate slug from creator's contest name (adjust property name as needed)
-      slug = slugify(creators[index].contestName || 'contest-' + id, { lower: true, strict: true });
+      // Generate slug from contest name + timestamp for uniqueness
+      slug = slugify(`${creators[index].contestName}-${Date.now()}`, { lower: true, strict: true });
       creators[index].slug = slug;
     } else {
       // Remove slug if status changed from approved to something else
@@ -448,8 +448,8 @@ router.post('/update-status', express.json(), async (req, res) => {
   }
 });
 
-// NEW ROUTE: Display individual contest by slug
-router.get('/contest/:slug', async (req, res) => {
+// NEW ROUTE: Display individual contest by slug using updated route path
+router.get('/api/admin/contest/:slug', async (req, res) => {
   const { slug } = req.params;
 
   try {
@@ -489,5 +489,6 @@ router.get('/contest/:slug', async (req, res) => {
 });
 
 module.exports = router;
+
 
 
