@@ -47,7 +47,7 @@
   </form>
 
   <a href="/">Back to Home</a>
-  <script>
+ <script>
   const contestSelect = document.getElementById('contestSelect');
   const fileInput = document.getElementById('fileInput');
   const triviaSection = document.getElementById('triviaSection');
@@ -60,7 +60,7 @@
   let timerStarted = false;
 
   const urlParams = new URLSearchParams(window.location.search);
-  const sessionId = urlParams.get('session_id'); // Fix here: match query param from payment.html
+  const sessionId = urlParams.get('session_id');
 
   if (!sessionId) {
     alert('Missing session ID. Please return to the homepage and try again.');
@@ -151,6 +151,26 @@
       timeTakenInput.value = ((Date.now() - startTime) / 1000);
     }
   });
+
+  // ✅ Load approved contests when page loads
+  async function loadApprovedContests() {
+    try {
+      const res = await fetch('/api/contests/approved');
+      const contests = await res.json();
+
+      contests.forEach(contest => {
+        const option = document.createElement('option');
+        option.value = contest.slug;
+        option.textContent = contest.name;
+        contestSelect.appendChild(option);
+      });
+    } catch (err) {
+      console.error('Failed to load contests:', err);
+    }
+  }
+
+  loadApprovedContests(); // ✅ run immediately
+
 </script>
 </body>
 </html>

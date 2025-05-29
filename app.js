@@ -249,6 +249,27 @@ app.post('/api/creator/upload', upload.none(), async (req, res) => {
   }
 });
 
+// === ✅ List approved custom contests ===
+app.get('/api/contests/approved', async (req, res) => {
+  try {
+    const data = await s3.getObject({
+      Bucket: ENTRIES_BUCKET,
+      Key: CREATORS_KEY
+    }).promise();
+
+    const creators = JSON.parse(data.Body.toString());
+    const approved = creators.filter(entry => entry.approved === true && entry.slug);
+
+    res.json(approved.map(entry => ({
+      name: entry.contestTitle,
+      slug: entry.slug
+    })));
+  } catch (err) {
+    console.error('Failed to load approved contests:', err);
+    res.status(500).json({ error: 'Failed to load contests' });
+  }
+});
+
 // === 🔁 All other routes ===
 const indexRoutes = require('./routes/index');
 const adminRoutes = require('./routes/admin');
