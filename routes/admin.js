@@ -314,7 +314,7 @@ router.get('/creators', async (req, res) => {
     }
     paginationControls += `</div>`;
 
-   res.send(`
+  res.send(`
       <!DOCTYPE html>
       <html lang="en">
       <head>
@@ -377,17 +377,17 @@ router.get('/creators', async (req, res) => {
 
       if (status === 'approved' && result.slug) {
         // Add or update the link cell
-let linkCell = row.querySelector('td:nth-child(7)');
-if (linkCell) {
-  linkCell.innerHTML = '<a href="/contest/' + result.slug + '" target="_blank">View Contest</a>';
-}
-} else {
-// Remove link if rejected
-let linkCell = row.querySelector('td:nth-child(7)');
-if (linkCell) {
-  linkCell.innerHTML = '';
-}
-}
+        let linkCell = row.querySelector('td:nth-child(7)');
+        if (linkCell) {
+          linkCell.innerHTML = '<a href="/contest/' + result.slug + '" target="_blank">View Contest</a>';
+        }
+      } else {
+        // Remove link if rejected
+        let linkCell = row.querySelector('td:nth-child(7)');
+        if (linkCell) {
+          linkCell.innerHTML = '';
+        }
+      }
 
     } else {
       alert('Failed to update status.');
@@ -448,5 +448,46 @@ router.post('/update-status', express.json(), async (req, res) => {
   }
 });
 
+// NEW ROUTE: Display individual contest by slug
+router.get('/contest/:slug', async (req, res) => {
+  const { slug } = req.params;
+
+  try {
+    const creators = await loadCreators();
+    const creator = creators.find(c => c.slug === slug);
+
+    if (!creator) {
+      return res.status(404).send('Contest not found');
+    }
+
+    res.send(`
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8" />
+        <title>${creator.contestName}</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 2rem; background: #f9f9f9; color: #333; }
+          h1 { color: #444; }
+          p { margin: 0.5rem 0; }
+        </style>
+      </head>
+      <body>
+        <h1>${creator.contestName}</h1>
+        <p><strong>Hosted by:</strong> ${creator.name}</p>
+        <p><strong>Email:</strong> ${creator.email}</p>
+        <p><strong>Description:</strong></p>
+        <p>${creator.description}</p>
+        <p><strong>Status:</strong> ${creator.status}</p>
+      </body>
+      </html>
+    `);
+  } catch (err) {
+    console.error('Error loading contest page:', err);
+    res.status(500).send('Internal server error');
+  }
+});
+
 module.exports = router;
+
 
