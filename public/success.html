@@ -161,7 +161,7 @@
       contests.forEach(contest => {
         const option = document.createElement('option');
         option.value = contest.slug;
-        option.textContent = contest.name;
+        option.textContent = contest.contestTitle;
         contestSelect.appendChild(option);
       });
     } catch (err) {
