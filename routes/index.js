@@ -31,7 +31,7 @@ function loadUploadsFromS3(callback) {
 function calculatePrizesByContest(uploads) {
   const prizes = {};
   for (const upload of uploads) {
-    const contest = upload.contest || 'Unknown';
+    const contest = upload.contestName || 'Unknown';
     if (!prizes[contest]) prizes[contest] = 0;
     prizes[contest] += 2.5; // $2.50 per valid upload
   }
