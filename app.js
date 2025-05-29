@@ -17,7 +17,9 @@ const s3 = new AWS.S3({
 
 const ENTRIES_BUCKET = process.env.S3_BUCKET_NAME;
 const ENTRIES_KEY = 'entries.json';
-const UPLOADS_KEY = 'uploads.json';  // <-- uploads.json key
+const UPLOADS_KEY = 'uploads.json';
+const CREATORS_KEY = 'creator.json';
+
 
 // Serve static files
 app.use(express.static('public'));
@@ -47,6 +49,12 @@ const upload = multer({
 app.get('/api/session', (req, res) => {
   const uuid = uuidv4();
   res.json({ sessionId: uuid });
+});
+
+// === 📛 UUID for contest creator ===
+app.get('/api/creator/session', (req, res) => {
+  const creatorSessionId = uuidv4();
+  res.json({ creatorSessionId });
 });
 
 // === 📦 Helpers for S3 file access ===
@@ -91,6 +99,28 @@ async function saveUploads(uploads) {
     Bucket: ENTRIES_BUCKET,
     Key: UPLOADS_KEY,
     Body: JSON.stringify(uploads, null, 2),
+    ContentType: 'application/json',
+  }).promise();
+}
+
+async function getCreators() {
+  try {
+    const data = await s3.getObject({
+      Bucket: ENTRIES_BUCKET,
+      Key: CREATORS_KEY,
+    }).promise();
+    return JSON.parse(data.Body.toString('utf-8'));
+  } catch (err) {
+    if (err.code === 'NoSuchKey') return [];
+    throw err;
+  }
+}
+
+async function saveCreators(creators) {
+  await s3.putObject({
+    Bucket: ENTRIES_BUCKET,
+    Key: CREATORS_KEY,
+    Body: JSON.stringify(creators, null, 2),
     ContentType: 'application/json',
   }).promise();
 }
@@ -184,6 +214,40 @@ if (alreadyUploaded) {
   } catch (err) {
     console.error('Upload error:', err);
     res.status(500).json({ error: 'Upload failed' });
+  }
+});
+
+app.post('/api/creator/upload', upload.none(), async (req, res) => {
+  try {
+    const { name, email, contestTitle, session_id, description, prizeModel } = req.body;
+
+    if (!session_id) {
+      return res.status(400).json({ error: 'Missing session_id' });
+    }
+
+    const creators = await getCreators();
+    const alreadySubmitted = creators.find(c => c.sessionId === session_id);
+    if (alreadySubmitted) {
+      return res.status(400).json({ error: 'Submission already exists for this session.' });
+    }
+
+    creators.push({
+      sessionId: session_id,
+      name,
+      email,
+      contestTitle,
+      description,
+      prizeModel,
+      approved: false,
+      timestamp: new Date().toISOString(),
+    });
+
+    await saveCreators(creators);
+
+    res.redirect('/success-creator-submitted.html');
+  } catch (err) {
+    console.error('Creator submission error:', err);
+    res.status(500).json({ error: 'Failed to submit creator info' });
   }
 });
 
