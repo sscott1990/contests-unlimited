@@ -43,8 +43,14 @@
 <body>
   <h1 style="text-align: center;">Submit Your Contest</h1>
   <form id="contestForm" onsubmit="return false;">
-    <label>Contest Name:</label>
-    <input type="text" name="name" required>
+    <label>Select Contest Type:</label>
+    <select name="name" required>
+      <option value="">-- Select a Contest Type --</option>
+      <option value="Art Contest">Art Contest</option>
+      <option value="Photo Contest">Photo Contest</option>
+      <option value="Trivia Contest">Trivia Contest</option>
+      <option value="Caption Contest">Caption Contest</option>
+    </select>
 
     <label>Description:</label>
     <textarea name="description" rows="5" required></textarea>
