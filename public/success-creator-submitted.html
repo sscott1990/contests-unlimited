@@ -60,13 +60,9 @@
     const formData = JSON.parse(storedData);
     // Add sessionId as creatorSessionId, and merge all fields
     const postData = {
-  name: formData.creator,              // 👈 person's name
-  contestTitle: formData.name,         // 👈 contest title
-  description: formData.description,
-  email: formData.email,
-  prizeModel: formData.state,
-  session_id: sessionId
-};
+      ...formData,
+      creatorSessionId: sessionId
+    };
 
     fetch('/api/creator/upload', {
       method: 'POST',
