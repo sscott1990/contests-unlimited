@@ -216,7 +216,7 @@ app.post('/api/payment/upload', upload.single('file'), async (req, res) => {
 
 app.post('/api/creator/upload', upload.none(), async (req, res) => {
   try {
-    const { contest, creator, email, description, creatorSessionId, prizeModel } = req.body;
+    const { contestName: contestTitle, creator: name, email, description, creatorSessionId, prizeModel } = req.body;
 
     if (!creatorSessionId) {
       return res.status(400).json({ error: 'Missing session_id' });
