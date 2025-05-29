@@ -10,6 +10,7 @@ const s3 = new AWS.S3({
 });
 const BUCKET_NAME = process.env.S3_BUCKET_NAME;
 
+// Load JSON helpers for various files
 async function loadEntries() {
   return loadJSONFromS3('entries.json');
 }
@@ -19,6 +20,7 @@ async function loadUploads() {
 }
 
 async function loadCreators() {
+  // IMPORTANT: use the exact filename where creators are saved
   return loadJSONFromS3('creator.json');
 }
 
@@ -46,7 +48,7 @@ router.use((req, res, next) => {
   res.status(401).send('Authentication required.');
 });
 
-// JSON view of Stripe entries
+// JSON view of entries
 router.get('/entries', async (req, res) => {
   try {
     const entries = await loadEntries();
@@ -266,7 +268,7 @@ router.get('/trivia', async (req, res) => {
   }
 });
 
-// Creators view with status update form
+// Creators management view with status update form
 router.get('/creators', async (req, res) => {
   try {
     const creators = await loadCreators();
@@ -298,7 +300,7 @@ router.get('/creators', async (req, res) => {
       <!DOCTYPE html>
       <html lang="en">
       <head>
-        <title>Creators Management</title>
+        <title>Contest Creators Management</title>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <style>
@@ -311,11 +313,10 @@ router.get('/creators', async (req, res) => {
           th { background: #eee; }
           form { margin: 0; }
           select { margin-right: 0.5rem; }
-          button { cursor: pointer; }
         </style>
       </head>
       <body>
-        <h1>Creators Management</h1>
+        <h1>Contest Creators</h1>
         <nav>
           <a href="/api/admin/uploads">Uploads</a> |
           <a href="/api/admin/entries">Entries</a> |
@@ -326,11 +327,11 @@ router.get('/creators', async (req, res) => {
         <table>
           <thead>
             <tr>
-              <th>ID</th>
+              <th>ID / Timestamp</th>
               <th>Name</th>
               <th>Email</th>
               <th>Status</th>
-              <th>Timestamp</th>
+              <th>Submitted</th>
               <th>Update Status</th>
             </tr>
           </thead>
@@ -342,37 +343,38 @@ router.get('/creators', async (req, res) => {
       </html>
     `);
   } catch (err) {
-    res.status(500).send('Failed to load creators.');
+    console.error('Failed to load creators:', err);
+    res.status(500).send('Failed to load contest creators.');
   }
 });
 
-// Update creator status handler
-router.post('/update-status', express.urlencoded({ extended: false }), async (req, res) => {
+// Handle status updates for creators
+router.post('/update-status', express.urlencoded({ extended: true }), async (req, res) => {
   try {
     const { id, status } = req.body;
     if (!id || !status) {
-      return res.status(400).send('Missing id or status');
+      return res.status(400).send('Missing id or status.');
     }
 
     const creators = await loadCreators();
-    const idx = creators.findIndex(c => c.id === id || c.timestamp === id);
-
-    if (idx === -1) {
-      return res.status(404).send('Creator not found');
+    const index = creators.findIndex(c => c.id === id || c.timestamp === id);
+    if (index === -1) {
+      return res.status(404).send('Creator not found.');
     }
 
-    creators[idx].status = status;
+    creators[index].status = status;
 
+    // Save updated creators back to S3
     await saveJSONToS3('creator.json', creators);
 
     res.redirect('/api/admin/creators');
   } catch (err) {
-    console.error('Failed to update creator status:', err);
-    res.status(500).send('Failed to update status');
+    console.error('Error updating creator status:', err);
+    res.status(500).send('Failed to update creator status.');
   }
 });
 
-// Logout route to clear auth (basic auth doesn't have a real logout, so just respond)
+// Logout route to clear auth (force 401)
 router.get('/logout', (req, res) => {
   res.set('WWW-Authenticate', 'Basic realm="401"');
   res.status(401).send('Logged out');
