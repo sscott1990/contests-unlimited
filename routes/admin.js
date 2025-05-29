@@ -330,7 +330,7 @@ router.get('/creators', async (req, res) => {
               <th>Name</th>
               <th>Email</th>
               <th>Status</th>
-              <th>Submitted</th>
+              <th>Timestamp</th>
               <th>Update Status</th>
             </tr>
           </thead>
@@ -342,36 +342,40 @@ router.get('/creators', async (req, res) => {
       </html>
     `);
   } catch (err) {
-    console.error('Failed to load creators:', err);
     res.status(500).send('Failed to load creators.');
   }
 });
 
-// Creator status update route
-router.post('/update-status', express.urlencoded({ extended: true }), async (req, res) => {
+// Update creator status handler
+router.post('/update-status', express.urlencoded({ extended: false }), async (req, res) => {
   try {
     const { id, status } = req.body;
-
     if (!id || !status) {
-      return res.status(400).json({ error: 'Missing id or status' });
+      return res.status(400).send('Missing id or status');
     }
 
     const creators = await loadCreators();
-    const updated = creators.map(c => {
-      if (c.id === id || c.timestamp === id) {
-        return { ...c, status };
-      }
-      return c;
-    });
+    const idx = creators.findIndex(c => c.id === id || c.timestamp === id);
 
-    await saveJSONToS3('creator.json', updated);
+    if (idx === -1) {
+      return res.status(404).send('Creator not found');
+    }
 
-    // Redirect back to creators tab after update
+    creators[idx].status = status;
+
+    await saveJSONToS3('creator.json', creators);
+
     res.redirect('/api/admin/creators');
   } catch (err) {
-    console.error('Error updating status:', err);
-    res.status(500).json({ error: 'Failed to update status' });
+    console.error('Failed to update creator status:', err);
+    res.status(500).send('Failed to update status');
   }
+});
+
+// Logout route to clear auth (basic auth doesn't have a real logout, so just respond)
+router.get('/logout', (req, res) => {
+  res.set('WWW-Authenticate', 'Basic realm="401"');
+  res.status(401).send('Logged out');
 });
 
 module.exports = router;
