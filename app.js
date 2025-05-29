@@ -216,30 +216,28 @@ app.post('/api/payment/upload', upload.single('file'), async (req, res) => {
 
 app.post('/api/creator/upload', upload.none(), async (req, res) => {
   try {
-    const { name: contestTitle, creator: name, email, description, creatorSessionId, prizeModel } = req.body;
-    const session_id = creatorSessionId;
+    const { contest, creator, email, description, creatorSessionId, prizeModel } = req.body;
 
-    if (!session_id) {
+    if (!creatorSessionId) {
       return res.status(400).json({ error: 'Missing session_id' });
     }
 
     const creators = await getCreators();
-    const alreadySubmitted = creators.find(c => c.sessionId === session_id);
+    const alreadySubmitted = creators.find(c => c.sessionId === creatorSessionId);
     if (alreadySubmitted) {
       return res.status(400).json({ error: 'Submission already exists for this session.' });
     }
 
-   creators.push({
-  sessionId: session_id,
-  creator: name,
-  email,
-  contestTitle,
-  description,
-  prizeModel,
-  approved: false,
-  timestamp: new Date().toISOString(),
-});
-
+    creators.push({
+      sessionId: creatorSessionId,
+      contestTitle: contest,
+      creator: creator,
+      email,
+      description,
+      prizeModel,
+      approved: false,
+      timestamp: new Date().toISOString(),
+    });
 
     await saveCreators(creators);
 
