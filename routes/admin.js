@@ -424,7 +424,7 @@ router.post('/update-status', express.json(), async (req, res) => {
     let slug = null;
     if (status === 'approved') {
       // Generate slug from contest name + timestamp for uniqueness
-      slug = slugify(`${creators[index].contestName}-${Date.now()}`, { lower: true, strict: true });
+      slug = slugify(`${creators[index].contestTitle}-${Date.now()}`, { lower: true, strict: true });
       creators[index].slug = slug;
     } else {
       // Remove slug if status changed from approved to something else
