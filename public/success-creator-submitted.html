@@ -45,11 +45,44 @@
   </style>
 </head>
 <body>
-  <div class="container">
+  <div class="container" id="confirmation">
     <h1>✅ Contest Submitted!</h1>
     <p>Your contest has been submitted for review.</p>
     <p>You’ll receive an email once it’s approved or if any changes are needed.</p>
     <a href="/">Back to Home</a>
   </div>
+
+  <form id="creatorAutoForm" action="/api/creator/upload" method="POST" style="display: none;">
+    <input type="hidden" name="session_id" id="session_id" />
+    <input type="hidden" name="name" />
+    <input type="hidden" name="email" />
+    <input type="hidden" name="contestTitle" />
+    <input type="hidden" name="description" />
+    <input type="hidden" name="prizeModel" />
+  </form>
+
+  <script>
+    // Pull query string parameters
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get("session_id");
+    const name = localStorage.getItem("creator_name");
+    const email = localStorage.getItem("creator_email");
+    const contestTitle = localStorage.getItem("creator_contestTitle");
+    const description = localStorage.getItem("creator_description");
+    const prizeModel = localStorage.getItem("creator_prizeModel");
+
+    if (sessionId && name && email && contestTitle && description && prizeModel) {
+      const form = document.getElementById("creatorAutoForm");
+      form.querySelector("#session_id").value = sessionId;
+      form.querySelector('input[name="name"]').value = name;
+      form.querySelector('input[name="email"]').value = email;
+      form.querySelector('input[name="contestTitle"]').value = contestTitle;
+      form.querySelector('input[name="description"]').value = description;
+      form.querySelector('input[name="prizeModel"]').value = prizeModel;
+
+      // Submit form automatically
+      form.submit();
+    }
+  </script>
 </body>
 </html>
