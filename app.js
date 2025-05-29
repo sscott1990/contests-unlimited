@@ -260,10 +260,14 @@ app.get('/api/contests/approved', async (req, res) => {
     const creators = JSON.parse(data.Body.toString());
     const approved = creators.filter(c => c.status === 'approved');
 
+approved.sort((a, b) =>
+  a.contestTitle.localeCompare(b.contestTitle)
+);
     res.json(approved.map(entry => ({
-      name: entry.contestTitle,
-      slug: entry.slug
-    })));
+  name: `${entry.contestTitle} (hosted by ${entry.creator})`,
+  slug: entry.slug
+})));
+
   } catch (err) {
     console.error('Failed to load approved contests:', err);
     res.status(500).json({ error: 'Failed to load contests' });
