@@ -231,14 +231,15 @@ app.post('/api/creator/upload', upload.none(), async (req, res) => {
 
    creators.push({
   sessionId: session_id,
-  creatorName: name,    // save the actual person’s name here
+  creator: name,
   email,
-  contestName: contestTitle,  // contest name here
+  name: contestTitle,
   description,
   prizeModel,
   approved: false,
   timestamp: new Date().toISOString(),
 });
+
 
     await saveCreators(creators);
 
