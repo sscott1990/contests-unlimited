@@ -74,9 +74,16 @@ router.get('/uploads', async (req, res) => {
 
     const uploadsWithPresignedUrls = await Promise.all(
       paginatedUploads.map(async (upload) => {
-        if (!upload.fileUrl) return upload;
-        const url = new URL(upload.fileUrl);
-        const key = url.pathname.startsWith('/') ? url.pathname.slice(1) : url.pathname;
+        if (!upload.fileUrl) return { ...upload, presignedUrl: null };
+
+        let key;
+        try {
+          const url = new URL(upload.fileUrl);
+          key = url.pathname.startsWith('/') ? url.pathname.slice(1) : url.pathname;
+        } catch (err) {
+          console.warn('Invalid fileUrl:', upload.fileUrl);
+          return { ...upload, presignedUrl: null };
+        }
 
         try {
           const presignedUrl = await getPresignedUrl(key);
@@ -90,8 +97,8 @@ router.get('/uploads', async (req, res) => {
 
     const rows = uploadsWithPresignedUrls.map(upload => {
       const date = new Date(upload.timestamp).toLocaleString();
-      const filename = upload.fileUrl ? upload.fileUrl.split('/').pop() : '';
-      const viewUrl = upload.presignedUrl || upload.fileUrl || '#';
+      const filename = upload.fileUrl ? upload.fileUrl.split('/').pop() : 'No file';
+      const viewUrl = upload.presignedUrl;
 
       return `
       <tr>
@@ -100,8 +107,10 @@ router.get('/uploads', async (req, res) => {
         <td>${date}</td>
         <td>${filename}</td>
         <td>
-          <a href="${viewUrl}" target="_blank">View</a><br>
-          <img src="${viewUrl}" alt="${filename}" style="max-width: 100px;">
+          ${viewUrl
+            ? `<a href="${viewUrl}" target="_blank">View</a><br>
+               <img src="${viewUrl}" alt="${filename}" style="max-width: 100px;">`
+            : 'No file available'}
         </td>
       </tr>`;
     }).join('');
@@ -276,29 +285,31 @@ router.get('/creators', async (req, res) => {
     const start = (page - 1) * perPage;
     const paginatedCreators = creators.slice(start, start + perPage);
 
-    const rows = paginatedCreators.map(creator => {
-      const date = new Date(creator.timestamp).toLocaleString();
-      return `
+    const rows = paginatedCreators.map(creator => `
       <tr>
         <td>${creator.name || ''}</td>
-        <td>${creator.contestName || ''}</td>
         <td>${creator.email || ''}</td>
-        <td>${date}</td>
-        <td>${creator.creatorSessionId || ''}</td>
-      </tr>`;
-    }).join('');
+        <td>${creator.contestName || ''}</td>
+        <td>${creator.description || ''}</td>
+        <td>${new Date(creator.timestamp).toLocaleString()}</td>
+      </tr>
+    `).join('');
 
     let paginationControls = `<div style="margin-top: 1rem;">`;
-    if (page > 1) paginationControls += `<a href="?page=${page - 1}">Previous</a> `;
+    if (page > 1) {
+      paginationControls += `<a href="?page=${page - 1}">Previous</a> `;
+    }
     paginationControls += `Page ${page} of ${totalPages}`;
-    if (page < totalPages) paginationControls += ` <a href="?page=${page + 1}">Next</a>`;
+    if (page < totalPages) {
+      paginationControls += ` <a href="?page=${page + 1}">Next</a>`;
+    }
     paginationControls += `</div>`;
 
     res.send(`
       <!DOCTYPE html>
       <html lang="en">
       <head>
-        <title>Creator Submissions</title>
+        <title>Contest Creators</title>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <style>
@@ -313,7 +324,7 @@ router.get('/creators', async (req, res) => {
         </style>
       </head>
       <body>
-        <h1>Creator Contest Submissions</h1>
+        <h1>Contest Creators</h1>
         <nav>
           <a href="/api/admin/uploads">Uploads</a> |
           <a href="/api/admin/entries">Entries</a> |
@@ -325,10 +336,10 @@ router.get('/creators', async (req, res) => {
           <thead>
             <tr>
               <th>Name</th>
-              <th>Contest Name</th>
               <th>Email</th>
-              <th>Submitted At</th>
-              <th>Session ID</th>
+              <th>Contest Name</th>
+              <th>Description</th>
+              <th>Submitted</th>
             </tr>
           </thead>
           <tbody>
@@ -341,11 +352,11 @@ router.get('/creators', async (req, res) => {
     `);
   } catch (err) {
     console.error('Failed to load creators:', err);
-    res.status(500).send('Failed to load creator submissions.');
+    res.status(500).send('Failed to load creators.');
   }
 });
 
-// Logout route clears basic auth (forces browser prompt next time)
+// Logout route
 router.get('/logout', (req, res) => {
   res.set('WWW-Authenticate', 'Basic realm="401"');
   res.status(401).send('Logged out');

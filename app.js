@@ -229,16 +229,16 @@ app.post('/api/creator/upload', upload.none(), async (req, res) => {
       return res.status(400).json({ error: 'Submission already exists for this session.' });
     }
 
-    creators.push({
-      sessionId: session_id,
-      name,
-      email,
-      contestTitle,
-      description,
-      prizeModel,
-      approved: false,
-      timestamp: new Date().toISOString(),
-    });
+   creators.push({
+  sessionId: session_id,
+  creatorName: name,    // save the actual person’s name here
+  email,
+  contestName: contestTitle,  // contest name here
+  description,
+  prizeModel,
+  approved: false,
+  timestamp: new Date().toISOString(),
+});
 
     await saveCreators(creators);
 
