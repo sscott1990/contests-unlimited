@@ -90,6 +90,10 @@
       I understand the $50 fee is non-refundable unless denied, and a $10 admin fee applies if I issue a chargeback.
     </label>
 
+    <!-- Password field for creator account -->
+    <label>Password (for creator login):</label>
+    <input type="password" name="password" id="password" required autocomplete="new-password">
+
     <p><strong>Entry Fee: $50 (non-refundable if approved)</strong></p>
 
     <div id="checkout_button">Check Out & Submit</div>
@@ -145,6 +149,7 @@
         creator: form.elements['creator'].value,
         email: form.elements['email'].value,
         state: form.elements['state'].value,
+        password: form.elements['password'].value // Store password for submission
       };
       localStorage.setItem('creatorFormData', JSON.stringify(formData));
 

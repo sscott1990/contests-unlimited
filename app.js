@@ -8,6 +8,7 @@ const { v4: uuidv4 } = require('uuid'); // For UUID generation
 const contestRoutes = require('./routes/contest');
 const collectRoutes = require('./routes/collect');
 require('dotenv').config();
+const bcrypt = require('bcrypt'); // <-- Added for password hashing
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -216,12 +217,17 @@ app.post('/api/payment/upload', upload.single('file'), async (req, res) => {
   }
 });
 
+// === 🚩 Creator contest creation with password hashing ===
 app.post('/api/creator/upload', upload.none(), async (req, res) => {
   try {
-    const { contestName, creator, email, description, creatorSessionId, prizeModel } = req.body;
+    const { contestName, creator, email, description, creatorSessionId, prizeModel, password } = req.body;
 
     if (!creatorSessionId) {
       return res.status(400).json({ error: 'Missing session_id' });
+    }
+
+    if (!password) {
+      return res.status(400).json({ error: 'Missing password' });
     }
 
     const creators = await getCreators();
@@ -230,6 +236,10 @@ app.post('/api/creator/upload', upload.none(), async (req, res) => {
       return res.status(400).json({ error: 'Submission already exists for this session.' });
     }
 
+    // Hash the password before storing
+    const saltRounds = 10;
+    const passwordHash = await bcrypt.hash(password, saltRounds);
+
     creators.push({
       sessionId: creatorSessionId,
       contestTitle: contestName,
@@ -237,6 +247,7 @@ app.post('/api/creator/upload', upload.none(), async (req, res) => {
       email,
       description,
       prizeModel,
+      passwordHash,  // <-- Store the hash, not the raw password!
       approved: false,
       timestamp: new Date().toISOString(),
     });
