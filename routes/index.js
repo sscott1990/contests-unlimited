@@ -2,13 +2,15 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const AWS = require('aws-sdk');
-const bcrypt = require('bcrypt');
 const router = express.Router();
 
 const s3 = new AWS.S3();
 const BUCKET_NAME = 'contests-unlimited';
 
-// Load JSON file from S3
+// === Option 2 fallback start time for default contests ===
+const DEFAULT_CONTEST_START = new Date('2025-05-30T14:00:00Z'); // <-- Set to your site "launch" UTC date
+const DEFAULT_CONTEST_DURATION_MS = 365 * 24 * 60 * 60 * 1000; // 1 year
+
 function loadJsonFromS3(key, callback) {
   s3.getObject({
     Bucket: BUCKET_NAME,
@@ -28,7 +30,6 @@ function loadJsonFromS3(key, callback) {
   });
 }
 
-// Calculate prize pool by contest using uploads
 function calculatePrizesByContest(uploads) {
   const prizes = {};
   for (const upload of uploads) {
@@ -39,7 +40,6 @@ function calculatePrizesByContest(uploads) {
   return prizes;
 }
 
-// Load contest rules from rules.json (local)
 function loadRules() {
   try {
     const data = fs.readFileSync(path.join(__dirname, '..', 'rules.json'));
@@ -50,7 +50,6 @@ function loadRules() {
   }
 }
 
-// Serve home page with jackpot info, contest rules, hosted by info (NO creator login form)
 router.get('/', (req, res) => {
   loadJsonFromS3('uploads.json', (uploads) => {
     if (!uploads) uploads = [];
@@ -73,25 +72,35 @@ router.get('/', (req, res) => {
       const prizes = calculatePrizesByContest(uploads);
       const rules = loadRules();
 
-      // Build prizeList: show contestTitle and slug + host
+      // --- PRIZE LIST with fallback countdown ---
       const prizeList = Object.entries(prizes).map(([contestSlug, total]) => {
-        const info = contestInfoMap[contestSlug] || { creator: 'Contests Unlimited', contestTitle: contestSlug, endDate: null };
+        let info = contestInfoMap[contestSlug];
+        let endDateMs;
+        if (info && info.endDate) {
+          // Found in creator.json, use its endDate
+          endDateMs = info.endDate;
+        } else {
+          // Fallback for default contests: use 1 year from fixed deploy date
+          endDateMs = DEFAULT_CONTEST_START.getTime() + DEFAULT_CONTEST_DURATION_MS;
+          info = {
+            creator: 'Contests Unlimited',
+            contestTitle: contestSlug
+          };
+        }
         return `<li>
           <strong>${info.contestTitle} (${contestSlug})</strong>: $${total.toFixed(2)} — Entries: ${Math.floor(total / 2.5)}
           <em style="color: #666; font-size: 0.9em;">(Hosted by ${info.creator})</em>
-          <div>Ends in: <span class="countdown" data-endtime="${info.endDate || ''}"></span></div>
+          <div>Ends in: <span class="countdown" data-endtime="${endDateMs}"></span></div>
         </li>`;
       }).join('');
 
-      // RULE CARDS: removed the countdown/timer!
+      // --- RULE CARDS: no timer shown ---
       const rulesHtml = rules.map(r => `
         <div class="rule-card">
           <h3>${r.name}</h3>
           <ul>${r.rules.map(rule => `<li>${rule}</li>`).join('')}</ul>
         </div>
       `).join('');
-
-      // NOTE: Creator login form removed
 
       res.send(`
         <!DOCTYPE html>
@@ -164,7 +173,6 @@ router.get('/', (req, res) => {
     Creator Login
               </button>
             </p>
-
           </div>
 
           <!-- Creator Login Form REMOVED -->
@@ -182,10 +190,8 @@ router.get('/', (req, res) => {
               <li>Any attempt to manipulate or defraud the contest will result in disqualification.</li>
               <li>By entering, you agree to the official rules and the final decisions of the contest administrators.</li>
             </ul>
-
             <h3>Refund Policy</h3>
             <p>All contest entry fees are <strong>non-refundable</strong>. Once payment is submitted, no refunds will be issued under any circumstances, including disqualification or withdrawal.</p>
-
             <h3>Privacy Policy</h3>
             <p>We collect participant information including names, email address, uploaded files, and contest answers solely for the purpose of operating and managing contest entries. All data is securely stored and not shared, sold, or disclosed to third parties. Files are stored in AWS S3 and processed only for contest verification and winner selection. We use this information to ensure contest fairness and compliance. By participating, you consent to this data usage.</p>
           </div>
