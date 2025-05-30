@@ -105,9 +105,6 @@ async function loadDashboard() {
           <div><span class="label">Contest Title:</span> ${sanitizeHtml(data.contestTitle)}</div>
           <div><span class="label">Creator:</span> ${sanitizeHtml(data.creator)}</div>
           <div><span class="label">Email:</span> ${sanitizeHtml(data.email)}</div>
-          <div><span class="label">Status:</span> ${sanitizeHtml(data.status || "")}</div>
-          <div><span class="label">Approved:</span> ${data.approved ? "Yes" : "No"}</div>
-          <div><span class="label">Description:</span> ${sanitizeHtml(data.description || "")}</div>
           ${data.prizeModel ? `<div class="prize"><span class="label">Prize:</span> ${sanitizeHtml(data.prizeModel)}</div>` : ""}
           <div><span class="label">Entries:</span> ${earnings.entries || 0}</div>
           <div><span class="label">Creator Revenue:</span> $${earnings.revenue !== undefined ? earnings.revenue : 0}</div>
