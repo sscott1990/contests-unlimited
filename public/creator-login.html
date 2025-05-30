@@ -44,7 +44,7 @@ document.querySelector('form').onsubmit = async function(e) {
   if (response.ok && result.email) {
     // Store email for dashboard use
     localStorage.setItem('creatorEmail', result.email);
-    window.location.href = '/dashboard.html'; // or whatever your dashboard URL is
+    window.location.href = '/creator-dashboard.html'; // or whatever your dashboard URL is
   } else {
     document.getElementById('alert').style.display = "block";
     document.getElementById('alert').innerText = result.error || "Login failed";
