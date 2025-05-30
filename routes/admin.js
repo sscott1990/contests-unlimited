@@ -417,9 +417,9 @@ router.get('/creator-stats/:slug', async (req, res) => {
 
     const numEntries = contestEntries.length;
 
-    // Example: Calculate prize pot based on entryFee field, or replace with your logic
-    const prizePot = contestEntries.reduce((sum, entry) =>
-      sum + (parseFloat(entry.entryFee) || 0), 0);
+    // Calculate prize pot as $2.50 per entry (site), and $1.00 per entry (creator's earnings)
+    const prizePot = numEntries * 2.5;
+    const creatorEarnings = numEntries * 1.0;
 
     // Optionally get the contest name/title from one of the entries
     const contestName = contestEntries[0]?.contestTitle || contestEntries[0]?.contestName || slug;
@@ -441,6 +441,7 @@ router.get('/creator-stats/:slug', async (req, res) => {
         <h1>Stats for "${contestName}"</h1>
         <div class="stat"><strong>Number of Entries:</strong> ${numEntries}</div>
         <div class="stat"><strong>Current Prize Pot:</strong> $${prizePot.toFixed(2)}</div>
+        <div class="stat"><strong>Your Earnings So Far:</strong> $${creatorEarnings.toFixed(2)}</div>
       </body>
       </html>
     `);
