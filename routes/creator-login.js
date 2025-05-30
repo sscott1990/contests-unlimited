@@ -1,31 +1,32 @@
-const express = require('express');
-const bcrypt = require('bcrypt');
-const AWS = require('aws-sdk');
-const router = express.Router();
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Creator Login</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <style>
+    body { background: #f4f8fb; font-family: Arial, sans-serif; }
+    .container { background: #fff; padding: 2em; border-radius: 12px; max-width: 400px; margin: 80px auto; box-shadow: 0 0 15px rgba(0,0,0,0.07);}
+    h1 { color: #007849; }
+    label { display: block; margin-top: 1em; }
+    input { width: 100%; padding: 10px; margin-top: 5px; }
+    button { margin-top: 1.5em; padding: 0.75em 2em; background: #007849; color: #fff; border: none; border-radius: 5px; cursor: pointer; }
+    .alert { color: #c00; margin-top: 1em; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Creator Login</h1>
+    <form method="POST" action="/api/creator-login">
+      <label for="email">Email:</label>
+      <input type="email" name="email" id="email" required autocomplete="username">
 
-const s3 = new AWS.S3();
-const BUCKET_NAME = 'contests-unlimited';
-const CREATORS_KEY = 'creator.json';
+      <label for="password">Password:</label>
+      <input type="password" name="password" id="password" required autocomplete="current-password">
 
-function loadJsonFromS3(key, callback) {
-  s3.getObject({ Bucket: BUCKET_NAME, Key: key }, (err, data) => {
-    if (err) return callback([]);
-    try { callback(JSON.parse(data.Body.toString('utf-8'))); }
-    catch { callback([]); }
-  });
-}
-
-router.post('/creator-login', express.urlencoded({ extended: true }), (req, res) => {
-  const { email, password } = req.body;
-  loadJsonFromS3(CREATORS_KEY, async (creators) => {
-    // Use email for login
-    const creator = creators.find(c => c.email === email && c.passwordHash);
-    if (!creator) return res.send('Invalid email or password');
-    const match = await bcrypt.compare(password, creator.passwordHash);
-    if (!match) return res.send('Invalid email or password');
-    // Redirect to creator dashboard or admin area
-    res.redirect(`/api/admin/creator-stats/${creator.slug || creator.contestTitle}`);
-  });
-});
-
-module.exports = router;
+      <button type="submit">Login</button>
+      <div class="alert" id="alert" style="display:none"></div>
+    </form>
+  </div>
+</body>
+</html>
