@@ -261,6 +261,42 @@ app.post('/api/creator/upload', upload.none(), async (req, res) => {
   }
 });
 
+// === 🚪 Creator login ===
+app.post('/api/creator-login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required.' });
+    }
+
+    const creators = await getCreators();
+    const creator = creators.find(c => c.email === email);
+
+    if (!creator) {
+      return res.status(401).json({ error: 'Invalid email or password.' });
+    }
+
+    const passwordMatch = await bcrypt.compare(password, creator.passwordHash);
+    if (!passwordMatch) {
+      return res.status(401).json({ error: 'Invalid email or password.' });
+    }
+
+    res.json({
+      message: 'Login successful',
+      creator: {
+        email: creator.email,
+        contestTitle: creator.contestTitle,
+        approved: creator.approved,
+        slug: creator.slug || null
+      }
+    });
+  } catch (err) {
+    console.error('Creator login error:', err);
+    res.status(500).json({ error: 'Login failed due to server error.' });
+  }
+});
+
 // === ✅ List approved custom contests ===
 app.get('/api/contests/approved', async (req, res) => {
   try {

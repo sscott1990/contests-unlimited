@@ -167,6 +167,12 @@ router.get('/', (req, res) => {
                 Create Contest
               </button>
             </p>
+            <p style="margin-top: 10px;">
+  <button onclick="window.location.href='/creator-login.html'" style="padding: 10px 20px; background-color: #333; color: white; border: none; border-radius: 5px; font-size: 0.95em; cursor: pointer;">
+    Creator Login
+              </button>
+            </p>
+
           </div>
 
           <!-- Creator Login Form REMOVED -->
