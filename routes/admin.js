@@ -405,6 +405,52 @@ router.get('/creators', async (req, res) => {
   }
 });
 
+// --- ADDITION: Contest Stats Route for Creators ---
+router.get('/creator-stats/:slug', async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const uploads = await loadUploads();
+    if (!uploads) return res.status(404).send('No entries found.');
+
+    // Filter entries for this contest by slug
+    const contestEntries = uploads.filter(entry => entry.slug === slug);
+
+    const numEntries = contestEntries.length;
+
+    // Example: Calculate prize pot based on entryFee field, or replace with your logic
+    const prizePot = contestEntries.reduce((sum, entry) =>
+      sum + (parseFloat(entry.entryFee) || 0), 0);
+
+    // Optionally get the contest name/title from one of the entries
+    const contestName = contestEntries[0]?.contestTitle || contestEntries[0]?.contestName || slug;
+
+    res.send(`
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <title>${contestName} Stats</title>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <style>
+          body { font-family: Arial, sans-serif; margin: 2rem; background: #f9f9f9; color: #333; }
+          h1 { color: #444; }
+          .stat { font-size: 1.2em; margin-bottom: 1em; }
+        </style>
+      </head>
+      <body>
+        <h1>Stats for "${contestName}"</h1>
+        <div class="stat"><strong>Number of Entries:</strong> ${numEntries}</div>
+        <div class="stat"><strong>Current Prize Pot:</strong> $${prizePot.toFixed(2)}</div>
+      </body>
+      </html>
+    `);
+  } catch (err) {
+    console.error('Failed to load contest stats:', err);
+    res.status(500).send('Failed to load contest stats.');
+  }
+});
+// --- END ADDITION ---
+
 // Logout route
 router.get('/logout', (req, res) => {
   res.set('WWW-Authenticate', 'Basic realm="401"');
