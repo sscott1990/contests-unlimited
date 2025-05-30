@@ -49,7 +49,7 @@ function loadRules() {
   }
 }
 
-// Serve home page with jackpot info, contest rules, and hosted by info
+// Serve home page with jackpot info, contest rules, hosted by info, and creator login form
 router.get('/', (req, res) => {
   loadJsonFromS3('uploads.json', (uploads) => {
     if (!uploads) uploads = [];
@@ -97,6 +97,20 @@ router.get('/', (req, res) => {
           <ul>${r.rules.map(rule => `<li>${rule}</li>`).join('')}</ul>
         </div>
       `).join('');
+
+      // Creator login form (added)
+      const creatorLoginForm = `
+        <div style="margin-top:40px;max-width:350px;background:#fff;border:1px solid #aaa;padding:20px;border-radius:5px;">
+          <h2 style="margin-top:0;">Creator Login</h2>
+          <form method="POST" action="/creator-login">
+            <label for="username">Username:</label><br>
+            <input type="text" name="username" id="username" required autocomplete="username"><br><br>
+            <label for="password">Password:</label><br>
+            <input type="password" name="password" id="password" required autocomplete="current-password"><br><br>
+            <button type="submit">Login</button>
+          </form>
+        </div>
+      `;
 
       res.send(`
         <!DOCTYPE html>
@@ -166,6 +180,9 @@ router.get('/', (req, res) => {
             </p>
           </div>
 
+          <!-- Creator Login Form (inserted here) -->
+          ${creatorLoginForm}
+
           <!-- Original Terms and Conditions Section -->
           <div style="margin-top: 40px; padding: 20px; font-size: 0.85em; color: #555; max-width: 800px; margin-left: auto; margin-right: auto;">
             <h3>Terms and Conditions</h3>
@@ -227,6 +244,22 @@ router.get('/', (req, res) => {
     });
   });
 });
+
+// CREATOR LOGIN HANDLER
+router.post('/creator-login', express.urlencoded({ extended: true }), (req, res) => {
+  const { username, password } = req.body;
+  loadJsonFromS3('creator.json', (creators) => {
+    if (!Array.isArray(creators)) return res.status(401).send('Invalid credentials');
+    const creator = creators.find(c => c.username === username && c.password === password);
+    if (!creator) {
+      return res.status(401).send('Invalid username or password');
+    }
+    const slug = creator.slug || creator.contestName;
+    // Redirect to their stats page
+    res.redirect(`/api/admin/creator-stats/${slug}`);
+  });
+});
+
 
 // API: Return JSON of prize pools by contest (unchanged)
 router.get('/api/prize', (req, res) => {
