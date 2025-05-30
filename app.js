@@ -280,28 +280,25 @@ app.post('/api/creator-login', async (req, res) => {
     }
 
     const creators = await getCreators();
-    // Accept login if any contest has matching email and password
+    // Find all contests for this email
     const matchingCreators = creators.filter(c => c.email === email && c.passwordHash);
-    let validCreator = null;
+
+    // Accept login if password matches ANY contest for this email
+    let valid = false;
     for (const creator of matchingCreators) {
       if (await bcrypt.compare(password, creator.passwordHash)) {
-        validCreator = creator;
+        valid = true;
         break;
       }
     }
-    if (!validCreator) {
+    if (!valid) {
       return res.status(401).json({ error: 'Invalid email or password.' });
     }
 
+    // Login success: just return success status and email (dashboard will use this)
     res.json({
       message: 'Login successful',
-      creator: {
-        email: validCreator.email,
-        contestTitle: validCreator.contestTitle,
-        approved: validCreator.approved,
-        slug: validCreator.slug || null,
-        endDate: validCreator.endDate || null // Optionally return endDate for dashboard
-      }
+      email: email // frontend should use this for dashboard fetch
     });
   } catch (err) {
     console.error('Creator login error:', err);
