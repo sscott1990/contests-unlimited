@@ -62,7 +62,7 @@ function sanitizeHtml(str) {
 }
 
 async function loadDashboard() {
-  // Get creator email from session/localStorage or prompt for it (for demo)
+  // Get creator email from session/localStorage or prompt for it
   let email = localStorage.getItem('creatorEmail');
   if (!email) {
     email = prompt("Enter your creator email to view all your contests:");
@@ -73,18 +73,32 @@ async function loadDashboard() {
     localStorage.setItem('creatorEmail', email);
   }
 
-  const res = await fetch(`/api/admin/creator-stats-by-email/${encodeURIComponent(email)}`);
-  if (!res.ok) {
+  // Fetch contest info and earnings in parallel
+  const [contestsRes, earningsRes] = await Promise.all([
+    fetch(`/api/admin/creator-stats-by-email/${encodeURIComponent(email)}`),
+    fetch(`/api/admin/creator-earnings/${encodeURIComponent(email)}`)
+  ]);
+  if (!contestsRes.ok || !earningsRes.ok) {
     document.getElementById('info').innerText = "Error loading dashboard.";
     return;
   }
-  const contests = await res.json();
+  const contests = await contestsRes.json();
+  const earningsData = await earningsRes.json();
+  // Make a map from slug to earnings
+  const earningsMap = {};
+  if (earningsData && Array.isArray(earningsData.contests)) {
+    for (const e of earningsData.contests) {
+      earningsMap[e.slug] = e;
+    }
+  }
+
   if (!Array.isArray(contests) || contests.length === 0) {
     document.getElementById('info').innerText = "No contests found for your email.";
     return;
   }
   let html = "";
   for (const data of contests) {
+    const earnings = earningsMap[data.slug] || {};
     html += `
       <div class="contest-block">
         <div class="info">
@@ -95,6 +109,8 @@ async function loadDashboard() {
           <div><span class="label">Approved:</span> ${data.approved ? "Yes" : "No"}</div>
           <div><span class="label">Description:</span> ${sanitizeHtml(data.description || "")}</div>
           ${data.prizeModel ? `<div class="prize"><span class="label">Prize:</span> ${sanitizeHtml(data.prizeModel)}</div>` : ""}
+          <div><span class="label">Entries:</span> ${earnings.entries || 0}</div>
+          <div><span class="label">Creator Revenue:</span> $${earnings.revenue !== undefined ? earnings.revenue : 0}</div>
           <div><span class="label">Ends in:</span> <span class="cd-hold"></span></div>
         </div>
       </div>

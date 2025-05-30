@@ -19,6 +19,7 @@ async function getUploads() {
     throw err;
   }
 }
+
 async function getCreators() {
   try {
     const data = await s3.getObject({
