@@ -40,15 +40,7 @@ function calculatePrizesByContest(uploads) {
   return prizes;
 }
 
-function loadRules() {
-  try {
-    const data = fs.readFileSync(path.join(__dirname, '..', 'rules.json'));
-    return JSON.parse(data);
-  } catch (err) {
-    console.error('Error reading rules.json:', err);
-    return [];
-  }
-}
+// REMOVED loadRules() - now always using loadJsonFromS3 for rules
 
 router.get('/', (req, res) => {
   loadJsonFromS3('uploads.json', (uploads) => {
@@ -70,173 +62,177 @@ router.get('/', (req, res) => {
       }
 
       const prizes = calculatePrizesByContest(uploads);
-      const rules = loadRules();
 
-      // --- PRIZE LIST with fallback countdown ---
-      const prizeList = Object.entries(prizes).map(([contestSlug, total]) => {
-        let info = contestInfoMap[contestSlug];
-        let endDateMs;
-        if (info && info.endDate) {
-          // Found in creator.json, use its endDate
-          endDateMs = info.endDate;
-        } else {
-          // Fallback for default contests: use 1 year from fixed deploy date
-          endDateMs = DEFAULT_CONTEST_START.getTime() + DEFAULT_CONTEST_DURATION_MS;
-          info = {
-            creator: 'Contests Unlimited',
-            contestTitle: contestSlug
-          };
-        }
-        return `<li>
-          <strong>${info.contestTitle} (${contestSlug})</strong>: $${total.toFixed(2)} — Entries: ${Math.floor(total / 2.5)}
-          <em style="color: #666; font-size: 0.9em;">(Hosted by ${info.creator})</em>
-          <div>Ends in: <span class="countdown" data-endtime="${endDateMs}"></span></div>
-        </li>`;
-      }).join('');
+      // --- NOW LOAD RULES FROM S3 ---
+      loadJsonFromS3('rules.json', (rules) => {
+        if (!rules) rules = [];
 
-      // --- RULE CARDS: no timer shown ---
-      const rulesHtml = rules.map(r => `
-        <div class="rule-card">
-          <h3>${r.name}</h3>
-          <ul>${r.rules.map(rule => `<li>${rule}</li>`).join('')}</ul>
-        </div>
-      `).join('');
+        // --- PRIZE LIST with fallback countdown ---
+        const prizeList = Object.entries(prizes).map(([contestSlug, total]) => {
+          let info = contestInfoMap[contestSlug];
+          let endDateMs;
+          if (info && info.endDate) {
+            // Found in creator.json, use its endDate
+            endDateMs = info.endDate;
+          } else {
+            // Fallback for default contests: use 1 year from fixed deploy date
+            endDateMs = DEFAULT_CONTEST_START.getTime() + DEFAULT_CONTEST_DURATION_MS;
+            info = {
+              creator: 'Contests Unlimited',
+              contestTitle: contestSlug
+            };
+          }
+          return `<li>
+            <strong>${info.contestTitle} (${contestSlug})</strong>: $${total.toFixed(2)} — Entries: ${Math.floor(total / 2.5)}
+            <em style="color: #666; font-size: 0.9em;">(Hosted by ${info.creator})</em>
+            <div>Ends in: <span class="countdown" data-endtime="${endDateMs}"></span></div>
+          </li>`;
+        }).join('');
 
-      res.send(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>Contest Website</title>
-          <link rel="stylesheet" href="/styles.css">
-          <style>
-            .rules-container {
-              display: flex;
-              flex-wrap: wrap;
-              gap: 20px;
-              margin-top: 30px;
-              justify-content: center;
-            }
-            .rule-card {
-              background-color: #ffffff;
-              border: 2px solid #007849;
-              border-radius: 10px;
-              padding: 20px;
-              max-width: 300px;
-              box-shadow: 0 3px 8px rgba(0,0,0,0.15);
-            }
-            .rule-card h3 {
-              margin-top: 0;
-              color: #005b96;
-            }
-            .rule-card ul {
-              padding-left: 20px;
-              text-align: left;
-            }
-            .admin-link {
-              position: fixed;
-              bottom: 10px;
-              left: 10px;
-              font-size: 14px;
-            }
-          </style>
-        </head>
-        <body>
-          <h1>Contests Unlimited</h1>
-          <p>
-            <button onclick="window.location.href='/payment.html'" style="padding: 10px 20px; background-color: #007849; color: white; border: none; border-radius: 5px; cursor: pointer;">
-              Enter Contest
-            </button>
-          </p>
-
-          <h2>Current Jackpot Info</h2>
-          <ul>${prizeList || '<li>No entries yet</li>'}</ul>
-
-          <h2>Contest Rules</h2>
-          <div class="rules-container">
-            ${rulesHtml || '<p>No rules available.</p>'}
+        // --- RULE CARDS: no timer shown ---
+        const rulesHtml = rules.map(r => `
+          <div class="rule-card">
+            <h3>${r.name}</h3>
+            <ul>${r.rules.map(rule => `<li>${rule}</li>`).join('')}</ul>
           </div>
+        `).join('');
 
-          <!-- New section promoting contest creation -->
-          <div style="margin-top: 40px; text-align: center;">
-            <h2>Start Your Own Contest</h2>
-            <p style="font-size: 1.1em; max-width: 600px; margin: 0 auto;">
-              Create your own contest to earn <strong>$1 per entry!</strong><br>
-              <em>Subject to approval. Refunds only if denied. You are responsible for chargeback fees.</em>
-            </p>
-            <p style="margin-top: 20px;">
-              <button onclick="window.location.href='/create.html'" style="padding: 12px 24px; background-color: #005b96; color: white; border: none; border-radius: 5px; font-size: 1em; cursor: pointer;">
-                Create Contest
+        res.send(`
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>Contest Website</title>
+            <link rel="stylesheet" href="/styles.css">
+            <style>
+              .rules-container {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 20px;
+                margin-top: 30px;
+                justify-content: center;
+              }
+              .rule-card {
+                background-color: #ffffff;
+                border: 2px solid #007849;
+                border-radius: 10px;
+                padding: 20px;
+                max-width: 300px;
+                box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+              }
+              .rule-card h3 {
+                margin-top: 0;
+                color: #005b96;
+              }
+              .rule-card ul {
+                padding-left: 20px;
+                text-align: left;
+              }
+              .admin-link {
+                position: fixed;
+                bottom: 10px;
+                left: 10px;
+                font-size: 14px;
+              }
+            </style>
+          </head>
+          <body>
+            <h1>Contests Unlimited</h1>
+            <p>
+              <button onclick="window.location.href='/payment.html'" style="padding: 10px 20px; background-color: #007849; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                Enter Contest
               </button>
             </p>
-            <p style="margin-top: 10px;">
-  <button onclick="window.location.href='/creator-login.html'" style="padding: 10px 20px; background-color: #333; color: white; border: none; border-radius: 5px; font-size: 0.95em; cursor: pointer;">
-    Creator Login
-              </button>
-            </p>
-          </div>
 
-          <!-- Creator Login Form REMOVED -->
+            <h2>Current Jackpot Info</h2>
+            <ul>${prizeList || '<li>No entries yet</li>'}</ul>
 
-          <!-- Original Terms and Conditions Section -->
-          <div style="margin-top: 40px; padding: 20px; font-size: 0.85em; color: #555; max-width: 800px; margin-left: auto; margin-right: auto;">
-            <h3>Terms and Conditions</h3>
-            <ul>
-              <li>Each contest entry costs $5.00 USD. The entry fee is non-refundable.</li>
-              <li>50% of each entry fee ($2.50) is added to the prize pool for that specific contest.</li>
-              <li>Each contest has a unique prize pool that grows with each valid entry.</li>
-              <li>At the end of the contest, one winner will be selected and awarded the full prize pool amount.</li>
-              <li>Winners will be notified and paid within 7–14 business days after verification.</li>
-              <li>Only participants aged 18 and older are eligible to enter.</li>
-              <li>Any attempt to manipulate or defraud the contest will result in disqualification.</li>
-              <li>By entering, you agree to the official rules and the final decisions of the contest administrators.</li>
-            </ul>
-            <h3>Refund Policy</h3>
-            <p>All contest entry fees are <strong>non-refundable</strong>. Once payment is submitted, no refunds will be issued under any circumstances, including disqualification or withdrawal.</p>
-            <h3>Privacy Policy</h3>
-            <p>We collect participant information including names, email address, uploaded files, and contest answers solely for the purpose of operating and managing contest entries. All data is securely stored and not shared, sold, or disclosed to third parties. Files are stored in AWS S3 and processed only for contest verification and winner selection. We use this information to ensure contest fairness and compliance. By participating, you consent to this data usage.</p>
-          </div>
+            <h2>Contest Rules</h2>
+            <div class="rules-container">
+              ${rulesHtml || '<p>No rules available.</p>'}
+            </div>
 
-          <a class="admin-link" href="/api/admin/uploads">Admin</a>
+            <!-- New section promoting contest creation -->
+            <div style="margin-top: 40px; text-align: center;">
+              <h2>Start Your Own Contest</h2>
+              <p style="font-size: 1.1em; max-width: 600px; margin: 0 auto;">
+                Create your own contest to earn <strong>$1 per entry!</strong><br>
+                <em>Subject to approval. Refunds only if denied. You are responsible for chargeback fees.</em>
+              </p>
+              <p style="margin-top: 20px;">
+                <button onclick="window.location.href='/create.html'" style="padding: 12px 24px; background-color: #005b96; color: white; border: none; border-radius: 5px; font-size: 1em; cursor: pointer;">
+                  Create Contest
+                </button>
+              </p>
+              <p style="margin-top: 10px;">
+                <button onclick="window.location.href='/creator-login.html'" style="padding: 10px 20px; background-color: #333; color: white; border: none; border-radius: 5px; font-size: 0.95em; cursor: pointer;">
+                  Creator Login
+                </button>
+              </p>
+            </div>
 
-          <script>
-            // Countdown script for all contests (prize list)
-            function updateCountdowns() {
-              const now = Date.now();
-              document.querySelectorAll('.countdown').forEach(el => {
-                const endTime = parseInt(el.getAttribute('data-endtime'));
-                if (!endTime) {
-                  el.textContent = 'No end date set';
-                  return;
-                }
-                let diff = endTime - now;
+            <!-- Creator Login Form REMOVED -->
 
-                if (diff <= 0) {
-                  el.textContent = 'Contest ended';
-                  return;
-                }
+            <!-- Original Terms and Conditions Section -->
+            <div style="margin-top: 40px; padding: 20px; font-size: 0.85em; color: #555; max-width: 800px; margin-left: auto; margin-right: auto;">
+              <h3>Terms and Conditions</h3>
+              <ul>
+                <li>Each contest entry costs $5.00 USD. The entry fee is non-refundable.</li>
+                <li>50% of each entry fee ($2.50) is added to the prize pool for that specific contest.</li>
+                <li>Each contest has a unique prize pool that grows with each valid entry.</li>
+                <li>At the end of the contest, one winner will be selected and awarded the full prize pool amount.</li>
+                <li>Winners will be notified and paid within 7–14 business days after verification.</li>
+                <li>Only participants aged 18 and older are eligible to enter.</li>
+                <li>Any attempt to manipulate or defraud the contest will result in disqualification.</li>
+                <li>By entering, you agree to the official rules and the final decisions of the contest administrators.</li>
+              </ul>
+              <h3>Refund Policy</h3>
+              <p>All contest entry fees are <strong>non-refundable</strong>. Once payment is submitted, no refunds will be issued under any circumstances, including disqualification or withdrawal.</p>
+              <h3>Privacy Policy</h3>
+              <p>We collect participant information including names, email address, uploaded files, and contest answers solely for the purpose of operating and managing contest entries. All data is securely stored and not shared, sold, or disclosed to third parties. Files are stored in AWS S3 and processed only for contest verification and winner selection. We use this information to ensure contest fairness and compliance. By participating, you consent to this data usage.</p>
+            </div>
 
-                const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-                diff -= days * (1000 * 60 * 60 * 24);
-                const hours = Math.floor(diff / (1000 * 60 * 60));
-                diff -= hours * (1000 * 60 * 60);
-                const minutes = Math.floor(diff / (1000 * 60));
-                diff -= minutes * (1000 * 60);
-                const seconds = Math.floor(diff / 1000);
+            <a class="admin-link" href="/api/admin/uploads">Admin</a>
 
-                el.textContent = 
-                  (days > 0 ? days + 'd ' : '') +
-                  hours.toString().padStart(2, '0') + 'h ' +
-                  minutes.toString().padStart(2, '0') + 'm ' +
-                  seconds.toString().padStart(2, '0') + 's';
-              });
-            }
+            <script>
+              // Countdown script for all contests (prize list)
+              function updateCountdowns() {
+                const now = Date.now();
+                document.querySelectorAll('.countdown').forEach(el => {
+                  const endTime = parseInt(el.getAttribute('data-endtime'));
+                  if (!endTime) {
+                    el.textContent = 'No end date set';
+                    return;
+                  }
+                  let diff = endTime - now;
 
-            updateCountdowns();
-            setInterval(updateCountdowns, 1000);
-          </script>
-        </body>
-        </html>
-      `);
+                  if (diff <= 0) {
+                    el.textContent = 'Contest ended';
+                    return;
+                  }
+
+                  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                  diff -= days * (1000 * 60 * 60 * 24);
+                  const hours = Math.floor(diff / (1000 * 60 * 60));
+                  diff -= hours * (1000 * 60 * 60);
+                  const minutes = Math.floor(diff / (1000 * 60));
+                  diff -= minutes * (1000 * 60);
+                  const seconds = Math.floor(diff / 1000);
+
+                  el.textContent = 
+                    (days > 0 ? days + 'd ' : '') +
+                    hours.toString().padStart(2, '0') + 'h ' +
+                    minutes.toString().padStart(2, '0') + 'm ' +
+                    seconds.toString().padStart(2, '0') + 's';
+                });
+              }
+
+              updateCountdowns();
+              setInterval(updateCountdowns, 1000);
+            </script>
+          </body>
+          </html>
+        `);
+      });
     });
   });
 });

@@ -36,15 +36,16 @@
     ]
   },
   {
-    "name": "DIY Contest",
+    "name": "Caption Contest",
     "rules": [
-      "Submit one original photo or video of a DIY project you completed.",
-      "Include a short written description of the materials and process.",
-      "Submissions must showcase work done by the entrant.",
-      "Projects will be judged based on creativity, usefulness, and presentation.",
-      "No dangerous or unsafe projects will be accepted.",
-      "Must be 18 years or older to enter.",
-      "Void where prohibited."
+      "A photo will be provided for each contest.",
+      "Entrants must submit an original caption for the photo.",
+      "Captions must be family-friendly and not contain offensive language or content.",
+      "Each participant may submit only one caption per contest.",
+      "Captions are judged based on creativity, originality, and relevance to the photo.",
+      "At the end of the contest, the best caption as determined by the contest judges will win the entire prize pool.",
+      "Entries submitted after the contest deadline will not be considered.",
+      "By participating, you agree to abide by the official rules and the decisions of the contest administrators, which are final."
     ]
   }
 ]
