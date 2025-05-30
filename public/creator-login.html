@@ -29,25 +29,27 @@
     </form>
   </div>
 <script>
-    document.querySelector('form').onsubmit = async function(e) {
-      e.preventDefault();
-      const email = document.getElementById('email').value;
-      const password = document.getElementById('password').value;
-      const response = await fetch('/api/creator-login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ email, password })
-      });
-      const result = await response.json();
-      if (result.creator && result.creator.slug) {
-        window.location.href = `/api/admin/creator-stats/${result.creator.slug}`;
-      } else {
-        document.getElementById('alert').style.display = "block";
-        document.getElementById('alert').innerText = result.error || "Login failed";
-      }
-    };
-  </script>
+document.querySelector('form').onsubmit = async function(e) {
+  e.preventDefault();
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+  const response = await fetch('/api/creator-login', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ email, password })
+  });
+  const result = await response.json();
+  if (response.ok && result.email) {
+    // Store email for dashboard use
+    localStorage.setItem('creatorEmail', result.email);
+    window.location.href = '/dashboard.html'; // or whatever your dashboard URL is
+  } else {
+    document.getElementById('alert').style.display = "block";
+    document.getElementById('alert').innerText = result.error || "Login failed";
+  }
+};
+</script>
 </body>
 </html>

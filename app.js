@@ -280,10 +280,12 @@ app.post('/api/creator-login', async (req, res) => {
     }
 
     const creators = await getCreators();
-    // Find all contests for this email
-    const matchingCreators = creators.filter(c => c.email === email && c.passwordHash);
+    const emailLower = email.toLowerCase();
+    // Check email case-insensitively and require passwordHash
+    const matchingCreators = creators.filter(
+      c => (c.email || '').toLowerCase() === emailLower && c.passwordHash
+    );
 
-    // Accept login if password matches ANY contest for this email
     let valid = false;
     for (const creator of matchingCreators) {
       if (await bcrypt.compare(password, creator.passwordHash)) {
@@ -295,7 +297,6 @@ app.post('/api/creator-login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid email or password.' });
     }
 
-    // Login success: just return success status and email (dashboard will use this)
     res.json({
       message: 'Login successful',
       email: email // frontend should use this for dashboard fetch
