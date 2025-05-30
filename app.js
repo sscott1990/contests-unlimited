@@ -244,8 +244,17 @@ app.post('/api/creator/upload', upload.none(), async (req, res) => {
     const saltRounds = 10;
     const passwordHash = await bcrypt.hash(password, saltRounds);
 
-    // Set endDate to 30 days from now
-    const endDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+  let endDate;
+if (
+  !creator ||
+  (typeof creator === 'string' && creator.trim().toLowerCase() === "contests unlimited")
+) {
+  // 1 year from now for "Contests Unlimited"
+  endDate = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
+} else {
+  // 30 days from now for all other creators
+  endDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+}
 
     // Generate a slug for this contest
     const slug = contestName.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now();

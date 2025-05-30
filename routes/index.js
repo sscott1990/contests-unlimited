@@ -83,10 +83,10 @@ router.get('/', (req, res) => {
         </li>`;
       }).join('');
 
+      // RULE CARDS: removed the countdown/timer!
       const rulesHtml = rules.map(r => `
         <div class="rule-card">
           <h3>${r.name}</h3>
-          <p>Ends in: <span class="countdown" data-endtime=""></span></p>
           <ul>${r.rules.map(rule => `<li>${rule}</li>`).join('')}</ul>
         </div>
       `).join('');
@@ -193,7 +193,7 @@ router.get('/', (req, res) => {
           <a class="admin-link" href="/api/admin/uploads">Admin</a>
 
           <script>
-            // Countdown script for all contests
+            // Countdown script for all contests (prize list)
             function updateCountdowns() {
               const now = Date.now();
               document.querySelectorAll('.countdown').forEach(el => {
