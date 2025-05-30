@@ -38,7 +38,7 @@ function parsePrize(prizeModel) {
   const match = String(prizeModel).match(/([\d,.]+)/);
   return match ? parseFloat(match[1].replace(/,/g, '')) : null;
 }
-const DEFAULT_ENTRY_FEE = 10;
+const DEFAULT_ENTRY_FEE = 1;
 
 router.get('/creator-earnings/:email', async (req, res) => {
   try {
