@@ -413,7 +413,7 @@ router.get('/creator-stats/:slug', async (req, res) => {
     if (!uploads) return res.status(404).send('No entries found.');
 
     // Filter entries for this contest by slug
-    const contestEntries = uploads.filter(entry => entry.slug === slug);
+    const contestEntries = uploads.filter(entry => entry.contestName === slug);
 
     const numEntries = contestEntries.length;
 
