@@ -280,25 +280,27 @@ app.post('/api/creator-login', async (req, res) => {
     }
 
     const creators = await getCreators();
-    const creator = creators.find(c => c.email === email && c.passwordHash);
-
-    if (!creator) {
-      return res.status(401).json({ error: 'Invalid email or password.' });
+    // Accept login if any contest has matching email and password
+    const matchingCreators = creators.filter(c => c.email === email && c.passwordHash);
+    let validCreator = null;
+    for (const creator of matchingCreators) {
+      if (await bcrypt.compare(password, creator.passwordHash)) {
+        validCreator = creator;
+        break;
+      }
     }
-
-    const passwordMatch = await bcrypt.compare(password, creator.passwordHash);
-    if (!passwordMatch) {
+    if (!validCreator) {
       return res.status(401).json({ error: 'Invalid email or password.' });
     }
 
     res.json({
       message: 'Login successful',
       creator: {
-        email: creator.email,
-        contestTitle: creator.contestTitle,
-        approved: creator.approved,
-        slug: creator.slug || null,
-        endDate: creator.endDate || null // Optionally return endDate for dashboard
+        email: validCreator.email,
+        contestTitle: validCreator.contestTitle,
+        approved: validCreator.approved,
+        slug: validCreator.slug || null,
+        endDate: validCreator.endDate || null // Optionally return endDate for dashboard
       }
     });
   } catch (err) {
@@ -347,6 +349,21 @@ app.get('/api/contest/:slug', async (req, res) => {
   } catch (err) {
     console.error('Failed to fetch contest:', err);
     res.status(500).json({ error: 'Failed to fetch contest' });
+  }
+});
+
+// === New: API to fetch all contests for an email ===
+app.get('/api/admin/creator-stats-by-email/:email', async (req, res) => {
+  try {
+    const email = decodeURIComponent(req.params.email).toLowerCase();
+    const creators = await getCreators();
+    const matchingContests = creators.filter(
+      c => (c.email || '').toLowerCase() === email
+    );
+    res.json(matchingContests);
+  } catch (err) {
+    console.error('Error fetching creator stats by email:', err);
+    res.status(500).json({ error: 'Failed to fetch contests for this email.' });
   }
 });
 

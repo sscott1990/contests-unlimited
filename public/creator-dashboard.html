@@ -6,42 +6,33 @@
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <style>
     body { background: #f4f8fb; font-family: Arial, sans-serif; }
-    .container { background: #fff; padding: 2em; border-radius: 12px; max-width: 600px; margin: 40px auto; box-shadow: 0 0 15px rgba(0,0,0,0.07);}
+    .container { background: #fff; padding: 2em; border-radius: 12px; max-width: 900px; margin: 40px auto; box-shadow: 0 0 15px rgba(0,0,0,0.07);}
     h1 { color: #007849; }
     .prize { margin-top: 1em; background: #e6faf1; padding: 1em; border-radius: 6px; }
     .info { margin-top: 1em; }
     .label { font-weight: bold; }
     .countdown { font-weight: bold; color: #d20000; }
+    .contest-block { border-bottom: 1px solid #ddd; margin-bottom: 2em; padding-bottom: 2em; }
+    @media (max-width: 700px) {
+      .container { max-width: 100%; padding: 1em; }
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>Creator Dashboard</h1>
     <div id="info">
-      Loading contest info...
+      Loading your contests...
     </div>
-    <div id="countdown-section" style="margin-top:2em;"></div>
   </div>
 <script>
-function getSlugFromUrl() {
-  const parts = window.location.pathname.split('/');
-  return parts[parts.length - 1];
-}
-
-function startCountdown(endDate) {
-  const countdownDiv = document.getElementById('countdown-section');
-  function updateCountdown() {
-    const now = new Date().getTime();
+function formatCountdown(endDate) {
+  function getCountdownText() {
+    const now = Date.now();
     const end = new Date(endDate).getTime();
+    if (isNaN(end)) return 'No end date set';
     let diff = end - now;
-    if (isNaN(end)) {
-      countdownDiv.innerHTML = '<div class="countdown">No end date set</div>';
-      return;
-    }
-    if (diff <= 0) {
-      countdownDiv.innerHTML = '<div class="countdown">Contest ended</div>';
-      return;
-    }
+    if (diff <= 0) return 'Contest ended';
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
     diff -= days * (1000 * 60 * 60 * 24);
     const hours = Math.floor(diff / (1000 * 60 * 60));
@@ -49,42 +40,77 @@ function startCountdown(endDate) {
     const minutes = Math.floor(diff / (1000 * 60));
     diff -= minutes * (1000 * 60);
     const seconds = Math.floor(diff / 1000);
-
-    countdownDiv.innerHTML = `<div class="countdown">Time left: ` +
-      (days > 0 ? days + 'd ' : '') +
+    return (days > 0 ? days + 'd ' : '') +
       hours.toString().padStart(2, '0') + 'h ' +
       minutes.toString().padStart(2, '0') + 'm ' +
-      seconds.toString().padStart(2, '0') + 's</div>';
+      seconds.toString().padStart(2, '0') + 's';
   }
-  updateCountdown();
-  setInterval(updateCountdown, 1000);
+
+  // For live updating, we return an element and update it
+  const span = document.createElement('span');
+  span.className = "countdown";
+  function updater() { span.textContent = getCountdownText(); }
+  updater();
+  setInterval(updater, 1000);
+  return span;
+}
+
+function sanitizeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
 }
 
 async function loadDashboard() {
-  const slug = getSlugFromUrl();
-  const res = await fetch(`/api/admin/creator-stats/${slug}`);
+  // Get creator email from session/localStorage or prompt for it (for demo)
+  let email = localStorage.getItem('creatorEmail');
+  if (!email) {
+    email = prompt("Enter your creator email to view all your contests:");
+    if (!email) {
+      document.getElementById('info').innerText = "No email provided.";
+      return;
+    }
+    localStorage.setItem('creatorEmail', email);
+  }
+
+  const res = await fetch(`/api/admin/creator-stats-by-email/${encodeURIComponent(email)}`);
   if (!res.ok) {
     document.getElementById('info').innerText = "Error loading dashboard.";
     return;
   }
-  const data = await res.json();
-  document.getElementById('info').innerHTML = `
-    <div class="info">
-      <div><span class="label">Contest Title:</span> ${data.contestTitle}</div>
-      <div><span class="label">Creator:</span> ${data.creator}</div>
-      <div><span class="label">Email:</span> ${data.email}</div>
-      <div><span class="label">Status:</span> ${data.status}</div>
-      <div><span class="label">Approved:</span> ${data.approved ? "Yes" : "No"}</div>
-      <div><span class="label">Description:</span> ${data.description}</div>
-      ${data.prizeModel ? `<div class="prize"><span class="label">Prize:</span> ${data.prizeModel}</div>` : ""}
-    </div>
-  `;
-  // Display countdown if endDate is present
-  if (data.endDate) {
-    startCountdown(data.endDate);
-  } else {
-    document.getElementById('countdown-section').innerHTML = '<div class="countdown">No end date set</div>';
+  const contests = await res.json();
+  if (!Array.isArray(contests) || contests.length === 0) {
+    document.getElementById('info').innerText = "No contests found for your email.";
+    return;
   }
+  let html = "";
+  for (const data of contests) {
+    html += `
+      <div class="contest-block">
+        <div class="info">
+          <div><span class="label">Contest Title:</span> ${sanitizeHtml(data.contestTitle)}</div>
+          <div><span class="label">Creator:</span> ${sanitizeHtml(data.creator)}</div>
+          <div><span class="label">Email:</span> ${sanitizeHtml(data.email)}</div>
+          <div><span class="label">Status:</span> ${sanitizeHtml(data.status || "")}</div>
+          <div><span class="label">Approved:</span> ${data.approved ? "Yes" : "No"}</div>
+          <div><span class="label">Description:</span> ${sanitizeHtml(data.description || "")}</div>
+          ${data.prizeModel ? `<div class="prize"><span class="label">Prize:</span> ${sanitizeHtml(data.prizeModel)}</div>` : ""}
+          <div><span class="label">Ends in:</span> <span class="cd-hold"></span></div>
+        </div>
+      </div>
+    `;
+  }
+  document.getElementById('info').innerHTML = html;
+
+  // Attach countdowns
+  const cdHolders = document.querySelectorAll('.cd-hold');
+  contests.forEach((data, idx) => {
+    if (data.endDate) {
+      cdHolders[idx].appendChild(formatCountdown(data.endDate));
+    } else {
+      cdHolders[idx].innerHTML = '<span class="countdown">No end date set</span>';
+    }
+  });
 }
 
 window.onload = loadDashboard;
