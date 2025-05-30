@@ -11,6 +11,7 @@
     .prize { margin-top: 1em; background: #e6faf1; padding: 1em; border-radius: 6px; }
     .info { margin-top: 1em; }
     .label { font-weight: bold; }
+    .countdown { font-weight: bold; color: #d20000; }
   </style>
 </head>
 <body>
@@ -19,11 +20,44 @@
     <div id="info">
       Loading contest info...
     </div>
+    <div id="countdown-section" style="margin-top:2em;"></div>
   </div>
 <script>
 function getSlugFromUrl() {
   const parts = window.location.pathname.split('/');
   return parts[parts.length - 1];
+}
+
+function startCountdown(endDate) {
+  const countdownDiv = document.getElementById('countdown-section');
+  function updateCountdown() {
+    const now = new Date().getTime();
+    const end = new Date(endDate).getTime();
+    let diff = end - now;
+    if (isNaN(end)) {
+      countdownDiv.innerHTML = '<div class="countdown">No end date set</div>';
+      return;
+    }
+    if (diff <= 0) {
+      countdownDiv.innerHTML = '<div class="countdown">Contest ended</div>';
+      return;
+    }
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    diff -= days * (1000 * 60 * 60 * 24);
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    diff -= hours * (1000 * 60 * 60);
+    const minutes = Math.floor(diff / (1000 * 60));
+    diff -= minutes * (1000 * 60);
+    const seconds = Math.floor(diff / 1000);
+
+    countdownDiv.innerHTML = `<div class="countdown">Time left: ` +
+      (days > 0 ? days + 'd ' : '') +
+      hours.toString().padStart(2, '0') + 'h ' +
+      minutes.toString().padStart(2, '0') + 'm ' +
+      seconds.toString().padStart(2, '0') + 's</div>';
+  }
+  updateCountdown();
+  setInterval(updateCountdown, 1000);
 }
 
 async function loadDashboard() {
@@ -45,6 +79,12 @@ async function loadDashboard() {
       ${data.prizeModel ? `<div class="prize"><span class="label">Prize:</span> ${data.prizeModel}</div>` : ""}
     </div>
   `;
+  // Display countdown if endDate is present
+  if (data.endDate) {
+    startCountdown(data.endDate);
+  } else {
+    document.getElementById('countdown-section').innerHTML = '<div class="countdown">No end date set</div>';
+  }
 }
 
 window.onload = loadDashboard;

@@ -58,13 +58,14 @@ router.get('/', (req, res) => {
     loadJsonFromS3('creator.json', (creatorsArray) => {
       if (!Array.isArray(creatorsArray)) creatorsArray = [];
 
-      // Build a map from slug -> {creator, contestTitle}
+      // Build a map from slug -> {creator, contestTitle, endDate}
       const contestInfoMap = {};
       for (const c of creatorsArray) {
         if (c.slug) {
           contestInfoMap[c.slug] = {
             creator: c.creator || 'Contests Unlimited',
-            contestTitle: c.contestTitle || c.slug
+            contestTitle: c.contestTitle || c.slug,
+            endDate: c.endDate ? new Date(c.endDate).getTime() : null
           };
         }
       }
@@ -72,29 +73,20 @@ router.get('/', (req, res) => {
       const prizes = calculatePrizesByContest(uploads);
       const rules = loadRules();
 
-      // Calculate contest end date = 1 year from today at midnight
-      const now = new Date();
-      const nextYearMidnight = new Date(
-        now.getFullYear() + 1,
-        now.getMonth(),
-        now.getDate(),
-        0, 0, 0, 0
-      );
-      const contestEndTimestamp = nextYearMidnight.getTime();
-
       // Build prizeList: show contestTitle and slug + host
       const prizeList = Object.entries(prizes).map(([contestSlug, total]) => {
-        const info = contestInfoMap[contestSlug] || { creator: 'Contests Unlimited', contestTitle: contestSlug };
+        const info = contestInfoMap[contestSlug] || { creator: 'Contests Unlimited', contestTitle: contestSlug, endDate: null };
         return `<li>
           <strong>${info.contestTitle} (${contestSlug})</strong>: $${total.toFixed(2)} — Entries: ${Math.floor(total / 2.5)}
           <em style="color: #666; font-size: 0.9em;">(Hosted by ${info.creator})</em>
+          <div>Ends in: <span class="countdown" data-endtime="${info.endDate || ''}"></span></div>
         </li>`;
       }).join('');
 
       const rulesHtml = rules.map(r => `
         <div class="rule-card">
           <h3>${r.name}</h3>
-          <p>Ends in: <span class="countdown" data-endtime="${contestEndTimestamp}"></span></p>
+          <p>Ends in: <span class="countdown" data-endtime=""></span></p>
           <ul>${r.rules.map(rule => `<li>${rule}</li>`).join('')}</ul>
         </div>
       `).join('');
@@ -206,6 +198,10 @@ router.get('/', (req, res) => {
               const now = Date.now();
               document.querySelectorAll('.countdown').forEach(el => {
                 const endTime = parseInt(el.getAttribute('data-endtime'));
+                if (!endTime) {
+                  el.textContent = 'No end date set';
+                  return;
+                }
                 let diff = endTime - now;
 
                 if (diff <= 0) {

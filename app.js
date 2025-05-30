@@ -218,7 +218,7 @@ app.post('/api/payment/upload', upload.single('file'), async (req, res) => {
   }
 });
 
-// === 🚩 Creator contest creation with password hashing ===
+// === 🚩 Creator contest creation with password hashing and endDate/slug ===
 app.post('/api/creator/upload', upload.none(), async (req, res) => {
   try {
     const { contestName, creator, email, description, creatorSessionId, prizeModel, password } = req.body;
@@ -241,6 +241,12 @@ app.post('/api/creator/upload', upload.none(), async (req, res) => {
     const saltRounds = 10;
     const passwordHash = await bcrypt.hash(password, saltRounds);
 
+    // Set endDate to 30 days from now
+    const endDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+
+    // Generate a slug for this contest
+    const slug = contestName.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now();
+
     creators.push({
       sessionId: creatorSessionId,
       contestTitle: contestName,
@@ -251,6 +257,8 @@ app.post('/api/creator/upload', upload.none(), async (req, res) => {
       passwordHash,  // <-- Store the hash, not the raw password!
       approved: false,
       timestamp: new Date().toISOString(),
+      endDate,       // <-- Add endDate
+      slug           // <-- Add slug
     });
 
     await saveCreators(creators);
@@ -289,7 +297,8 @@ app.post('/api/creator-login', async (req, res) => {
         email: creator.email,
         contestTitle: creator.contestTitle,
         approved: creator.approved,
-        slug: creator.slug || null
+        slug: creator.slug || null,
+        endDate: creator.endDate || null // Optionally return endDate for dashboard
       }
     });
   } catch (err) {
@@ -309,17 +318,35 @@ app.get('/api/contests/approved', async (req, res) => {
     const creators = JSON.parse(data.Body.toString());
     const approved = creators.filter(c => c.status === 'approved');
 
-approved.sort((a, b) =>
-  a.contestTitle.localeCompare(b.contestTitle)
-);
+    approved.sort((a, b) =>
+      a.contestTitle.localeCompare(b.contestTitle)
+    );
     res.json(approved.map(entry => ({
-  name: `${entry.contestTitle} (hosted by ${entry.creator})`,
-  slug: entry.slug
-})));
-
+      name: `${entry.contestTitle} (hosted by ${entry.creator})`,
+      slug: entry.slug
+    })));
   } catch (err) {
     console.error('Failed to load approved contests:', err);
     res.status(500).json({ error: 'Failed to load contests' });
+  }
+});
+
+// === New: API to fetch contest info by slug (for countdown, etc.) ===
+app.get('/api/contest/:slug', async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const creators = await getCreators();
+    const contest = creators.find(c => c.slug === slug);
+    if (!contest) return res.status(404).json({ error: "Contest not found" });
+    res.json({
+      contestTitle: contest.contestTitle,
+      creator: contest.creator,
+      endDate: contest.endDate,
+      slug: contest.slug
+    });
+  } catch (err) {
+    console.error('Failed to fetch contest:', err);
+    res.status(500).json({ error: 'Failed to fetch contest' });
   }
 });
 
