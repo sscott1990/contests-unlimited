@@ -379,7 +379,7 @@ router.get('/creators', async (req, res) => {
         // Add or update the link cell
         let linkCell = row.querySelector('td:nth-child(7)');
         if (linkCell) {
-          linkCell.innerHTML = '<a href="/api/admin/contest/' + result.slug + '" target="_blank">View Contest</a>';
+          linkCell.innerHTML = '<a href="/contest/' + result.slug + '" target="_blank">View Contest</a>';
         }
       } else {
         // Remove link if rejected
@@ -445,12 +445,6 @@ router.post('/update-status', express.json(), async (req, res) => {
   } catch (err) {
     console.error('Error updating creator status:', err);
     res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-  } catch (err) {
-    console.error('Error loading contest page:', err);
-    res.status(500).send('Internal server error');
   }
 });
 

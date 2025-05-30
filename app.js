@@ -6,6 +6,7 @@ const AWS = require('aws-sdk');
 const multer = require('multer');  // <-- Add multer for file uploads
 const { v4: uuidv4 } = require('uuid'); // For UUID generation
 const contestRoutes = require('./routes/contest');
+const collectRoutes = require('./routes/collect');
 require('dotenv').config();
 
 const app = express();
@@ -283,6 +284,7 @@ app.use('/', indexRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/trivia', triviaRoute);
 app.use('/contest', contestRoutes);
+app.use('/', collectRoutes);
 
 // ⛳ Serve uploaded files via S3 proxy
 app.get('/uploads/:sessionId/:fileName', async (req, res) => {

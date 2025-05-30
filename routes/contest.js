@@ -1,58 +1,44 @@
 const express = require('express');
 const router = express.Router();
 const AWS = require('aws-sdk');
-require('dotenv').config();
+const BUCKET_NAME = process.env.BUCKET_NAME;
 
-const s3 = new AWS.S3({ region: process.env.AWS_REGION });
-const BUCKET = process.env.S3_BUCKET_NAME;
-const CREATORS_KEY = 'creator.json';
-
-// Helper: Load creator submissions from S3
+// Helper to load creator contests
 async function loadCreators() {
-  try {
-    const data = await s3.getObject({
-      Bucket: BUCKET,
-      Key: CREATORS_KEY,
-    }).promise();
-
-    return JSON.parse(data.Body.toString('utf-8'));
-  } catch (err) {
-    if (err.code === 'NoSuchKey') return [];
-    throw err;
-  }
+  const s3 = new AWS.S3();
+  const data = await s3.getObject({ Bucket: BUCKET_NAME, Key: 'creator.json' }).promise();
+  return JSON.parse(data.Body.toString());
 }
 
-// Public route: /contest/:slug
-router.get('/:slug', async (req, res) => {
+router.get('/contest/:slug', async (req, res) => {
   const { slug } = req.params;
 
   try {
     const creators = await loadCreators();
-    const creator = creators.find(c => c.slug === slug);
+    const contest = creators.find(entry => entry.slug === slug && entry.status === 'approved');
 
-    if (!creator) {
-      return res.status(404).send('Contest not found');
+    if (!contest) {
+      return res.status(404).send('Contest not found or not approved.');
     }
 
     res.send(`
       <!DOCTYPE html>
-      <html lang="en">
+      <html>
       <head>
+        <title>${contest.contestName}</title>
         <meta charset="UTF-8" />
-        <title>${creator.contestTitle}</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <style>
-          body { font-family: Arial, sans-serif; margin: 2rem; background: #f9f9f9; color: #333; }
+          body { font-family: Arial; padding: 2rem; background: #fff; color: #333; }
           h1 { color: #444; }
-          p { margin: 0.5rem 0; }
+          p { margin-bottom: 1rem; }
         </style>
       </head>
       <body>
-        <h1>${creator.contestTitle}</h1>
-        <p><strong>Hosted by:</strong> ${creator.creator}</p>
-        <p><strong>Email:</strong> ${creator.email}</p>
-        <p><strong>Description:</strong></p>
-        <p>${creator.description}</p>
-        <p><strong>Status:</strong> ${creator.status || (creator.approved ? 'approved' : 'pending')}</p>
+        <h1>${contest.contestName}</h1>
+        <p><strong>Creator:</strong> ${contest.name}</p>
+        <p><strong>Description:</strong> ${contest.description}</p>
+        <p><em>This is a public contest page.</em></p>
       </body>
       </html>
     `);
