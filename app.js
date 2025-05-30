@@ -9,6 +9,7 @@ const contestRoutes = require('./routes/contest');
 const collectRoutes = require('./routes/collect');
 require('dotenv').config();
 const bcrypt = require('bcrypt'); // <-- Added for password hashing
+const earningsRoutes = require('./routes/earnings');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -47,6 +48,8 @@ const upload = multer({
     fileSize: 10 * 1024 * 1024, // 10 MB limit
   },
 });
+
+app.use('/api/admin', earningsRoutes);
 
 // === 🔑 Generate a UUID for new checkout session ===
 app.get('/api/session', (req, res) => {
