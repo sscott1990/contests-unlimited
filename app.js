@@ -25,6 +25,7 @@ const CREATORS_KEY = 'creator.json';
 
 // Serve static files
 app.use(express.static('public'));
+app.use(bodyParser.urlencoded({ extended: true }));
 
 // Setup body parsers
 const jsonParser = bodyParser.json();
