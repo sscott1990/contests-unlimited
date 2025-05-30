@@ -1,7 +1,7 @@
 const express = require('express');
 const AWS = require('aws-sdk');
 const router = express.Router();
-const { loadJSONFromS3, saveJSONToS3 } = require('../utils/s3Utils'); // Adjust path as needed
+const { loadJSONFromS3 } = require('../utils/s3Utils'); // Adjust path as needed
 
 const s3 = new AWS.S3({
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
@@ -10,7 +10,6 @@ const s3 = new AWS.S3({
 });
 const BUCKET_NAME = process.env.S3_BUCKET_NAME;
 
-// Load JSON helpers for various files
 async function loadEntries() {
   return loadJSONFromS3('entries.json');
 }
@@ -20,7 +19,6 @@ async function loadUploads() {
 }
 
 async function loadCreators() {
-  // IMPORTANT: use the exact filename where creators are saved
   return loadJSONFromS3('creator.json');
 }
 
@@ -30,11 +28,11 @@ function getPresignedUrl(key) {
   return s3.getSignedUrlPromise('getObject', params);
 }
 
-// Basic Auth middleware for all admin routes
+// Basic Auth middleware
 router.use((req, res, next) => {
   const auth = {
     login: process.env.ADMIN_USERNAME,
-    password: process.env.ADMIN_PASSWORD,
+    password: process.env.ADMIN_PASSWORD
   };
 
   const b64auth = (req.headers.authorization || '').split(' ')[1] || '';
@@ -48,7 +46,7 @@ router.use((req, res, next) => {
   res.status(401).send('Authentication required.');
 });
 
-// JSON view of entries
+// JSON view of Stripe entries
 router.get('/entries', async (req, res) => {
   try {
     const entries = await loadEntries();
@@ -66,6 +64,7 @@ router.get('/uploads', async (req, res) => {
       return res.send('<h2>No uploads found</h2>');
     }
 
+    // Pagination logic
     const page = parseInt(req.query.page) || 1;
     const perPage = 25;
     const totalUploads = uploads.length;
@@ -101,7 +100,7 @@ router.get('/uploads', async (req, res) => {
       const filename = upload.fileUrl ? upload.fileUrl.split('/').pop() : 'No file';
       const viewUrl = upload.presignedUrl;
 
-      return `
+      return 
       <tr>
         <td>${upload.name || ''}</td>
         <td>${upload.contestName || ''}</td>
@@ -109,30 +108,31 @@ router.get('/uploads', async (req, res) => {
         <td>${filename}</td>
         <td>
           ${viewUrl
-            ? `<a href="${viewUrl}" target="_blank">View</a><br>
-               <img src="${viewUrl}" alt="${filename}" style="max-width: 100px;">`
+            ? <a href="${viewUrl}" target="_blank">View</a><br>
+               <img src="${viewUrl}" alt="${filename}" style="max-width: 100px;">
             : 'No file available'}
         </td>
-      </tr>`;
+      </tr>;
     }).join('');
 
-    let paginationControls = `<div style="margin-top: 1rem;">`;
+    // Pagination controls html
+    let paginationControls = <div style="margin-top: 1rem;">;
     if (page > 1) {
-      paginationControls += `<a href="?page=${page - 1}">Previous</a> `;
+      paginationControls += <a href="?page=${page - 1}">Previous</a> ;
     }
-    paginationControls += `Page ${page} of ${totalPages}`;
+    paginationControls += Page ${page} of ${totalPages};
     if (page < totalPages) {
-      paginationControls += ` <a href="?page=${page + 1}">Next</a>`;
+      paginationControls +=  <a href="?page=${page + 1}">Next</a>;
     }
-    paginationControls += `</div>`;
+    paginationControls += </div>;
 
-    res.send(`
+    res.send(
       <!DOCTYPE html>
       <html lang="en">
       <head>
         <title>Admin Uploads</title>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
           body { font-family: Arial, sans-serif; margin: 1rem; background: #f9f9f9; color: #333; }
           h1, h2 { color: #444; }
@@ -172,7 +172,7 @@ router.get('/uploads', async (req, res) => {
         ${paginationControls}
       </body>
       </html>
-    `);
+    );
   } catch (err) {
     res.status(500).send('Failed to load uploads.');
   }
@@ -185,6 +185,7 @@ router.get('/trivia', async (req, res) => {
     const triviaData = await loadJSONFromS3('trivia-contest.json');
     const correctAnswers = triviaData.map(q => q.answer);
 
+    // Updated logic to support correctCount fallback if triviaAnswers is missing
     const scored = uploads
       .filter(entry =>
         (Array.isArray(entry.triviaAnswers) && entry.triviaAnswers.length > 0) ||
@@ -211,22 +212,22 @@ router.get('/trivia', async (req, res) => {
         return a.timeTaken - b.timeTaken;
       });
 
-    const rows = scored.map(entry => `
+    const rows = scored.map(entry => 
       <tr>
         <td>${entry.name}</td>
         <td>${entry.contestName}</td>
         <td>${entry.score} / ${correctAnswers.length}</td>
         <td>${typeof entry.timeTaken === 'number' ? entry.timeTaken.toFixed(3) + ' sec' : 'N/A'}</td>
       </tr>
-    `).join('');
+    ).join('');
 
-    res.send(`
+    res.send(
       <!DOCTYPE html>
       <html lang="en">
       <head>
         <title>Trivia Results</title>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
           body { font-family: Arial, sans-serif; margin: 1rem; background: #f9f9f9; color: #333; }
           h1, h2 { color: #444; }
@@ -261,46 +262,59 @@ router.get('/trivia', async (req, res) => {
         </table>
       </body>
       </html>
-    `);
+    );
   } catch (err) {
     console.error('Failed to load trivia submissions:', err);
     res.status(500).send('Failed to load trivia submissions.');
   }
 });
 
-// Creators management view with status update form
+// New route: Creators view with pagination
 router.get('/creators', async (req, res) => {
   try {
     const creators = await loadCreators();
 
-    const rows = creators.map(c => {
-      const date = new Date(c.timestamp).toLocaleString();
-      return `
-      <tr>
-        <td>${c.id || ''}</td>
-        <td>${c.name || ''}</td>
-        <td>${c.email || ''}</td>
-        <td>${c.status || 'pending'}</td>
-        <td>${date}</td>
-        <td>
-          <form method="POST" action="/api/admin/update-status" style="display:inline;">
-            <input type="hidden" name="id" value="${c.id || c.timestamp}" />
-            <select name="status">
-              <option value="pending" ${c.status === 'pending' ? 'selected' : ''}>Pending</option>
-              <option value="approved" ${c.status === 'approved' ? 'selected' : ''}>Approved</option>
-              <option value="denied" ${c.status === 'denied' ? 'selected' : ''}>Denied</option>
-            </select>
-            <button type="submit">Update</button>
-          </form>
-        </td>
-      </tr>`;
-    }).join('');
+    if (!creators || creators.length === 0) {
+      return res.send('<h2>No creator submissions found</h2>');
+    }
 
-    res.send(`
+    const page = parseInt(req.query.page) || 1;
+    const perPage = 25;
+    const totalCreators = creators.length;
+    const totalPages = Math.ceil(totalCreators / perPage);
+    const start = (page - 1) * perPage;
+    const paginatedCreators = creators.slice(start, start + perPage);
+
+    const rows = paginatedCreators.map(creator => 
+      <tr>
+        <td>${creator.creator || ''}</td>
+        <td>${creator.email || ''}</td>
+        <td>${creator.contestTitle || ''}</td>
+        <td>${creator.description || ''}</td>
+        <td>${new Date(creator.timestamp).toLocaleString()}</td>
+        <td>${creator.status || 'Pending'}</td>
+        <td>
+      <button onclick="handleStatus('${creator.id || creator.timestamp}', 'approved')">Approve</button>
+      <button onclick="handleStatus('${creator.id || creator.timestamp}', 'rejected')">Reject</button>
+        </td>
+      </tr>
+    ).join('');
+
+    let paginationControls = <div style="margin-top: 1rem;">;
+    if (page > 1) {
+      paginationControls += <a href="?page=${page - 1}">Previous</a> ;
+    }
+    paginationControls += Page ${page} of ${totalPages};
+    if (page < totalPages) {
+      paginationControls +=  <a href="?page=${page + 1}">Next</a>;
+    }
+    paginationControls += </div>;
+
+    res.send(
       <!DOCTYPE html>
       <html lang="en">
       <head>
-        <title>Contest Creators Management</title>
+        <title>Contest Creators</title>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <style>
@@ -311,8 +325,7 @@ router.get('/creators', async (req, res) => {
           table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
           th, td { border: 1px solid #ddd; padding: 0.5rem; text-align: left; }
           th { background: #eee; }
-          form { margin: 0; }
-          select { margin-right: 0.5rem; }
+          div.pagination { margin-top: 1rem; }
         </style>
       </head>
       <body>
@@ -327,57 +340,81 @@ router.get('/creators', async (req, res) => {
         <table>
           <thead>
             <tr>
-              <th>ID / Timestamp</th>
               <th>Name</th>
               <th>Email</th>
-              <th>Status</th>
+              <th>Contest Name</th>
+              <th>Description</th>
               <th>Submitted</th>
-              <th>Update Status</th>
+              <th>Status</th>
             </tr>
           </thead>
           <tbody>
             ${rows}
           </tbody>
         </table>
+        ${paginationControls}
+<script>
+  async function handleStatus(id, status) {
+    const response = await fetch('/api/admin/update-status', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ id, status })
+    });
+
+    if (response.ok) {
+      alert(Marked as ${status});
+      // Optional: visually update the row or disable buttons
+      const row = document.querySelector(tr[data-id="${id}"]);
+      row.style.backgroundColor = status === 'approved' ? '#d4edda' : '#f8d7da';
+    } else {
+      alert('Failed to update status.');
+    }
+  }
+</script>
       </body>
       </html>
-    `);
+    );
   } catch (err) {
     console.error('Failed to load creators:', err);
-    res.status(500).send('Failed to load contest creators.');
+    res.status(500).send('Failed to load creators.');
   }
 });
 
-// Handle status updates for creators
-router.post('/update-status', express.urlencoded({ extended: true }), async (req, res) => {
-  try {
-    const { id, status } = req.body;
-    if (!id || !status) {
-      return res.status(400).send('Missing id or status.');
-    }
-
-    const creators = await loadCreators();
-    const index = creators.findIndex(c => c.id === id || c.timestamp === id);
-    if (index === -1) {
-      return res.status(404).send('Creator not found.');
-    }
-
-    creators[index].status = status;
-
-    // Save updated creators back to S3
-    await saveJSONToS3('creator.json', creators);
-
-    res.redirect('/api/admin/creators');
-  } catch (err) {
-    console.error('Error updating creator status:', err);
-    res.status(500).send('Failed to update creator status.');
-  }
-});
-
-// Logout route to clear auth (force 401)
+// Logout route
 router.get('/logout', (req, res) => {
   res.set('WWW-Authenticate', 'Basic realm="401"');
   res.status(401).send('Logged out');
+});
+
+router.post('/update-status', express.json(), async (req, res) => {
+  const { id, status } = req.body;
+
+  if (!id || !status) return res.status(400).json({ error: 'Missing id or status' });
+
+  try {
+    const creators = await loadCreators();
+    const index = creators.findIndex(entry => entry.id === id || entry.timestamp === id);
+
+    if (index === -1) return res.status(404).json({ error: 'Submission not found' });
+
+    creators[index].status = status;
+
+    // Save back to S3
+    const params = {
+      Bucket: BUCKET_NAME,
+      Key: 'creator.json',
+      Body: JSON.stringify(creators, null, 2),
+      ContentType: 'application/json',
+    };
+
+    await s3.putObject(params).promise();
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Error updating creator status:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 module.exports = router;
