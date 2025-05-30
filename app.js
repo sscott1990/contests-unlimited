@@ -272,7 +272,7 @@ app.post('/api/creator-login', async (req, res) => {
     }
 
     const creators = await getCreators();
-    const creator = creators.find(c => c.email === email);
+    const creator = creators.find(c => c.email === email && c.passwordHash);
 
     if (!creator) {
       return res.status(401).json({ error: 'Invalid email or password.' });

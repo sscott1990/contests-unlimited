@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Creator Dashboard</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <style>
+    body { background: #f4f8fb; font-family: Arial, sans-serif; }
+    .container { background: #fff; padding: 2em; border-radius: 12px; max-width: 600px; margin: 40px auto; box-shadow: 0 0 15px rgba(0,0,0,0.07);}
+    h1 { color: #007849; }
+    .prize { margin-top: 1em; background: #e6faf1; padding: 1em; border-radius: 6px; }
+    .info { margin-top: 1em; }
+    .label { font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Creator Dashboard</h1>
+    <div id="info">
+      Loading contest info...
+    </div>
+  </div>
+<script>
+function getSlugFromUrl() {
+  const parts = window.location.pathname.split('/');
+  return parts[parts.length - 1];
+}
+
+async function loadDashboard() {
+  const slug = getSlugFromUrl();
+  const res = await fetch(`/api/admin/creator-stats/${slug}`);
+  if (!res.ok) {
+    document.getElementById('info').innerText = "Error loading dashboard.";
+    return;
+  }
+  const data = await res.json();
+  document.getElementById('info').innerHTML = `
+    <div class="info">
+      <div><span class="label">Contest Title:</span> ${data.contestTitle}</div>
+      <div><span class="label">Creator:</span> ${data.creator}</div>
+      <div><span class="label">Email:</span> ${data.email}</div>
+      <div><span class="label">Status:</span> ${data.status}</div>
+      <div><span class="label">Approved:</span> ${data.approved ? "Yes" : "No"}</div>
+      <div><span class="label">Description:</span> ${data.description}</div>
+      ${data.prizeModel ? `<div class="prize"><span class="label">Prize:</span> ${data.prizeModel}</div>` : ""}
+    </div>
+  `;
+}
+
+window.onload = loadDashboard;
+</script>
+</body>
+</html>
