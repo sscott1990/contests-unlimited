@@ -101,33 +101,34 @@ router.get('/uploads', async (req, res) => {
       const filename = upload.fileUrl ? upload.fileUrl.split('/').pop() : 'No file';
       const viewUrl = upload.presignedUrl;
 
-      return 
-      <tr>
-        <td>${upload.name || ''}</td>
-        <td>${upload.contestName || ''}</td>
-        <td>${date}</td>
-        <td>${filename}</td>
-        <td>
-          ${viewUrl
-            ? <a href="${viewUrl}" target="_blank">View</a><br>
-               <img src="${viewUrl}" alt="${filename}" style="max-width: 100px;">
-            : 'No file available'}
-        </td>
-      </tr>;
+      return `
+        <tr>
+          <td>${upload.name || ''}</td>
+          <td>${upload.contestName || ''}</td>
+          <td>${date}</td>
+          <td>${filename}</td>
+          <td>
+            ${viewUrl
+              ? `<a href="${viewUrl}" target="_blank">View</a><br>
+                 <img src="${viewUrl}" alt="${filename}" style="max-width: 100px;">`
+              : 'No file available'}
+          </td>
+        </tr>
+      `;
     }).join('');
 
     // Pagination controls html
-    let paginationControls = <div style="margin-top: 1rem;">;
+    let paginationControls = `<div style="margin-top: 1rem;">`;
     if (page > 1) {
-      paginationControls += <a href="?page=${page - 1}">Previous</a> ;
+      paginationControls += `<a href="?page=${page - 1}">Previous</a> `;
     }
-    paginationControls += Page ${page} of ${totalPages};
+    paginationControls += `Page ${page} of ${totalPages}`;
     if (page < totalPages) {
-      paginationControls +=  <a href="?page=${page + 1}">Next</a>;
+      paginationControls += ` <a href="?page=${page + 1}">Next</a>`;
     }
-    paginationControls += </div>;
+    paginationControls += `</div>`;
 
-    res.send(
+    res.send(`
       <!DOCTYPE html>
       <html lang="en">
       <head>
@@ -173,7 +174,7 @@ router.get('/uploads', async (req, res) => {
         ${paginationControls}
       </body>
       </html>
-    );
+   `);
   } catch (err) {
     res.status(500).send('Failed to load uploads.');
   }
@@ -213,16 +214,16 @@ router.get('/trivia', async (req, res) => {
         return a.timeTaken - b.timeTaken;
       });
 
-    const rows = scored.map(entry => 
+    const rows = scored.map(entry => `
       <tr>
         <td>${entry.name}</td>
         <td>${entry.contestName}</td>
         <td>${entry.score} / ${correctAnswers.length}</td>
         <td>${typeof entry.timeTaken === 'number' ? entry.timeTaken.toFixed(3) + ' sec' : 'N/A'}</td>
       </tr>
-    ).join('');
+    `).join('');
 
-    res.send(
+    res.send(`
       <!DOCTYPE html>
       <html lang="en">
       <head>
@@ -263,7 +264,7 @@ router.get('/trivia', async (req, res) => {
         </table>
       </body>
       </html>
-    );
+   `);
   } catch (err) {
     console.error('Failed to load trivia submissions:', err);
     res.status(500).send('Failed to load trivia submissions.');
@@ -286,7 +287,7 @@ router.get('/creators', async (req, res) => {
     const start = (page - 1) * perPage;
     const paginatedCreators = creators.slice(start, start + perPage);
 
-    const rows = paginatedCreators.map(creator => 
+    const rows = paginatedCreators.map(creator => `
       <tr data-id="${creator.id || creator.timestamp}">
         <td>${creator.creator || ''}</td>
         <td>${creator.email || ''}</td>
@@ -295,26 +296,26 @@ router.get('/creators', async (req, res) => {
         <td>${new Date(creator.timestamp).toLocaleString()}</td>
         <td>${creator.status || 'Pending'}</td>
         <td>
-      ${creator.slug ? <a href="/contest/${creator.slug}" target="_blank">Go to Contest</a> : ''}
+          ${creator.slug ? `<a href="/contest/${creator.slug}" target="_blank">Go to Contest</a>` : ''}
         </td>
         <td>
-      <button onclick="handleStatus('${creator.id || creator.timestamp}', 'approved')">Approve</button>
-      <button onclick="handleStatus('${creator.id || creator.timestamp}', 'rejected')">Reject</button>
+          <button onclick="handleStatus('${creator.id || creator.timestamp}', 'approved')">Approve</button>
+          <button onclick="handleStatus('${creator.id || creator.timestamp}', 'rejected')">Reject</button>
         </td>
       </tr>
-    ).join('');
+    `).join('');
 
-    let paginationControls = <div style="margin-top: 1rem;">;
+    let paginationControls = `<div style="margin-top: 1rem;">`;
     if (page > 1) {
-      paginationControls += <a href="?page=${page - 1}">Previous</a> ;
+      paginationControls += `<a href="?page=${page - 1}">Previous</a> `;
     }
-    paginationControls += Page ${page} of ${totalPages};
+    paginationControls += `Page ${page} of ${totalPages}`;
     if (page < totalPages) {
-      paginationControls +=  <a href="?page=${page + 1}">Next</a>;
+      paginationControls += ` <a href="?page=${page + 1}">Next</a>`;
     }
-    paginationControls += </div>;
+    paginationControls += `</div>`;
 
- res.send(
+    res.send(`
       <!DOCTYPE html>
       <html lang="en">
       <head>
@@ -351,6 +352,7 @@ router.get('/creators', async (req, res) => {
               <th>Submitted</th>
               <th>Status</th>
               <th>Link</th> <!-- new header for the contest link -->
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -396,7 +398,7 @@ router.get('/creators', async (req, res) => {
 </script>
       </body>
       </html>
-    );
+   `);
   } catch (err) {
     console.error('Failed to load creators:', err);
     res.status(500).send('Failed to load creators.');
@@ -425,7 +427,7 @@ router.post('/update-status', express.json(), async (req, res) => {
     let slug = null;
     if (status === 'approved') {
       // Generate slug from contest name + timestamp for uniqueness
-      slug = slugify(${creators[index].contestName}-${Date.now()}, { lower: true, strict: true });
+      slug = slugify(`${creators[index].contestName}-${Date.now()}`, { lower: true, strict: true });
       creators[index].slug = slug;
     } else {
       // Remove slug if status changed from approved to something else
