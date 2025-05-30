@@ -13,13 +13,17 @@
     .label { font-weight: bold; }
     .countdown { font-weight: bold; color: #d20000; }
     .contest-block { border-bottom: 1px solid #ddd; margin-bottom: 2em; padding-bottom: 2em; }
+    .logout-btn { float: right; margin-top: -10px; background: #fff; border: 2px solid #007849; color: #007849; padding: 0.5em 1em; border-radius: 5px; cursor: pointer; font-weight: bold; }
+    .logout-btn:hover { background: #007849; color: #fff; }
     @media (max-width: 700px) {
       .container { max-width: 100%; padding: 1em; }
+      .logout-btn { float: none; display: block; margin: 1em auto; }
     }
   </style>
 </head>
 <body>
   <div class="container">
+    <button class="logout-btn" onclick="logout()">Logout</button>
     <h1>Creator Dashboard</h1>
     <div id="info">
       Loading your contests...
@@ -59,6 +63,11 @@ function sanitizeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str;
   return div.innerHTML;
+}
+
+function logout() {
+  localStorage.removeItem('creatorEmail');
+  window.location.href = '/'; // redirect to homepage
 }
 
 async function loadDashboard() {
