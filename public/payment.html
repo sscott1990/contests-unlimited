@@ -46,6 +46,15 @@
         const data = await response.json();
         const sessionId = data.sessionId;
 
+        // ✅ Check if CollectCheckout is loaded
+        if (
+          typeof CollectCheckout === 'undefined' ||
+          typeof CollectCheckout.redirectToCheckout !== 'function'
+        ) {
+          alert('Checkout is not available right now. Please refresh and try again.');
+          return;
+        }
+
         // Redirect to checkout with sessionId in successUrl
         CollectCheckout.redirectToCheckout({
           type: "sale",
