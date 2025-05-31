@@ -57,10 +57,12 @@ router.get('/entries', async (req, res) => {
   }
 });
 
-// HTML view of uploaded files with pagination
+// HTML view of uploaded files with pagination and host column
 router.get('/uploads', async (req, res) => {
   try {
     const uploads = await loadUploads();
+    const creators = await loadCreators(); // <-- Load creators for host lookup
+
     if (!uploads || uploads.length === 0) {
       return res.send('<h2>No uploads found</h2>');
     }
@@ -96,7 +98,21 @@ router.get('/uploads', async (req, res) => {
       })
     );
 
-    const rows = uploadsWithPresignedUrls.map(upload => {
+    // Add host/creator lookup logic
+    const uploadsWithHost = uploadsWithPresignedUrls.map(upload => {
+      // Try to find a creator whose slug or contestTitle matches upload.contestName
+      let host = "Contests Unlimited";
+      if (creators && creators.length) {
+        const found = creators.find(c =>
+          (c.slug && upload.contestName === c.slug) ||
+          (c.contestTitle && upload.contestName === c.contestTitle)
+        );
+        if (found && found.creator) host = found.creator;
+      }
+      return { ...upload, host };
+    });
+
+    const rows = uploadsWithHost.map(upload => {
       const date = new Date(upload.timestamp).toLocaleString();
       const filename = upload.fileUrl ? upload.fileUrl.split('/').pop() : 'No file';
       const viewUrl = upload.presignedUrl;
@@ -105,6 +121,7 @@ router.get('/uploads', async (req, res) => {
         <tr>
           <td>${upload.name || ''}</td>
           <td>${upload.contestName || ''}</td>
+          <td>${upload.host || ''}</td>
           <td>${date}</td>
           <td>${filename}</td>
           <td>
@@ -162,6 +179,7 @@ router.get('/uploads', async (req, res) => {
             <tr>
               <th>Name</th>
               <th>Contest</th>
+              <th>Host</th>
               <th>Date</th>
               <th>Original Filename</th>
               <th>File</th>
