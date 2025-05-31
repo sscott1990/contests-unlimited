@@ -11,6 +11,14 @@ const BUCKET_NAME = 'contests-unlimited';
 const DEFAULT_CONTEST_START = new Date('2025-05-30T14:00:00Z'); // <-- Set to your site "launch" UTC date
 const DEFAULT_CONTEST_DURATION_MS = 365 * 24 * 60 * 60 * 1000; // 1 year
 
+// ---- DEFAULT CONTESTS ALWAYS DISPLAYED ----
+const PLATFORM_CONTESTS = [
+  { slug: 'art-contest-default',   contestTitle: 'Art Contest' },
+  { slug: 'photo-contest-default', contestTitle: 'Photo Contest' },
+  { slug: 'trivia-contest-default', contestTitle: 'Trivia Contest' },
+  { slug: 'caption-contest-default', contestTitle: 'Caption Contest' }
+];
+
 function loadJsonFromS3(key, callback) {
   s3.getObject({
     Bucket: BUCKET_NAME,
@@ -152,49 +160,60 @@ router.get('/', (req, res) => {
         }
       }
 
-      const prizes = calculatePrizesByContest(uploads, creatorsArray);
+      let prizes = calculatePrizesByContest(uploads, creatorsArray);
+
+      // ---- INJECT DEFAULT CONTESTS IF MISSING ----
+      for (const def of PLATFORM_CONTESTS) {
+        if (!prizes[def.slug]) {
+          prizes[def.slug] = {
+            totalEntries: 0,
+            pot: 0,
+            reserve: 0,
+            creatorEarnings: 0,
+            platformEarnings: 0,
+            seedIncluded: true,
+            seedEligible: false,
+            isPlatform: true,
+            endDateMs: DEFAULT_CONTEST_START.getTime() + DEFAULT_CONTEST_DURATION_MS,
+            contestTitle: def.contestTitle,
+            creator: 'Contests Unlimited'
+          };
+        }
+      }
 
       // --- NOW LOAD RULES FROM S3 ---
       loadJsonFromS3('rules.json', (rules) => {
         if (!rules) rules = [];
 
-        // --- PRIZE LIST with fallback countdown ---
-        const prizeList = Object.entries(prizes).map(([contestName, data]) => {
-          // Find matching contest info by name
-          let info = contestInfoMap[contestName];
-          // fallback if missing
-          if (!info) {
-          // Try to match by contestTitle (for legacy)
-            info = Object.values(contestInfoMap).find(i => i.contestTitle === contestName);
-}
-          let endDateMs;
-          if (info && info.endDate) {
-            endDateMs = info.endDate;
-          } else {
-            // Fallback for default contests: use 1 year from fixed deploy date
-            endDateMs = DEFAULT_CONTEST_START.getTime() + DEFAULT_CONTEST_DURATION_MS;
-            info = {
-              creator: 'Contests Unlimited',
-              contestTitle: contestName
-            };
-          }
-          // Show prize pool and entry count, and note if seed is included/removed
+        // --- PRIZE LIST with improved display ---
+        // Always display platform contests first, then others alpha by title
+        const orderedPrizeSlugs = [
+          ...PLATFORM_CONTESTS.map(c => c.slug),
+          ...Object.keys(prizes).filter(slug =>
+            !PLATFORM_CONTESTS.some(c => c.slug === slug)
+          ).sort((a, b) => {
+            const tA = prizes[a].contestTitle || a;
+            const tB = prizes[b].contestTitle || b;
+            return tA.localeCompare(tB);
+          }),
+        ];
+
+        const prizeList = orderedPrizeSlugs.map((slug) => {
+          const data = prizes[slug];
+          if (!data) return '';
           let seedText = '';
-          // If contest is ongoing and at least 1 entry, show seed as "potential"
           if (data.seedIncluded && !data.seedEligible) {
             seedText = `<span style="color: #070;">(Seeded with $1000 if 20+ entries by contest close)</span>`;
           } else if (data.seedIncluded && data.seedEligible) {
-            // Contest ended, seed included
             seedText = `<span style="color: #070;">(Seeded with $1000!)</span>`;
           } else if (!data.seedIncluded && data.totalEntries > 0 && data.endDateMs && Date.now() > data.endDateMs) {
-            // Contest ended, seed removed
             seedText = `<span style="color: #b00;">(Seed removed - not enough entries)</span>`;
           }
           return `<li>
-            <strong>${info.contestTitle} (${contestName})</strong>: $${data.pot.toFixed(2)} — Entries: ${data.totalEntries}
-            <em style="color: #666; font-size: 0.9em;">(Hosted by ${info.creator})</em>
+            <strong>${data.contestTitle}</strong>: $${data.pot.toFixed(2)} — Entries: ${data.totalEntries}
+            <em style="color: #666; font-size: 0.9em;">(Hosted by ${data.creator})</em>
             ${seedText}
-            <div>Ends in: <span class="countdown" data-endtime="${endDateMs}"></span></div>
+            <div>Ends in: <span class="countdown" data-endtime="${data.endDateMs}"></span></div>
           </li>`;
         }).join('');
 
