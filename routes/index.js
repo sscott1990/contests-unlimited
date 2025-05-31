@@ -160,14 +160,18 @@ router.get('/', (req, res) => {
         }
       }
 
+      const seedAmount = 1000;
+      const entryFee = 100;
+
       let prizes = calculatePrizesByContest(uploads, creatorsArray);
 
-      // ---- INJECT DEFAULT CONTESTS IF MISSING ----
+      // ---- INJECT DEFAULT CONTESTS IF MISSING OR ADJUST FOR SEED ----
       for (const def of PLATFORM_CONTESTS) {
         if (!prizes[def.slug]) {
+          // If there are no entries, pot is seed only
           prizes[def.slug] = {
             totalEntries: 0,
-            pot: 0,
+            pot: seedAmount,
             reserve: 0,
             creatorEarnings: 0,
             platformEarnings: 0,
@@ -178,6 +182,36 @@ router.get('/', (req, res) => {
             contestTitle: def.contestTitle,
             creator: 'Contests Unlimited'
           };
+        } else if (prizes[def.slug].isPlatform) {
+          // If platform contest exists (with entries), recalc pot to always include the seed (if ongoing)
+          let totalEntries = prizes[def.slug].totalEntries || 0;
+          let endDateMs = prizes[def.slug].endDateMs || (DEFAULT_CONTEST_START.getTime() + DEFAULT_CONTEST_DURATION_MS);
+          let nowMs = Date.now();
+
+          let pot = 0;
+          if (totalEntries === 0) {
+            pot = seedAmount;
+            prizes[def.slug].seedIncluded = true;
+            prizes[def.slug].seedEligible = false;
+          } else {
+            // Add 60% of each entry plus seed unless contest ended and not enough entries
+            pot = totalEntries * entryFee * 0.6;
+            // Check if contest is ongoing or ended and seed conditions
+            if (!endDateMs || nowMs <= endDateMs) {
+              pot += seedAmount;
+              prizes[def.slug].seedIncluded = true;
+              prizes[def.slug].seedEligible = false;
+            } else if (totalEntries >= 20) {
+              pot += seedAmount;
+              prizes[def.slug].seedIncluded = true;
+              prizes[def.slug].seedEligible = true;
+            } else {
+              // Contest ended, not enough entries, no seed
+              prizes[def.slug].seedIncluded = false;
+              prizes[def.slug].seedEligible = false;
+            }
+          }
+          prizes[def.slug].pot = pot;
         }
       }
 
