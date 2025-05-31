@@ -377,6 +377,37 @@ app.get('/api/admin/creator-stats-by-email/:email', async (req, res) => {
   }
 });
 
+// === Creator Dashboard route ===
+app.get('/creator-dashboard/:slug', async (req, res) => {
+  try {
+    const creators = await getCreators();
+    const creator = creators.find(c => c.slug === req.params.slug);
+    if (!creator) return res.status(404).send('Creator not found');
+
+    res.send(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Dashboard - ${creator.contestTitle}</title>
+        <meta charset="UTF-8">
+      </head>
+      <body>
+        <h1>Dashboard for ${creator.creator}</h1>
+        <p><strong>Contest:</strong> ${creator.contestTitle}</p>
+        <p><strong>Email:</strong> ${creator.email}</p>
+        <p><strong>Description:</strong> ${creator.description}</p>
+        <p><strong>Status:</strong> ${creator.status || 'Pending'}</p>
+        <p><strong>End Date:</strong> ${creator.endDate}</p>
+        <!-- Add more dashboard features here -->
+      </body>
+      </html>
+    `);
+  } catch (err) {
+    console.error('Failed to render creator dashboard:', err);
+    res.status(500).send('Failed to render creator dashboard.');
+  }
+});
+
 // === 🔁 All other routes ===
 const indexRoutes = require('./routes/index');
 const adminRoutes = require('./routes/admin');
