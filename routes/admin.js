@@ -57,7 +57,7 @@ router.get('/entries', async (req, res) => {
   }
 });
 
-// HTML view of uploaded files with pagination and host column
+// HTML view of uploaded files with pagination, host column, and contest search
 router.get('/uploads', async (req, res) => {
   try {
     const uploads = await loadUploads();
@@ -67,13 +67,28 @@ router.get('/uploads', async (req, res) => {
       return res.send('<h2>No uploads found</h2>');
     }
 
+    // --- SEARCH LOGIC ---
+    const search = (req.query.search || '').trim().toLowerCase();
+    let filteredUploads = uploads;
+    if (search) {
+      filteredUploads = uploads.filter(upload =>
+        (upload.contestName || '').toLowerCase().includes(search) ||
+        (upload.name || '').toLowerCase().includes(search) ||
+        (creators && creators.find(c =>
+          ((c.slug && upload.contestName === c.slug) ||
+           (c.contestTitle && upload.contestName === c.contestTitle)) &&
+          (c.creator || '').toLowerCase().includes(search)
+        ))
+      );
+    }
+
     // Pagination logic
     const page = parseInt(req.query.page) || 1;
     const perPage = 25;
-    const totalUploads = uploads.length;
+    const totalUploads = filteredUploads.length;
     const totalPages = Math.ceil(totalUploads / perPage);
     const start = (page - 1) * perPage;
-    const paginatedUploads = uploads.slice(start, start + perPage);
+    const paginatedUploads = filteredUploads.slice(start, start + perPage);
 
     const uploadsWithPresignedUrls = await Promise.all(
       paginatedUploads.map(async (upload) => {
@@ -137,11 +152,11 @@ router.get('/uploads', async (req, res) => {
     // Pagination controls html
     let paginationControls = `<div style="margin-top: 1rem;">`;
     if (page > 1) {
-      paginationControls += `<a href="?page=${page - 1}">Previous</a> `;
+      paginationControls += `<a href="?search=${encodeURIComponent(search)}&page=${page - 1}">Previous</a> `;
     }
     paginationControls += `Page ${page} of ${totalPages}`;
     if (page < totalPages) {
-      paginationControls += ` <a href="?page=${page + 1}">Next</a>`;
+      paginationControls += ` <a href="?search=${encodeURIComponent(search)}&page=${page + 1}">Next</a>`;
     }
     paginationControls += `</div>`;
 
@@ -162,6 +177,9 @@ router.get('/uploads', async (req, res) => {
           th { background: #eee; }
           img { max-width: 100px; border-radius: 4px; margin-top: 0.5rem; }
           div.pagination { margin-top: 1rem; }
+          .search-bar { margin-bottom: 1rem; }
+          .search-bar input { padding: 6px 10px; font-size: 1em; min-width: 200px; }
+          .search-bar button { padding: 6px 14px; }
         </style>
       </head>
       <body>
@@ -174,6 +192,10 @@ router.get('/uploads', async (req, res) => {
           <a href="/api/admin/logout">Logout</a>
         </nav>
         <h2>Uploaded Files</h2>
+        <form class="search-bar" method="get" action="/api/admin/uploads">
+          <input type="text" name="search" value="${search.replace(/"/g, "&quot;")}" placeholder="Search by contest, host, or name..." />
+          <button type="submit">Search</button>
+        </form>
         <table>
           <thead>
             <tr>
