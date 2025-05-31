@@ -32,11 +32,11 @@ function loadJsonFromS3(key, callback) {
 
 // Helper to determine if contest is platform-run
 function isPlatformContest(creator) {
-  // You may want to update this logic as your platform-run contest marker evolves
   return !creator || (typeof creator === 'string' && creator.trim().toLowerCase() === "contests unlimited");
 }
 
-function calculatePrizesByContest(uploads, creatorsArray) {
+// Main prize calculation logic with correct seed handling
+function calculatePrizesByContest(uploads, creatorsArray, nowMs = Date.now()) {
   // Map contestName to array of entries
   const entriesByContest = {};
   for (const upload of uploads) {
@@ -45,12 +45,12 @@ function calculatePrizesByContest(uploads, creatorsArray) {
     entriesByContest[contest].push(upload);
   }
 
-  // Build contest info by contestName (not slug here)
-  const contestInfoByName = {};
+  // Build contest info by slug for access to endDate and other props
+  const contestInfoBySlug = {};
   if (Array.isArray(creatorsArray)) {
     for (const c of creatorsArray) {
-      if (c.contestTitle) {
-        contestInfoByName[c.contestTitle] = c;
+      if (c.slug) {
+        contestInfoBySlug[c.slug] = c;
       }
     }
   }
@@ -58,39 +58,35 @@ function calculatePrizesByContest(uploads, creatorsArray) {
   const prizes = {};
   for (const contestName in entriesByContest) {
     const entries = entriesByContest[contestName];
-    const contestInfo = contestInfoByName[contestName] || {};
+    // Find the right contest info by slug or by contestTitle fallback
+    let contestInfo = Object.values(contestInfoBySlug).find(
+      c => c.slug === contestName || c.contestTitle === contestName
+    ) || {};
     const creator = contestInfo.creator || 'Contests Unlimited';
     const isPlatform = isPlatformContest(creator);
 
-    // Business rules
-    const entryFee = 100; // $100 per entry
+    const entryFee = 100;
     const minEntries = 20;
     const seedAmount = 1000;
 
     let totalEntries = entries.length;
-    let pot = 0, reserve = 0, creatorEarnings = 0, platformEarnings = 0, seedInPot = false;
+    let pot = 0, reserve = 0, creatorEarnings = 0, platformEarnings = 0;
+    let seedIncluded = false;
+    let seedEligible = false;
 
-    // Add seed if at least one entry
-    if (totalEntries > 0) {
-      pot += seedAmount;
-      seedInPot = true;
-    }
-
-    // If not enough entries, remove seed from pot at end
-    if (totalEntries < minEntries && seedInPot) {
-      pot -= seedAmount;
-      seedInPot = false;
+    // Find contest end time (ms)
+    let endDateMs = null;
+    if (contestInfo.endDate) {
+      endDateMs = new Date(contestInfo.endDate).getTime();
     }
 
     // For each entry, split $100 according to contest type
     for (let i = 0; i < totalEntries; i++) {
       if (isPlatform) {
-        // Platform-run: 60% pot, 10% reserve, 30% to platform
         pot += entryFee * 0.6;
         reserve += entryFee * 0.1;
         platformEarnings += entryFee * 0.3;
       } else {
-        // Custom: 60% pot, 25% creator, 10% reserve, 5% to platform
         pot += entryFee * 0.6;
         creatorEarnings += entryFee * 0.25;
         reserve += entryFee * 0.10;
@@ -98,19 +94,45 @@ function calculatePrizesByContest(uploads, creatorsArray) {
       }
     }
 
+    // SEED LOGIC: Only remove seed if contest is over and not enough entries.
+    if (totalEntries > 0) {
+      if (endDateMs && nowMs > endDateMs) {
+        // Contest ended
+        if (totalEntries >= minEntries) {
+          pot += seedAmount;
+          seedIncluded = true;
+          seedEligible = true;
+        } else {
+          // Seed not included, contest ended and not enough entries
+          seedIncluded = false;
+          seedEligible = false;
+        }
+      } else {
+        // Contest ongoing: seed is potentially available
+        pot += seedAmount;
+        seedIncluded = true;
+        seedEligible = false; // Not yet eligible, but showing as "potential"
+      }
+    }
+
     prizes[contestName] = {
       totalEntries,
       pot: pot < 0 ? 0 : pot,
-      reserve: reserve,
-      creatorEarnings: creatorEarnings,
-      platformEarnings: platformEarnings,
-      seedIncluded: seedInPot,
+      reserve,
+      creatorEarnings,
+      platformEarnings,
+      seedIncluded,
+      seedEligible,
       isPlatform,
+      endDateMs,
+      contestTitle: contestInfo.contestTitle || contestName,
+      creator: contestInfo.creator || 'Contests Unlimited',
     };
   }
   return prizes;
 }
 
+// Route: main homepage with prize info
 router.get('/', (req, res) => {
   loadJsonFromS3('uploads.json', (uploads) => {
     if (!uploads) uploads = [];
@@ -153,10 +175,15 @@ router.get('/', (req, res) => {
           }
           // Show prize pool and entry count, and note if seed is included/removed
           let seedText = '';
-          if (data.seedIncluded === false && data.totalEntries > 0 && data.totalEntries < 20) {
-            seedText = `<span style="color: #b00;">(Seed removed - not enough entries)</span>`;
-          } else if (data.seedIncluded) {
+          // If contest is ongoing and at least 1 entry, show seed as "potential"
+          if (data.seedIncluded && !data.seedEligible) {
+            seedText = `<span style="color: #070;">(Seeded with $1000 if 20+ entries by contest close)</span>`;
+          } else if (data.seedIncluded && data.seedEligible) {
+            // Contest ended, seed included
             seedText = `<span style="color: #070;">(Seeded with $1000!)</span>`;
+          } else if (!data.seedIncluded && data.totalEntries > 0 && data.endDateMs && Date.now() > data.endDateMs) {
+            // Contest ended, seed removed
+            seedText = `<span style="color: #b00;">(Seed removed - not enough entries)</span>`;
           }
           return `<li>
             <strong>${info.contestTitle} (${contestName})</strong>: $${data.pot.toFixed(2)} — Entries: ${data.totalEntries}
@@ -233,7 +260,7 @@ router.get('/', (req, res) => {
               <h2>Start Your Own Contest</h2>
               <p style="font-size: 1.1em; max-width: 600px; margin: 0 auto;">
                 Create your own contest to earn <strong>25% of all entry fees!</strong><br>
-                <em>Each contest is seeded with $1000, but seed is removed if there are fewer than 20 entries. Each entry is $100, with 60% to the pot, 25% to you, 10% to reserve, and 5% to platform.</em>
+                <em>Each contest is seeded with $1000, but seed is only awarded if there are at least 20 entries by contest close. Each entry is $100, with 60% to the pot, 25% to you, 10% to reserve, and 5% to platform.</em>
               </p>
               <p style="margin-top: 20px;">
                 <button onclick="window.location.href='/create.html'" style="padding: 12px 24px; background-color: #005b96; color: white; border: none; border-radius: 5px; font-size: 1em; cursor: pointer;">
@@ -247,14 +274,11 @@ router.get('/', (req, res) => {
               </p>
             </div>
 
-            <!-- Creator Login Form REMOVED -->
-
-            <!-- Original Terms and Conditions Section -->
             <div style="margin-top: 40px; padding: 20px; font-size: 0.85em; color: #555; max-width: 800px; margin-left: auto; margin-right: auto;">
               <h3>Terms and Conditions</h3>
               <ul>
                 <li>Each contest entry costs <strong>$100.00 USD</strong>. The entry fee is non-refundable.</li>
-                <li>Each contest is seeded with $1000, but the seed will be withdrawn if the contest does not reach at least 20 entries.</li>
+                <li>Each contest is seeded with $1000, but the seed will only be awarded if the contest reaches at least 20 entries by the time it closes.</li>
                 <li>For custom contests: 60% of each entry fee is added to the prize pot, 25% goes to the contest creator, 10% is put in reserve, and 5% goes to the platform.</li>
                 <li>For platform-run contests: 60% of each entry fee is added to the prize pot, 10% goes to reserve, and 30% goes to the platform.</li>
                 <li>Each contest has a unique prize pool that grows with each valid entry and seed (if qualified).</li>
