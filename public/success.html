@@ -20,19 +20,22 @@
 <body>
   <h1>Thank you for entering!</h1>
 
+  <p style="max-width:600px;color:#444;font-size:1em;">
+    <strong>Entry fee: $100.</strong> Prize pool is seeded with $1000 if there are at least 20 entries by contest close.
+    Payouts: 60% to prize pot, 25% to contest creator, 10% reserve, 5% platform (custom contests).
+    Winners will be contacted via email and asked to provide their full name and mailing address to issue the prize check.
+  </p>
+
   <form id="uploadForm" enctype="multipart/form-data" method="POST" action="/api/payment/upload">
     <input type="text" name="name" placeholder="Your Name" required>
 
     <select name="contestName" id="contestSelect" required>
       <option value="" disabled selected>Select Contest</option>
-      <option value="Art Contest">Art Contest</option>
-      <option value="Photo Contest">Photo Contest</option>
-      <option value="Trivia Contest">Trivia Contest</option>
-      <option value="DIY Contest">DIY Contest</option>
+      <!-- Approved contests will be loaded here -->
     </select>
 
     <input type="file" name="file" id="fileInput" accept="image/*" required>
-    <input type="hidden" name="session_id" id="sessionIdInput"> <!-- updated name -->
+    <input type="hidden" name="session_id" id="sessionIdInput">
 
     <div id="triviaSection">
       <p><strong>Trivia (10 minutes to complete):</strong></p>
@@ -70,7 +73,10 @@
   }
 
   contestSelect.addEventListener('change', async function () {
-    if (this.value === 'Trivia Contest') {
+    // Find the selected contest
+    const selectedOption = contestSelect.options[contestSelect.selectedIndex];
+    const isTrivia = selectedOption && selectedOption.textContent.toLowerCase().includes('trivia');
+    if (isTrivia) {
       fileInput.disabled = true;
       fileInput.style.display = 'none';
       fileInput.required = false;
@@ -138,7 +144,9 @@
   }
 
   document.getElementById('uploadForm').addEventListener('submit', function () {
-    if (contestSelect.value === 'Trivia Contest') {
+    const selectedOption = contestSelect.options[contestSelect.selectedIndex];
+    const isTrivia = selectedOption && selectedOption.textContent.toLowerCase().includes('trivia');
+    if (isTrivia) {
       const answers = triviaQuestions.map((q, i) => {
         const selected = document.querySelector(`input[name="q${i}"]:checked`);
         return {
@@ -161,7 +169,7 @@
       contests.forEach(contest => {
         const option = document.createElement('option');
         option.value = contest.slug;
-        option.textContent = contest.name;
+        option.textContent = contest.name || contest.contestTitle || contest.contestName || contest.slug;
         contestSelect.appendChild(option);
       });
     } catch (err) {

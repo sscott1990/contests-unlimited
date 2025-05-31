@@ -26,7 +26,7 @@
       color: red;
       font-size: 0.9em;
     }
-    #checkout_button {
+    #submit_button {
       display: block;
       font-family: sans-serif;
       font-size: 20px;
@@ -41,7 +41,7 @@
       border: none;
       transition: background 0.15s, opacity 0.15s, cursor 0.15s;
     }
-    #checkout_button:enabled {
+    #submit_button:enabled {
       opacity: 1;
       cursor: pointer;
     }
@@ -181,16 +181,16 @@
 
     <label>
       <input type="checkbox" id="agreeFees" required>
-      I understand the $50 fee is non-refundable unless denied, and a $10 admin fee applies if I issue a chargeback.
+      I understand that my contest submission is subject to approval and may be rejected if it does not comply with platform rules.
     </label>
 
     <!-- Password field for creator account -->
     <label>Create a password:</label>
     <input type="password" name="password" id="password" required autocomplete="new-password">
 
-    <p><strong>Entry Fee: $50 (non-refundable if approved)</strong></p>
+    <p><strong>Admission: <span style="color:green;">Free</span> (no charge to submit your contest)</strong></p>
 
-    <button id="checkout_button" type="button" disabled>Submit</button>
+    <button id="submit_button" type="button" disabled>Submit</button>
   </form>
 
   <a class="home-btn" href="/">← Back to Homepage</a>
@@ -198,19 +198,19 @@
   <div class="terms-section">
     <h3>Terms and Conditions for Contest Creators</h3>
     <ul>
-      <li>Creating a contest requires a payment of <strong>$50.00 USD</strong>. This fee covers the administrative and operational costs of hosting your contest.</li>
+      <li>Submitting a contest is <strong>free</strong>. There is no fee to create or submit a contest for approval.</li>
       <li>You must be <strong>18 years of age or older</strong> to create a contest.</li>
       <li>Contests are <strong>void where prohibited</strong> by law. It is your responsibility to ensure that operating a contest is legal in your jurisdiction.</li>
-      <li>Each contest will have a unique prize pool funded by participant entries, with 50% of each entry fee ($2.50 from every $5.00 entry) added to the prize pool for your contest.</li>
+      <li>Each contest will have a unique prize pool funded by participant entries, seeded with $1000 if there is at least 1 entry and at least 20 total entries by contest close for the seed to remain. Payouts: 60% of each $100 entry to the prize pot, 25% to you as creator, 10% to reserve, and 5% to platform (for custom contests).</li>
       <li>At the conclusion of the contest, a single winner will be selected and awarded the full prize pool amount. Winners are notified and paid within 7–14 business days after verification.</li>
       <li>Contest creators are responsible for ensuring fair play and compliance with all stated contest rules.</li>
-      <li>Attempts to manipulate, defraud, or otherwise compromise the integrity of any contest will result in disqualification and potential forfeiture of fees.</li>
+      <li>Attempts to manipulate, defraud, or otherwise compromise the integrity of any contest will result in disqualification and potential forfeiture of rewards.</li>
       <li>By creating a contest, you agree to abide by all platform policies and the decisions of the contest administrators, which are final.</li>
     </ul>
 
     <h3>Refund Policy</h3>
     <p>
-      The <strong>$50.00 contest creation fee is non-refundable once your contest is approved</strong>. No refunds will be provided for voluntary withdrawal, disqualification, or any reason other than denial of contest approval. If your contest is not approved, your fee will be refunded minus any applicable administrative or processing costs as specified at the time of payment. A <strong>$10 administrative fee</strong> applies to all chargebacks and to any refunds issued for denied contests. By submitting your contest, you acknowledge and agree to this refund policy.
+      As there is no fee to submit a contest, there are no refunds or charges for submissions. If a contest is denied, no funds will be collected. By submitting your contest, you acknowledge and agree to these policies.
     </p>
 
     <h3>Privacy Policy</h3>
@@ -219,13 +219,10 @@
     </p>
   </div>
 
-  <script src="https://secure.easypaydirectgateway.com/token/CollectCheckout.js"
-    data-checkout-key="checkout_public_WQgrRu3vwsHYQWH5sMvX6XtT796Pz67f"></script>
-
   <script>
     const restrictedStates = ['NY', 'WA', 'NJ', 'PR', 'GU', 'AS', 'VI', 'MP', 'RI']; // Modify as needed
     const stateSelect = document.getElementById('state');
-    const checkoutButton = document.getElementById('checkout_button');
+    const submitButton = document.getElementById('submit_button');
     const stateAlert = document.getElementById('stateAlert');
     const form = document.getElementById('contestForm');
     const passwordInput = document.getElementById('password');
@@ -233,7 +230,7 @@
 
     let creatorSessionId = null;
 
-    function updateCheckoutButton() {
+    function updateSubmitButton() {
       const allChecked = checkboxes.every(cb => cb.checked);
       const selectedState = stateSelect.value;
       const isRestricted = restrictedStates.includes(selectedState);
@@ -251,64 +248,56 @@
 
       stateAlert.style.display = isRestricted ? 'block' : 'none';
 
-      checkoutButton.disabled = !allFieldsFilled;
+      submitButton.disabled = !allFieldsFilled;
     }
 
-    // Fetch creatorSessionId from backend before enabling checkout
+    // Fetch creatorSessionId from backend before enabling submit
     fetch('/api/creator/session')
       .then(res => res.json())
       .then(data => {
         creatorSessionId = data.creatorSessionId;
-        updateCheckoutButton();
+        updateSubmitButton();
       })
       .catch(err => {
         console.error('Failed to fetch creator session ID:', err);
       });
 
-    stateSelect.addEventListener('change', updateCheckoutButton);
-    checkboxes.forEach(cb => cb.addEventListener('change', updateCheckoutButton));
-    passwordInput.addEventListener('input', updateCheckoutButton);
+    stateSelect.addEventListener('change', updateSubmitButton);
+    checkboxes.forEach(cb => cb.addEventListener('change', updateSubmitButton));
+    passwordInput.addEventListener('input', updateSubmitButton);
     ['contestName', 'description', 'creator', 'email'].forEach(name => {
-      form.elements[name].addEventListener('input', updateCheckoutButton);
+      form.elements[name].addEventListener('input', updateSubmitButton);
     });
 
-    checkoutButton.addEventListener('click', function () {
-      if (checkoutButton.disabled) return;
-      // Save form data in localStorage for retrieval after payment success
+    submitButton.addEventListener('click', async function () {
+      if (submitButton.disabled) return;
+      // Prepare form data
       const formData = {
         contestName: form.elements['contestName'].value,
         description: form.elements['description'].value,
         creator: form.elements['creator'].value,
         email: form.elements['email'].value,
         state: form.elements['state'].value,
-        password: form.elements['password'].value // Store password for submission
+        password: form.elements['password'].value,
+        creatorSessionId
       };
-      localStorage.setItem('creatorFormData', JSON.stringify(formData));
-
-      CollectCheckout.redirectToCheckout({
-        type: "sale",
-        lineItems: [{
-          lineItemType: "purchase",
-          sku: "1000", // This should correspond to your EasyPayDirect product/price
-          quantity: 1
-        }],
-        successUrl: `https://contests-unlimited.onrender.com/success-creator-submitted.html?session_id=${creatorSessionId}`,
-        cancelUrl: "https://contests-unlimited.onrender.com/cancel.html",
-        customerVault: { addCustomer: true },
-        receipt: {
-          showReceipt: false,
-          sendToCustomer: true
-        },
-        useKount: false,
-        paymentMethods: [
-          { type: "creditCard", use3DSecure: false },
-          { type: "check" }
-        ]
-      }).then((error) => {
-        if (error) {
-          console.error('Payment error:', error);
+      try {
+        const response = await fetch('/api/creator/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData)
+        });
+        if (response.redirected) {
+          window.location.href = response.url;
+        } else if (response.ok) {
+          window.location.href = "/success-creator-submitted.html";
+        } else {
+          const errMsg = await response.text();
+          alert('Submission error: ' + errMsg);
         }
-      });
+      } catch (err) {
+        alert('Submission failed: ' + err.message);
+      }
     });
   </script>
 </body>

@@ -30,17 +30,86 @@ function loadJsonFromS3(key, callback) {
   });
 }
 
-function calculatePrizesByContest(uploads) {
-  const prizes = {};
+// Helper to determine if contest is platform-run
+function isPlatformContest(creator) {
+  // You may want to update this logic as your platform-run contest marker evolves
+  return !creator || (typeof creator === 'string' && creator.trim().toLowerCase() === "contests unlimited");
+}
+
+function calculatePrizesByContest(uploads, creatorsArray) {
+  // Map contestName to array of entries
+  const entriesByContest = {};
   for (const upload of uploads) {
     const contest = upload.contestName || 'Unknown';
-    if (!prizes[contest]) prizes[contest] = 0;
-    prizes[contest] += 2.5; // $2.50 per valid upload
+    if (!entriesByContest[contest]) entriesByContest[contest] = [];
+    entriesByContest[contest].push(upload);
+  }
+
+  // Build contest info by contestName (not slug here)
+  const contestInfoByName = {};
+  if (Array.isArray(creatorsArray)) {
+    for (const c of creatorsArray) {
+      if (c.contestTitle) {
+        contestInfoByName[c.contestTitle] = c;
+      }
+    }
+  }
+
+  const prizes = {};
+  for (const contestName in entriesByContest) {
+    const entries = entriesByContest[contestName];
+    const contestInfo = contestInfoByName[contestName] || {};
+    const creator = contestInfo.creator || 'Contests Unlimited';
+    const isPlatform = isPlatformContest(creator);
+
+    // Business rules
+    const entryFee = 100; // $100 per entry
+    const minEntries = 20;
+    const seedAmount = 1000;
+
+    let totalEntries = entries.length;
+    let pot = 0, reserve = 0, creatorEarnings = 0, platformEarnings = 0, seedInPot = false;
+
+    // Add seed if at least one entry
+    if (totalEntries > 0) {
+      pot += seedAmount;
+      seedInPot = true;
+    }
+
+    // If not enough entries, remove seed from pot at end
+    if (totalEntries < minEntries && seedInPot) {
+      pot -= seedAmount;
+      seedInPot = false;
+    }
+
+    // For each entry, split $100 according to contest type
+    for (let i = 0; i < totalEntries; i++) {
+      if (isPlatform) {
+        // Platform-run: 60% pot, 10% reserve, 30% to platform
+        pot += entryFee * 0.6;
+        reserve += entryFee * 0.1;
+        platformEarnings += entryFee * 0.3;
+      } else {
+        // Custom: 60% pot, 25% creator, 10% reserve, 5% to platform
+        pot += entryFee * 0.6;
+        creatorEarnings += entryFee * 0.25;
+        reserve += entryFee * 0.10;
+        platformEarnings += entryFee * 0.05;
+      }
+    }
+
+    prizes[contestName] = {
+      totalEntries,
+      pot: pot < 0 ? 0 : pot,
+      reserve: reserve,
+      creatorEarnings: creatorEarnings,
+      platformEarnings: platformEarnings,
+      seedIncluded: seedInPot,
+      isPlatform,
+    };
   }
   return prizes;
 }
-
-// REMOVED loadRules() - now always using loadJsonFromS3 for rules
 
 router.get('/', (req, res) => {
   loadJsonFromS3('uploads.json', (uploads) => {
@@ -61,30 +130,38 @@ router.get('/', (req, res) => {
         }
       }
 
-      const prizes = calculatePrizesByContest(uploads);
+      const prizes = calculatePrizesByContest(uploads, creatorsArray);
 
       // --- NOW LOAD RULES FROM S3 ---
       loadJsonFromS3('rules.json', (rules) => {
         if (!rules) rules = [];
 
         // --- PRIZE LIST with fallback countdown ---
-        const prizeList = Object.entries(prizes).map(([contestSlug, total]) => {
-          let info = contestInfoMap[contestSlug];
+        const prizeList = Object.entries(prizes).map(([contestName, data]) => {
+          // Find matching contest info by name
+          let info = Object.values(contestInfoMap).find(i => i.contestTitle === contestName);
           let endDateMs;
           if (info && info.endDate) {
-            // Found in creator.json, use its endDate
             endDateMs = info.endDate;
           } else {
             // Fallback for default contests: use 1 year from fixed deploy date
             endDateMs = DEFAULT_CONTEST_START.getTime() + DEFAULT_CONTEST_DURATION_MS;
             info = {
               creator: 'Contests Unlimited',
-              contestTitle: contestSlug
+              contestTitle: contestName
             };
           }
+          // Show prize pool and entry count, and note if seed is included/removed
+          let seedText = '';
+          if (data.seedIncluded === false && data.totalEntries > 0 && data.totalEntries < 20) {
+            seedText = `<span style="color: #b00;">(Seed removed - not enough entries)</span>`;
+          } else if (data.seedIncluded) {
+            seedText = `<span style="color: #070;">(Seeded with $1000!)</span>`;
+          }
           return `<li>
-            <strong>${info.contestTitle} (${contestSlug})</strong>: $${total.toFixed(2)} — Entries: ${Math.floor(total / 2.5)}
+            <strong>${info.contestTitle} (${contestName})</strong>: $${data.pot.toFixed(2)} — Entries: ${data.totalEntries}
             <em style="color: #666; font-size: 0.9em;">(Hosted by ${info.creator})</em>
+            ${seedText}
             <div>Ends in: <span class="countdown" data-endtime="${endDateMs}"></span></div>
           </li>`;
         }).join('');
@@ -155,8 +232,8 @@ router.get('/', (req, res) => {
             <div style="margin-top: 40px; text-align: center;">
               <h2>Start Your Own Contest</h2>
               <p style="font-size: 1.1em; max-width: 600px; margin: 0 auto;">
-                Create your own contest to earn <strong>$1 per entry!</strong><br>
-                <em>Subject to approval. Refunds only if denied. You are responsible for chargeback fees.</em>
+                Create your own contest to earn <strong>25% of all entry fees!</strong><br>
+                <em>Each contest is seeded with $1000, but seed is removed if there are fewer than 20 entries. Each entry is $100, with 60% to the pot, 25% to you, 10% to reserve, and 5% to platform.</em>
               </p>
               <p style="margin-top: 20px;">
                 <button onclick="window.location.href='/create.html'" style="padding: 12px 24px; background-color: #005b96; color: white; border: none; border-radius: 5px; font-size: 1em; cursor: pointer;">
@@ -176,9 +253,11 @@ router.get('/', (req, res) => {
             <div style="margin-top: 40px; padding: 20px; font-size: 0.85em; color: #555; max-width: 800px; margin-left: auto; margin-right: auto;">
               <h3>Terms and Conditions</h3>
               <ul>
-                <li>Each contest entry costs $5.00 USD. The entry fee is non-refundable.</li>
-                <li>50% of each entry fee ($2.50) is added to the prize pool for that specific contest.</li>
-                <li>Each contest has a unique prize pool that grows with each valid entry.</li>
+                <li>Each contest entry costs <strong>$100.00 USD</strong>. The entry fee is non-refundable.</li>
+                <li>Each contest is seeded with $1000, but the seed will be withdrawn if the contest does not reach at least 20 entries.</li>
+                <li>For custom contests: 60% of each entry fee is added to the prize pot, 25% goes to the contest creator, 10% is put in reserve, and 5% goes to the platform.</li>
+                <li>For platform-run contests: 60% of each entry fee is added to the prize pot, 10% goes to reserve, and 30% goes to the platform.</li>
+                <li>Each contest has a unique prize pool that grows with each valid entry and seed (if qualified).</li>
                 <li>At the end of the contest, one winner will be selected and awarded the full prize pool amount.</li>
                 <li>Winners will be notified and paid within 7–14 business days after verification.</li>
                 <li>Only participants aged 18 and older are eligible to enter.</li>
@@ -237,11 +316,13 @@ router.get('/', (req, res) => {
   });
 });
 
-// API: Return JSON of prize pools by contest (unchanged)
+// API: Return JSON of prize pools by contest (updated)
 router.get('/api/prize', (req, res) => {
   loadJsonFromS3('uploads.json', (uploads) => {
-    const prizes = uploads ? calculatePrizesByContest(uploads) : {};
-    res.json(prizes);
+    loadJsonFromS3('creator.json', (creatorsArray) => {
+      const prizes = uploads ? calculatePrizesByContest(uploads, creatorsArray) : {};
+      res.json(prizes);
+    });
   });
 });
 

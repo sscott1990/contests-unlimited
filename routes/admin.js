@@ -405,24 +405,57 @@ router.get('/creators', async (req, res) => {
   }
 });
 
-// --- ADDITION: Contest Stats Route for Creators ---
+// --- UPDATED: Contest Stats Route for Creators ---
 router.get('/creator-stats/:slug', async (req, res) => {
   try {
     const { slug } = req.params;
     const uploads = await loadUploads();
+    const creators = await loadCreators();
+
     if (!uploads) return res.status(404).send('No entries found.');
 
-    // Filter entries for this contest by slug
-    const contestEntries = uploads.filter(entry => entry.contestName === slug);
+    // Find the associated contest by slug
+    const contest = creators.find(c => c.slug === slug);
+    const contestName = contest?.contestTitle || slug;
+    const creator = contest?.creator || 'Contests Unlimited';
 
+    // Determine if platform or custom contest
+    const isPlatform = !creator || (typeof creator === 'string' && creator.trim().toLowerCase() === "contests unlimited");
+
+    // Filter entries for this contest by contestName
+    const contestEntries = uploads.filter(entry => entry.contestName === contestName);
     const numEntries = contestEntries.length;
 
-    // Calculate prize pot as $2.50 per entry (site), and $1.00 per entry (creator's earnings)
-    const prizePot = numEntries * 2.5;
-    const creatorEarnings = numEntries * 1.0;
+    // Business rules
+    const entryFee = 100;
+    const minEntries = 20;
+    const seedAmount = 1000;
 
-    // Optionally get the contest name/title from one of the entries
-    const contestName = contestEntries[0]?.contestTitle || contestEntries[0]?.contestName || slug;
+    // Prize calculation
+    let pot = 0, reserve = 0, creatorEarnings = 0, platformEarnings = 0, seedInPot = false;
+    // Add seed if at least one entry
+    if (numEntries > 0) {
+      pot += seedAmount;
+      seedInPot = true;
+    }
+    // Remove seed if not enough entries
+    if (numEntries < minEntries && seedInPot) {
+      pot -= seedAmount;
+      seedInPot = false;
+    }
+    // Split per entry
+    for (let i = 0; i < numEntries; i++) {
+      if (isPlatform) {
+        pot += entryFee * 0.6;
+        reserve += entryFee * 0.1;
+        platformEarnings += entryFee * 0.3;
+      } else {
+        pot += entryFee * 0.6;
+        creatorEarnings += entryFee * 0.25;
+        reserve += entryFee * 0.10;
+        platformEarnings += entryFee * 0.05;
+      }
+    }
 
     res.send(`
       <!DOCTYPE html>
@@ -440,8 +473,17 @@ router.get('/creator-stats/:slug', async (req, res) => {
       <body>
         <h1>Stats for "${contestName}"</h1>
         <div class="stat"><strong>Number of Entries:</strong> ${numEntries}</div>
-        <div class="stat"><strong>Current Prize Pot:</strong> $${prizePot.toFixed(2)}</div>
-        <div class="stat"><strong>Your Earnings So Far:</strong> $${creatorEarnings.toFixed(2)}</div>
+        <div class="stat"><strong>Current Prize Pot:</strong> $${pot < 0 ? 0 : pot.toFixed(2)} ${seedInPot ? '(Seeded)' : (numEntries > 0 && numEntries < 20 ? '(Seed removed - not enough entries)' : '')}</div>
+        <div class="stat"><strong>Reserve:</strong> $${reserve.toFixed(2)}</div>
+        <div class="stat"><strong>Creator Earnings:</strong> $${creatorEarnings.toFixed(2)}</div>
+        <div class="stat"><strong>Platform Earnings:</strong> $${platformEarnings.toFixed(2)}</div>
+        <div class="stat"><strong>Contest Type:</strong> ${isPlatform ? 'Platform (Contests Unlimited)' : 'Custom'}</div>
+        <div class="stat"><strong>Seed Rule:</strong> $1000 is seeded in the prize pot if there is at least 1 entry, but removed if the contest does not reach 20 entries.</div>
+        <div class="stat"><strong>Split:</strong> ${
+          isPlatform
+            ? "60% pot, 10% reserve, 30% platform"
+            : "60% pot, 25% creator, 10% reserve, 5% platform"
+        }</div>
       </body>
       </html>
     `);
@@ -450,7 +492,7 @@ router.get('/creator-stats/:slug', async (req, res) => {
     res.status(500).send('Failed to load contest stats.');
   }
 });
-// --- END ADDITION ---
+// --- END UPDATED ---
 
 // Logout route
 router.get('/logout', (req, res) => {

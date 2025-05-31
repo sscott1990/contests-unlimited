@@ -57,51 +57,9 @@
     <a href="/">Back to Home</a>
   </div>
 <script>
-  const storedData = localStorage.getItem('creatorFormData');
-  const urlParams = new URLSearchParams(window.location.search);
-  const sessionId = urlParams.get('session_id');
-
-  function showAlert(msg) {
-    const alertDiv = document.getElementById('alert');
-    alertDiv.textContent = msg;
-    alertDiv.style.display = 'block';
-  }
-
-  if (storedData && sessionId) {
-    const formData = JSON.parse(storedData);
-    // Check for required fields
-    if (
-      !formData.contestName ||
-      !formData.description ||
-      !formData.creator ||
-      !formData.email ||
-      !formData.password // ensure password is present
-    ) {
-      showAlert("Some required fields are missing. Please resubmit your contest.");
-    } else {
-      // Add sessionId as creatorSessionId, and merge all fields
-      const postData = {
-        ...formData,
-        creatorSessionId: sessionId
-      };
-
-      fetch('/api/creator/upload', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(postData)
-      }).then(res => {
-        if (!res.ok) throw new Error('Failed to save creator data');
-        localStorage.removeItem('creatorFormData');
-      }).catch(err => {
-        showAlert('There was a problem saving your contest. Please try again or contact support.');
-        console.error('Error saving contest:', err);
-      });
-    }
-  } else {
-    showAlert("Submission data missing. Please submit your contest again.");
-  }
+  // Clear any stored form data after successful submission,
+  // but do NOT attempt to re-submit!
+  localStorage.removeItem('creatorFormData');
 </script>
 </body>
 </html>

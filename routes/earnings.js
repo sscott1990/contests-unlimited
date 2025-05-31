@@ -38,7 +38,9 @@ function parsePrize(prizeModel) {
   const match = String(prizeModel).match(/([\d,.]+)/);
   return match ? parseFloat(match[1].replace(/,/g, '')) : null;
 }
-const DEFAULT_ENTRY_FEE = 1;
+
+const DEFAULT_ENTRY_FEE = 100;
+const CREATOR_PER_ENTRY = 25; // 25% of entry fee
 
 router.get('/creator-earnings/:email', async (req, res) => {
   try {
@@ -51,25 +53,31 @@ router.get('/creator-earnings/:email', async (req, res) => {
     );
 
     const results = [];
-    let totalRevenue = 0;
+    let totalProfit = 0;
     for (const contest of contests) {
       const contestUploads = uploads.filter(
         u => u.contestName === contest.slug
       );
+      const entries = contestUploads.length;
       const entryFee = parsePrize(contest.prizeModel) || DEFAULT_ENTRY_FEE;
-      const revenue = contestUploads.length * entryFee;
-      totalRevenue += revenue;
+      // For now, always use $25 per entry as creator profit
+      const creatorRevenue = entries * CREATOR_PER_ENTRY;
+      totalProfit += creatorRevenue;
 
       results.push({
         contestTitle: contest.contestTitle,
         slug: contest.slug,
         prize: contest.prizeModel || "N/A",
-        entries: contestUploads.length,
-        revenue: revenue
+        entries,
+        entryFee,
+        creatorRevenue
       });
     }
 
-    res.json({ totalRevenue, contests: results });
+    res.json({ 
+      totalProfit,
+      contests: results 
+    });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch earnings.' });
   }
