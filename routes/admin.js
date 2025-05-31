@@ -1,7 +1,7 @@
 const express = require('express');
 const AWS = require('aws-sdk');
 const router = express.Router();
-const { loadJSONFromS3 } = require('../utils/s3Utils'); // Adjust path as needed
+const { loadJSONFromS3 } = require('../utils/s3Utils');
 const slugify = require('slugify');
 
 const s3 = new AWS.S3({
@@ -23,7 +23,6 @@ async function loadCreators() {
   return loadJSONFromS3('creator.json');
 }
 
-// Generate a pre-signed URL for an S3 object key (valid for 15 minutes)
 function getPresignedUrl(key) {
   const params = { Bucket: BUCKET_NAME, Key: key, Expires: 900 };
   return s3.getSignedUrlPromise('getObject', params);
@@ -57,7 +56,7 @@ router.get('/entries', async (req, res) => {
   }
 });
 
-// HTML view of entries with search bar (no host needed)
+// HTML view of entries with search bar (name, email, address, contest, date)
 router.get('/entries-view', async (req, res) => {
   try {
     const entries = await loadEntries();
@@ -70,16 +69,31 @@ router.get('/entries-view', async (req, res) => {
     const search = (req.query.search || '').trim().toLowerCase();
     let filteredEntries = entries;
     if (search) {
-      filteredEntries = entries.filter(entry =>
-        (entry.contestName || '').toLowerCase().includes(search) ||
-        (entry.name || '').toLowerCase().includes(search) ||
-        (entry.email || '').toLowerCase().includes(search) ||
-        (creators && creators.find(c =>
-          ((c.slug && entry.contestName === c.slug) ||
-           (c.contestTitle && entry.contestName === c.contestTitle)) &&
-          (c.creator || '').toLowerCase().includes(search)
-        ))
-      );
+      filteredEntries = entries.filter(entry => {
+        // Construct name, email, address as below for search as well
+        const name = `${entry.billingAddress?.first_name || ''} ${entry.billingAddress?.last_name || ''}`.trim();
+        const email = entry.customerEmail || entry.billingAddress?.email || '';
+        const address = [
+          entry.billingAddress?.address_1 || '',
+          entry.billingAddress?.address_2 || '',
+          entry.billingAddress?.city || '',
+          entry.billingAddress?.state || '',
+          entry.billingAddress?.postal_code || '',
+          entry.billingAddress?.country || ''
+        ].filter(Boolean).join(', ');
+        const contest = entry.contestName || '';
+        return (
+          contest.toLowerCase().includes(search) ||
+          name.toLowerCase().includes(search) ||
+          email.toLowerCase().includes(search) ||
+          address.toLowerCase().includes(search) ||
+          (creators && creators.find(c =>
+            ((c.slug && contest === c.slug) ||
+             (c.contestTitle && contest === c.contestTitle)) &&
+            (c.creator || '').toLowerCase().includes(search)
+          ))
+        );
+      });
     }
 
     // Pagination logic
@@ -91,12 +105,24 @@ router.get('/entries-view', async (req, res) => {
     const paginatedEntries = filteredEntries.slice(start, start + perPage);
 
     const rows = paginatedEntries.map(entry => {
+      const name = `${entry.billingAddress?.first_name || ''} ${entry.billingAddress?.last_name || ''}`.trim();
+      const email = entry.customerEmail || entry.billingAddress?.email || '';
+      const address = [
+        entry.billingAddress?.address_1 || '',
+        entry.billingAddress?.address_2 || '',
+        entry.billingAddress?.city || '',
+        entry.billingAddress?.state || '',
+        entry.billingAddress?.postal_code || '',
+        entry.billingAddress?.country || ''
+      ].filter(Boolean).join(', ');
+      const contest = entry.contestName || '';
       const date = entry.timestamp ? new Date(entry.timestamp).toLocaleString() : '';
       return `
         <tr>
-          <td>${entry.name || ''}</td>
-          <td>${entry.email || ''}</td>
-          <td>${entry.contestName || ''}</td>
+          <td>${name}</td>
+          <td>${email}</td>
+          <td>${address}</td>
+          <td>${contest}</td>
           <td>${date}</td>
         </tr>
       `;
@@ -145,7 +171,7 @@ router.get('/entries-view', async (req, res) => {
         </nav>
         <h2>Entries</h2>
         <form class="search-bar" method="get" action="/api/admin/entries-view">
-          <input type="text" name="search" value="${search.replace(/"/g, "&quot;")}" placeholder="Search by name, contest, or email..." />
+          <input type="text" name="search" value="${search.replace(/"/g, "&quot;")}" placeholder="Search by name, contest, email, or address..." />
           <button type="submit">Search</button>
         </form>
         <table>
@@ -153,6 +179,7 @@ router.get('/entries-view', async (req, res) => {
             <tr>
               <th>Name</th>
               <th>Email</th>
+              <th>Address</th>
               <th>Contest</th>
               <th>Date</th>
             </tr>
@@ -174,13 +201,13 @@ router.get('/entries-view', async (req, res) => {
 router.get('/uploads', async (req, res) => {
   try {
     const uploads = await loadUploads();
-    const creators = await loadCreators(); // <-- Load creators for host lookup
+    const creators = await loadCreators();
 
     if (!uploads || uploads.length === 0) {
       return res.send('<h2>No uploads found</h2>');
     }
 
-    // --- SEARCH LOGIC ---
+    // SEARCH LOGIC
     const search = (req.query.search || '').trim().toLowerCase();
     let filteredUploads = uploads;
     if (search) {
@@ -228,7 +255,6 @@ router.get('/uploads', async (req, res) => {
 
     // Add host/creator lookup logic
     const uploadsWithHost = uploadsWithPresignedUrls.map(upload => {
-      // Try to find a creator whose slug or contestTitle matches upload.contestName
       let host = "Contests Unlimited";
       if (creators && creators.length) {
         const found = creators.find(c =>
@@ -740,11 +766,9 @@ router.post('/update-status', express.json(), async (req, res) => {
 
     let slug = null;
     if (status === 'approved') {
-      // Generate slug from contest name + timestamp for uniqueness
       slug = slugify(`${creators[index].contestTitle}-${Date.now()}`, { lower: true, strict: true });
       creators[index].slug = slug;
     } else {
-      // Remove slug if status changed from approved to something else
       delete creators[index].slug;
     }
 
