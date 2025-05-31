@@ -57,6 +57,119 @@ router.get('/entries', async (req, res) => {
   }
 });
 
+// HTML view of entries with search bar (no host needed)
+router.get('/entries-view', async (req, res) => {
+  try {
+    const entries = await loadEntries();
+    const creators = await loadCreators();
+    if (!entries || entries.length === 0) {
+      return res.send('<h2>No entries found</h2>');
+    }
+
+    // --- SEARCH LOGIC ---
+    const search = (req.query.search || '').trim().toLowerCase();
+    let filteredEntries = entries;
+    if (search) {
+      filteredEntries = entries.filter(entry =>
+        (entry.contestName || '').toLowerCase().includes(search) ||
+        (entry.name || '').toLowerCase().includes(search) ||
+        (entry.email || '').toLowerCase().includes(search) ||
+        (creators && creators.find(c =>
+          ((c.slug && entry.contestName === c.slug) ||
+           (c.contestTitle && entry.contestName === c.contestTitle)) &&
+          (c.creator || '').toLowerCase().includes(search)
+        ))
+      );
+    }
+
+    // Pagination logic
+    const page = parseInt(req.query.page) || 1;
+    const perPage = 25;
+    const totalEntries = filteredEntries.length;
+    const totalPages = Math.ceil(totalEntries / perPage);
+    const start = (page - 1) * perPage;
+    const paginatedEntries = filteredEntries.slice(start, start + perPage);
+
+    const rows = paginatedEntries.map(entry => {
+      const date = entry.timestamp ? new Date(entry.timestamp).toLocaleString() : '';
+      return `
+        <tr>
+          <td>${entry.name || ''}</td>
+          <td>${entry.email || ''}</td>
+          <td>${entry.contestName || ''}</td>
+          <td>${date}</td>
+        </tr>
+      `;
+    }).join('');
+
+    // Pagination controls html
+    let paginationControls = `<div style="margin-top: 1rem;">`;
+    if (page > 1) {
+      paginationControls += `<a href="?search=${encodeURIComponent(search)}&page=${page - 1}">Previous</a> `;
+    }
+    paginationControls += `Page ${page} of ${totalPages}`;
+    if (page < totalPages) {
+      paginationControls += ` <a href="?search=${encodeURIComponent(search)}&page=${page + 1}">Next</a>`;
+    }
+    paginationControls += `</div>`;
+
+    res.send(`
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <title>Admin Entries</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+          body { font-family: Arial, sans-serif; margin: 1rem; background: #f9f9f9; color: #333; }
+          h1, h2 { color: #444; }
+          nav a { margin-right: 1rem; text-decoration: none; color: #007bff; }
+          nav a:hover { text-decoration: underline; }
+          table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+          th, td { border: 1px solid #ddd; padding: 0.5rem; text-align: left; }
+          th { background: #eee; }
+          .search-bar { margin-bottom: 1rem; }
+          .search-bar input { padding: 6px 10px; font-size: 1em; min-width: 200px; }
+          .search-bar button { padding: 6px 14px; }
+          div.pagination { margin-top: 1rem; }
+        </style>
+      </head>
+      <body>
+        <h1>Admin Panel</h1>
+        <nav>
+          <a href="/api/admin/uploads">Uploads</a> |
+          <a href="/api/admin/entries-view">Entries</a> |
+          <a href="/api/admin/trivia">Trivia Results</a> |
+          <a href="/api/admin/creators">Creators</a> |
+          <a href="/api/admin/logout">Logout</a>
+        </nav>
+        <h2>Entries</h2>
+        <form class="search-bar" method="get" action="/api/admin/entries-view">
+          <input type="text" name="search" value="${search.replace(/"/g, "&quot;")}" placeholder="Search by name, contest, or email..." />
+          <button type="submit">Search</button>
+        </form>
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Contest</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows}
+          </tbody>
+        </table>
+        ${paginationControls}
+      </body>
+      </html>
+    `);
+  } catch (err) {
+    res.status(500).send('Failed to load entries.');
+  }
+});
+
 // HTML view of uploaded files with pagination, host column, and contest search
 router.get('/uploads', async (req, res) => {
   try {
@@ -186,7 +299,7 @@ router.get('/uploads', async (req, res) => {
         <h1>Admin Panel</h1>
         <nav>
           <a href="/api/admin/uploads">Uploads</a> |
-          <a href="/api/admin/entries">Entries</a> |
+          <a href="/api/admin/entries-view">Entries</a> |
           <a href="/api/admin/trivia">Trivia Results</a> |
           <a href="/api/admin/creators">Creators</a> |
           <a href="/api/admin/logout">Logout</a>
@@ -220,22 +333,37 @@ router.get('/uploads', async (req, res) => {
   }
 });
 
-// Trivia results view
+// Trivia results view with search bar and host
 router.get('/trivia', async (req, res) => {
   try {
     const uploads = await loadUploads();
+    const creators = await loadCreators();
     const triviaData = await loadJSONFromS3('trivia-contest.json');
     const correctAnswers = triviaData.map(q => q.answer);
 
+    // --- SEARCH LOGIC ---
+    const search = (req.query.search || '').trim().toLowerCase();
+    let filteredUploads = uploads;
+    if (search) {
+      filteredUploads = uploads.filter(upload =>
+        (upload.contestName || '').toLowerCase().includes(search) ||
+        (upload.name || '').toLowerCase().includes(search) ||
+        (creators && creators.find(c =>
+          ((c.slug && upload.contestName === c.slug) ||
+           (c.contestTitle && upload.contestName === c.contestTitle)) &&
+          (c.creator || '').toLowerCase().includes(search)
+        ))
+      );
+    }
+
     // Updated logic to support correctCount fallback if triviaAnswers is missing
-    const scored = uploads
+    const scored = filteredUploads
       .filter(entry =>
         (Array.isArray(entry.triviaAnswers) && entry.triviaAnswers.length > 0) ||
         (typeof entry.correctCount === 'number' && typeof entry.timeTaken === 'number')
       )
       .map(entry => {
         let score = 0;
-
         if (Array.isArray(entry.triviaAnswers)) {
           score = entry.triviaAnswers.reduce((sum, answer, i) => {
             if (i >= correctAnswers.length) return sum;
@@ -246,22 +374,49 @@ router.get('/trivia', async (req, res) => {
         } else if (typeof entry.correctCount === 'number') {
           score = entry.correctCount;
         }
-
-        return { ...entry, score };
+        // Host lookup
+        let host = "Contests Unlimited";
+        if (creators && creators.length) {
+          const found = creators.find(c =>
+            (c.slug && entry.contestName === c.slug) ||
+            (c.contestTitle && entry.contestName === c.contestTitle)
+          );
+          if (found && found.creator) host = found.creator;
+        }
+        return { ...entry, score, host };
       })
       .sort((a, b) => {
         if (b.score !== a.score) return b.score - a.score;
         return a.timeTaken - b.timeTaken;
       });
 
-    const rows = scored.map(entry => `
+    // Pagination logic
+    const page = parseInt(req.query.page) || 1;
+    const perPage = 25;
+    const totalRows = scored.length;
+    const totalPages = Math.ceil(totalRows / perPage);
+    const start = (page - 1) * perPage;
+    const paginatedRows = scored.slice(start, start + perPage);
+
+    const rows = paginatedRows.map(entry => `
       <tr>
         <td>${entry.name}</td>
         <td>${entry.contestName}</td>
+        <td>${entry.host}</td>
         <td>${entry.score} / ${correctAnswers.length}</td>
         <td>${typeof entry.timeTaken === 'number' ? entry.timeTaken.toFixed(3) + ' sec' : 'N/A'}</td>
       </tr>
     `).join('');
+
+    let paginationControls = `<div style="margin-top: 1rem;">`;
+    if (page > 1) {
+      paginationControls += `<a href="?search=${encodeURIComponent(search)}&page=${page - 1}">Previous</a> `;
+    }
+    paginationControls += `Page ${page} of ${totalPages}`;
+    if (page < totalPages) {
+      paginationControls += ` <a href="?search=${encodeURIComponent(search)}&page=${page + 1}">Next</a>`;
+    }
+    paginationControls += `</div>`;
 
     res.send(`
       <!DOCTYPE html>
@@ -278,22 +433,31 @@ router.get('/trivia', async (req, res) => {
           table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
           th, td { border: 1px solid #ddd; padding: 0.5rem; text-align: left; }
           th { background: #eee; }
+          .search-bar { margin-bottom: 1rem; }
+          .search-bar input { padding: 6px 10px; font-size: 1em; min-width: 200px; }
+          .search-bar button { padding: 6px 14px; }
+          div.pagination { margin-top: 1rem; }
         </style>
       </head>
       <body>
         <h1>Trivia Contest Submissions</h1>
         <nav>
           <a href="/api/admin/uploads">Uploads</a> |
-          <a href="/api/admin/entries">Entries</a> |
+          <a href="/api/admin/entries-view">Entries</a> |
           <a href="/api/admin/trivia">Trivia Results</a> |
           <a href="/api/admin/creators">Creators</a> |
           <a href="/api/admin/logout">Logout</a>
         </nav>
+        <form class="search-bar" method="get" action="/api/admin/trivia">
+          <input type="text" name="search" value="${search.replace(/"/g, "&quot;")}" placeholder="Search by contest, host, or name..." />
+          <button type="submit">Search</button>
+        </form>
         <table>
           <thead>
             <tr>
               <th>Name</th>
               <th>Contest</th>
+              <th>Host</th>
               <th>Correct Answers</th>
               <th>Time Taken</th>
             </tr>
@@ -302,6 +466,7 @@ router.get('/trivia', async (req, res) => {
             ${rows}
           </tbody>
         </table>
+        ${paginationControls}
       </body>
       </html>
    `);
@@ -311,7 +476,7 @@ router.get('/trivia', async (req, res) => {
   }
 });
 
-// New route: Creators view with pagination
+// Creators view with search bar and host
 router.get('/creators', async (req, res) => {
   try {
     const creators = await loadCreators();
@@ -320,12 +485,25 @@ router.get('/creators', async (req, res) => {
       return res.send('<h2>No creator submissions found</h2>');
     }
 
+    // --- SEARCH LOGIC ---
+    const search = (req.query.search || '').trim().toLowerCase();
+    let filteredCreators = creators;
+    if (search) {
+      filteredCreators = creators.filter(c =>
+        (c.creator || '').toLowerCase().includes(search) ||
+        (c.email || '').toLowerCase().includes(search) ||
+        (c.contestTitle || '').toLowerCase().includes(search) ||
+        (c.description || '').toLowerCase().includes(search) ||
+        (c.slug || '').toLowerCase().includes(search)
+      );
+    }
+
     const page = parseInt(req.query.page) || 1;
     const perPage = 25;
-    const totalCreators = creators.length;
+    const totalCreators = filteredCreators.length;
     const totalPages = Math.ceil(totalCreators / perPage);
     const start = (page - 1) * perPage;
-    const paginatedCreators = creators.slice(start, start + perPage);
+    const paginatedCreators = filteredCreators.slice(start, start + perPage);
 
     const rows = paginatedCreators.map(creator => `
       <tr data-id="${creator.id || creator.timestamp}">
@@ -347,11 +525,11 @@ router.get('/creators', async (req, res) => {
 
     let paginationControls = `<div style="margin-top: 1rem;">`;
     if (page > 1) {
-      paginationControls += `<a href="?page=${page - 1}">Previous</a> `;
+      paginationControls += `<a href="?search=${encodeURIComponent(search)}&page=${page - 1}">Previous</a> `;
     }
     paginationControls += `Page ${page} of ${totalPages}`;
     if (page < totalPages) {
-      paginationControls += ` <a href="?page=${page + 1}">Next</a>`;
+      paginationControls += ` <a href="?search=${encodeURIComponent(search)}&page=${page + 1}">Next</a>`;
     }
     paginationControls += `</div>`;
 
@@ -371,17 +549,24 @@ router.get('/creators', async (req, res) => {
           th, td { border: 1px solid #ddd; padding: 0.5rem; text-align: left; }
           th { background: #eee; }
           div.pagination { margin-top: 1rem; }
+          .search-bar { margin-bottom: 1rem; }
+          .search-bar input { padding: 6px 10px; font-size: 1em; min-width: 200px; }
+          .search-bar button { padding: 6px 14px; }
         </style>
       </head>
       <body>
         <h1>Contest Creators</h1>
         <nav>
           <a href="/api/admin/uploads">Uploads</a> |
-          <a href="/api/admin/entries">Entries</a> |
+          <a href="/api/admin/entries-view">Entries</a> |
           <a href="/api/admin/trivia">Trivia Results</a> |
           <a href="/api/admin/creators">Creators</a> |
           <a href="/api/admin/logout">Logout</a>
         </nav>
+        <form class="search-bar" method="get" action="/api/admin/creators">
+          <input type="text" name="search" value="${search.replace(/"/g, "&quot;")}" placeholder="Search by name, email, or contest..." />
+          <button type="submit">Search</button>
+        </form>
         <table>
           <thead>
             <tr>
@@ -391,7 +576,7 @@ router.get('/creators', async (req, res) => {
               <th>Description</th>
               <th>Submitted</th>
               <th>Status</th>
-              <th>Link</th> <!-- new header for the contest link -->
+              <th>Link</th>
               <th>Actions</th>
             </tr>
           </thead>
