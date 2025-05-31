@@ -55,7 +55,7 @@
   </form>
 
   <a href="/">Back to Home</a>
- <script>
+<script>
   const contestSelect = document.getElementById('contestSelect');
   const fileInput = document.getElementById('fileInput');
   const triviaSection = document.getElementById('triviaSection');
@@ -85,7 +85,6 @@
   }
 
   contestSelect.addEventListener('change', async function () {
-    // Find the selected contest
     const selectedOption = contestSelect.options[contestSelect.selectedIndex];
     const isTrivia = selectedOption && selectedOption.textContent.toLowerCase().includes('trivia');
     if (isTrivia) {
@@ -206,7 +205,6 @@
   }
 
   loadApprovedContests(); // run immediately
-
 </script>
 </body>
 </html>
