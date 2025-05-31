@@ -160,18 +160,48 @@
     }
   });
 
-  // ✅ Load approved contests when page loads
+  // List your contest titles or slugs here!
+  const myContests = [
+    "Art Contest",
+    "Photo Contest",
+    "Writing Contest",
+    "Music Contest"
+    // or, if you use slugs, use: "art-contest-1748674171724", etc.
+  ];
+
+  // ✅ Load approved contests when page loads, with yours first then others A-Z
   async function loadApprovedContests() {
     try {
       const res = await fetch('/api/contests/approved');
       const contests = await res.json();
 
-      contests.forEach(contest => {
+      // Separate into "my" contests and "other" contests
+      const myContestList = [];
+      const otherContests = [];
+      for (const c of contests) {
+        // Compare by contestTitle, but you can use c.slug if you prefer
+        if (myContests.includes(c.contestTitle || c.name || "")) {
+          myContestList.push(c);
+        } else {
+          otherContests.push(c);
+        }
+      }
+      // Sort others alphabetically (by contestTitle, then slug as backup)
+      otherContests.sort((a, b) =>
+        (a.contestTitle || a.name || a.slug).localeCompare(b.contestTitle || b.name || b.slug)
+      );
+
+      // Combine: yours first, others after
+      const ordered = [...myContestList, ...otherContests];
+
+      // Populate dropdown
+      contestSelect.innerHTML = '<option value="" disabled selected>Select Contest</option>';
+      for (const contest of ordered) {
         const option = document.createElement('option');
         option.value = contest.slug;
-        option.textContent = contest.name || contest.contestTitle || contest.contestName || contest.slug;
+        option.textContent = contest.contestTitle || contest.name || contest.slug;
         contestSelect.appendChild(option);
-      });
+      }
     } catch (err) {
       console.error('Failed to load contests:', err);
     }

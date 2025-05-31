@@ -161,7 +161,12 @@ router.get('/', (req, res) => {
         // --- PRIZE LIST with fallback countdown ---
         const prizeList = Object.entries(prizes).map(([contestName, data]) => {
           // Find matching contest info by name
-          let info = Object.values(contestInfoMap).find(i => i.contestTitle === contestName);
+          let info = contestInfoMap[contestName];
+          // fallback if missing
+          if (!info) {
+          // Try to match by contestTitle (for legacy)
+            info = Object.values(contestInfoMap).find(i => i.contestTitle === contestName);
+}
           let endDateMs;
           if (info && info.endDate) {
             endDateMs = info.endDate;
