@@ -12,11 +12,12 @@ const DEFAULT_CONTEST_START = new Date('2025-05-30T14:00:00Z'); // <-- Set to yo
 const DEFAULT_CONTEST_DURATION_MS = 365 * 24 * 60 * 60 * 1000; // 1 year
 
 // ---- DEFAULT CONTESTS ALWAYS DISPLAYED ----
+// Remove slug, use contestTitle as key for all logic
 const PLATFORM_CONTESTS = [
-  { slug: 'art-contest-default',   contestTitle: 'Art Contest' },
-  { slug: 'photo-contest-default', contestTitle: 'Photo Contest' },
-  { slug: 'trivia-contest-default', contestTitle: 'Trivia Contest' },
-  { slug: 'caption-contest-default', contestTitle: 'Caption Contest' }
+  { contestTitle: 'Art Contest' },
+  { contestTitle: 'Photo Contest' },
+  { contestTitle: 'Trivia Contest' },
+  { contestTitle: 'Caption Contest' }
 ];
 
 function loadJsonFromS3(key, callback) {
@@ -66,7 +67,7 @@ function calculatePrizesByContest(uploads, creatorsArray, nowMs = Date.now()) {
   const prizes = {};
   for (const contestName in entriesByContest) {
     const entries = entriesByContest[contestName];
-    // Find the right contest info by slug or by contestTitle fallback
+    // Find the right contest info by slug (for user contests) or by contestTitle (for platform contests)
     let contestInfo = Object.values(contestInfoBySlug).find(
       c => c.slug === contestName || c.contestTitle === contestName
     ) || {};
@@ -137,7 +138,7 @@ function calculatePrizesByContest(uploads, creatorsArray, nowMs = Date.now()) {
       }
     }
 
-    // --- Improved contestTitle fallback: prettify slug if no title ---
+    // --- Improved contestTitle fallback: prettify contestName if no title ---
     let displayTitle = contestInfo.contestTitle;
     if (!displayTitle && contestName) {
       displayTitle = contestName.replace(/-default$/, '')
@@ -189,9 +190,10 @@ router.get('/', (req, res) => {
 
       // ---- INJECT DEFAULT CONTESTS IF MISSING OR ADJUST FOR SEED ----
       for (const def of PLATFORM_CONTESTS) {
-        if (!prizes[def.slug]) {
+        const key = def.contestTitle;
+        if (!prizes[key]) {
           // If there are no entries, pot is seed only
-          prizes[def.slug] = {
+          prizes[key] = {
             totalEntries: 0,
             pot: seedAmount,
             reserve: 0,
@@ -204,43 +206,51 @@ router.get('/', (req, res) => {
             contestTitle: def.contestTitle,
             creator: 'Contests Unlimited'
           };
-        } else if (prizes[def.slug].isPlatform) {
+        } else if (prizes[key].isPlatform) {
           // If platform contest exists (with entries), recalc pot for platform default
-          let totalEntries = prizes[def.slug].totalEntries || 0;
-          let endDateMs = prizes[def.slug].endDateMs || (DEFAULT_CONTEST_START.getTime() + DEFAULT_CONTEST_DURATION_MS);
+          let totalEntries = prizes[key].totalEntries || 0;
+          let endDateMs = prizes[key].endDateMs || (DEFAULT_CONTEST_START.getTime() + DEFAULT_CONTEST_DURATION_MS);
           let nowMs = Date.now();
 
           let pot = 0;
           if (endDateMs && nowMs > endDateMs) {
             if (totalEntries >= 20) {
               pot = seedAmount + (totalEntries * entryFee * 0.6);
-              prizes[def.slug].seedIncluded = true;
-              prizes[def.slug].seedEligible = true;
+              prizes[key].seedIncluded = true;
+              prizes[key].seedEligible = true;
             } else if (totalEntries > 0) {
               pot = 0;
-              prizes[def.slug].seedIncluded = false;
-              prizes[def.slug].seedEligible = false;
+              prizes[key].seedIncluded = false;
+              prizes[key].seedEligible = false;
             } else {
               pot = 0;
-              prizes[def.slug].seedIncluded = false;
-              prizes[def.slug].seedEligible = false;
+              prizes[key].seedIncluded = false;
+              prizes[key].seedEligible = false;
             }
           } else {
             if (totalEntries >= 20) {
               pot = seedAmount + (totalEntries * entryFee * 0.6);
-              prizes[def.slug].seedIncluded = true;
-              prizes[def.slug].seedEligible = true;
+              prizes[key].seedIncluded = true;
+              prizes[key].seedEligible = true;
             } else if (totalEntries > 0) {
               pot = seedAmount;
-              prizes[def.slug].seedIncluded = true;
-              prizes[def.slug].seedEligible = false;
+              prizes[key].seedIncluded = true;
+              prizes[key].seedEligible = false;
             } else {
               pot = seedAmount;
-              prizes[def.slug].seedIncluded = true;
-              prizes[def.slug].seedEligible = false;
+              prizes[key].seedIncluded = true;
+              prizes[key].seedEligible = false;
             }
           }
-          prizes[def.slug].pot = pot;
+          prizes[key].pot = pot;
+        }
+      }
+
+      // Ensure all platform contests have a valid endDateMs for countdowns
+      for (const def of PLATFORM_CONTESTS) {
+        const key = def.contestTitle;
+        if (prizes[key] && !prizes[key].endDateMs) {
+          prizes[key].endDateMs = DEFAULT_CONTEST_START.getTime() + DEFAULT_CONTEST_DURATION_MS;
         }
       }
 
@@ -250,10 +260,10 @@ router.get('/', (req, res) => {
 
         // --- PRIZE LIST with improved display ---
         // Always display platform contests first, then others alpha by title
-        const orderedPrizeSlugs = [
-          ...PLATFORM_CONTESTS.map(c => c.slug),
-          ...Object.keys(prizes).filter(slug =>
-            !PLATFORM_CONTESTS.some(c => c.slug === slug)
+        const orderedPrizeTitles = [
+          ...PLATFORM_CONTESTS.map(c => c.contestTitle),
+          ...Object.keys(prizes).filter(title =>
+            !PLATFORM_CONTESTS.some(c => c.contestTitle === title)
           ).sort((a, b) => {
             const tA = prizes[a].contestTitle || a;
             const tB = prizes[b].contestTitle || b;
@@ -261,8 +271,8 @@ router.get('/', (req, res) => {
           }),
         ];
 
-        const prizeList = orderedPrizeSlugs.map((slug) => {
-          const data = prizes[slug];
+        const prizeList = orderedPrizeTitles.map((title) => {
+          const data = prizes[title];
           if (!data) return '';
           let seedText = '';
           if (data.seedIncluded && !data.seedEligible) {
