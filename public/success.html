@@ -34,8 +34,8 @@
       <!-- Hardcoded default contests first -->
       <option value="art-contest-default">Art Contest</option>
       <option value="photo-contest-default">Photo Contest</option>
-      <option value="writing-contest-default">Trivia Contest</option>
-      <option value="music-contest-default">Caption Contest</option>
+      <option value="trivia-contest-default">Trivia Contest</option>
+      <option value="caption-contest-default">Caption Contest</option>
       <!-- JS will append approved contests after -->
     </select>
 
@@ -133,7 +133,7 @@
     timer = setInterval(() => {
       timeLeft--;
       const minutes = String(Math.floor(timeLeft / 60)).padStart(2, '0');
-      const seconds = String(timeLeft % 60).padStart(2, '0');
+      const seconds = String(timeLeft % 60)).padStart(2, '0');
       document.getElementById('timer').textContent = `${minutes}:${seconds}`;
       if (timeLeft <= 0) {
         clearInterval(timer);
@@ -175,8 +175,8 @@
       const defaultSlugs = [
         "art-contest-default",
         "photo-contest-default",
-        "writing-contest-default",
-        "music-contest-default"
+        "trivia-contest-default",
+        "caption-contest-default"
       ];
       const filtered = contests.filter(c =>
         !defaultSlugs.includes(c.slug)
