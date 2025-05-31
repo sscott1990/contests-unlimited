@@ -67,14 +67,21 @@
   let timer, startTime, triviaQuestions = [];
   let timerStarted = false;
 
+  // --- Robust session_id handling: use URL, then localStorage ---
+  const SESSION_KEY = "cu_session_id";
   const urlParams = new URLSearchParams(window.location.search);
-  const sessionId = urlParams.get('session_id');
+  let sessionId = urlParams.get('session_id');
+
+  if (!sessionId) {
+    sessionId = localStorage.getItem(SESSION_KEY);
+  }
 
   if (!sessionId) {
     alert('Missing session ID. Please return to the homepage and try again.');
     document.getElementById('uploadForm').style.display = 'none';
   } else {
     sessionIdInput.value = sessionId;
+    localStorage.setItem(SESSION_KEY, sessionId);
   }
 
   contestSelect.addEventListener('change', async function () {
