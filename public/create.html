@@ -27,7 +27,7 @@
       font-size: 0.9em;
     }
     #checkout_button {
-      display: none;
+      display: block;
       font-family: sans-serif;
       font-size: 20px;
       background-color: #0BD992;
@@ -35,8 +35,15 @@
       border-radius: 4px;
       padding: 14px 28px;
       margin-top: 20px;
-      cursor: pointer;
+      cursor: not-allowed;
       text-align: center;
+      opacity: 0.6;
+      border: none;
+      transition: background 0.15s, opacity 0.15s, cursor 0.15s;
+    }
+    #checkout_button:enabled {
+      opacity: 1;
+      cursor: pointer;
     }
     .terms-section {
       max-width: 750px;
@@ -183,7 +190,7 @@
 
     <p><strong>Entry Fee: $50 (non-refundable if approved)</strong></p>
 
-    <div id="checkout_button">Check Out & Submit</div>
+    <button id="checkout_button" type="button" disabled>Create a Password</button>
   </form>
 
   <a class="home-btn" href="/">← Back to Homepage</a>
@@ -220,7 +227,8 @@
     const stateSelect = document.getElementById('state');
     const checkoutButton = document.getElementById('checkout_button');
     const stateAlert = document.getElementById('stateAlert');
-
+    const form = document.getElementById('contestForm');
+    const passwordInput = document.getElementById('password');
     const checkboxes = ['agreeTax', 'agree18', 'agreeFees'].map(id => document.getElementById(id));
 
     let creatorSessionId = null;
@@ -229,14 +237,21 @@
       const allChecked = checkboxes.every(cb => cb.checked);
       const selectedState = stateSelect.value;
       const isRestricted = restrictedStates.includes(selectedState);
+      const passwordFilled = passwordInput.value.trim().length > 0;
+      const allFieldsFilled =
+        form.elements['contestName'].value &&
+        form.elements['description'].value &&
+        form.elements['creator'].value &&
+        form.elements['email'].value &&
+        selectedState &&
+        allChecked &&
+        passwordFilled &&
+        creatorSessionId &&
+        !isRestricted;
 
-      if (!selectedState || isRestricted || !creatorSessionId) {
-        stateAlert.style.display = isRestricted ? 'block' : 'none';
-        checkoutButton.style.display = 'none';
-      } else {
-        stateAlert.style.display = 'none';
-        checkoutButton.style.display = allChecked ? 'block' : 'none';
-      }
+      stateAlert.style.display = isRestricted ? 'block' : 'none';
+
+      checkoutButton.disabled = !allFieldsFilled;
     }
 
     // Fetch creatorSessionId from backend before enabling checkout
@@ -252,10 +267,14 @@
 
     stateSelect.addEventListener('change', updateCheckoutButton);
     checkboxes.forEach(cb => cb.addEventListener('change', updateCheckoutButton));
+    passwordInput.addEventListener('input', updateCheckoutButton);
+    ['contestName', 'description', 'creator', 'email'].forEach(name => {
+      form.elements[name].addEventListener('input', updateCheckoutButton);
+    });
 
     checkoutButton.addEventListener('click', function () {
+      if (checkoutButton.disabled) return;
       // Save form data in localStorage for retrieval after payment success
-      const form = document.getElementById('contestForm');
       const formData = {
         contestName: form.elements['contestName'].value,
         description: form.elements['description'].value,
