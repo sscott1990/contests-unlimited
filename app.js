@@ -270,10 +270,10 @@ app.post('/api/payment/upload', upload.single('file'), async (req, res) => {
   }
 });
 
-// === 🚩 Creator contest creation with password hashing and endDate/slug ===
+// === 🚩 Creator contest creation with password hashing, duration/seed/min logic, and endDate/slug ===
 app.post('/api/creator/upload', upload.none(), async (req, res) => {
   try {
-    const { contestName, creator, email, description, creatorSessionId, prizeModel, password } = req.body;
+    const { contestName, creator, email, description, creatorSessionId, prizeModel, password, durationMonths } = req.body;
 
     if (!creatorSessionId) {
       return res.status(400).json({ error: 'Missing session_id' });
@@ -293,17 +293,21 @@ app.post('/api/creator/upload', upload.none(), async (req, res) => {
     const saltRounds = 10;
     const passwordHash = await bcrypt.hash(password, saltRounds);
 
-    let endDate;
-    if (
-      !creator ||
-      (typeof creator === 'string' && creator.trim().toLowerCase() === "contests unlimited")
-    ) {
-      // 1 year from now for "Contests Unlimited"
-      endDate = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
-    } else {
-      // 30 days from now for all other creators
-      endDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-    }
+    // --- NEW DURATION/SEED/MIN LOGIC ---
+    let duration = parseInt(durationMonths, 10);
+    if (![1, 3, 6, 12].includes(duration)) duration = 1; // default to 1 month
+
+    // Set endDate based on duration
+    const endDate = new Date(Date.now() + duration * 30 * 24 * 60 * 60 * 1000).toISOString();
+
+    // Determine seed and min entries from duration
+    const seedMatrix = {
+      1: { seed: 250, min: 20 },
+      3: { seed: 500, min: 40 },
+      6: { seed: 750, min: 60 },
+      12: { seed: 1000, min: 80 }
+    };
+    const { seed: seedAmount, min: minEntries } = seedMatrix[duration];
 
     // Generate a slug for this contest
     const slug = contestName.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now();
@@ -319,6 +323,9 @@ app.post('/api/creator/upload', upload.none(), async (req, res) => {
       approved: false,
       timestamp: new Date().toISOString(),
       endDate,       // <-- Add endDate
+      durationMonths: duration,
+      seedAmount,    // <-- Save seed amount
+      minEntries,    // <-- Save minimum entries
       slug           // <-- Add slug
     });
 
@@ -326,21 +333,19 @@ app.post('/api/creator/upload', upload.none(), async (req, res) => {
 
     // === NEW: Save custom trivia if present and this is a Trivia Contest ===
     if (contestName === "Trivia Contest" && req.body.triviaQuestions) {
-      let triviaSets = await getCustomTriviaSets(); // <--- CHANGED TO CUSTOM
+      let triviaSets = await getCustomTriviaSets();
       let parsedQuestions = Array.isArray(req.body.triviaQuestions)
         ? req.body.triviaQuestions
         : JSON.parse(req.body.triviaQuestions);
 
-      // Remove any existing contest with this slug
       triviaSets = triviaSets.filter(c => c.slug !== slug);
 
-      // Add this contest's trivia set as an object with slug and questions
       triviaSets.push({
         slug,
         questions: parsedQuestions
       });
 
-      await saveCustomTriviaSets(triviaSets); // <--- CHANGED TO CUSTOM
+      await saveCustomTriviaSets(triviaSets);
     }
 
     res.redirect('/success-creator-submitted.html');

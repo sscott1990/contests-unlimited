@@ -396,6 +396,48 @@ router.get('/trivia', async (req, res) => {
           (c.contestTitle && entry.contestName === c.contestTitle)
         );
 
+        // (rest of /trivia route unchanged)
+
+
+        // ...PREVIOUS CODE UNCHANGED...
+
+// Trivia results view with search bar and host (FULL, with default and custom trivia support)
+router.get('/trivia', async (req, res) => {
+  try {
+    const uploads = await loadUploads();
+    const creators = await loadCreators();
+
+    // Load both default and custom trivia sets
+    const defaultTriviaData = await loadJSONFromS3('trivia-contest.json');
+    const customTriviaData = await loadJSONFromS3('custom-trivia.json');
+
+    // --- SEARCH LOGIC ---
+    const search = (req.query.search || '').trim().toLowerCase();
+    let filteredUploads = uploads;
+    if (search) {
+      filteredUploads = uploads.filter(upload =>
+        (upload.contestName || '').toLowerCase().includes(search) ||
+        (upload.name || '').toLowerCase().includes(search) ||
+        (creators && creators.find(c =>
+          ((c.slug && upload.contestName === c.slug) ||
+           (c.contestTitle && upload.contestName === c.contestTitle)) &&
+          (c.creator || '').toLowerCase().includes(search)
+        ))
+      );
+    }
+
+    const scored = filteredUploads
+      .filter(entry =>
+        (Array.isArray(entry.triviaAnswers) && entry.triviaAnswers.length > 0) ||
+        (typeof entry.correctCount === 'number' && typeof entry.timeTaken === 'number')
+      )
+      .map(entry => {
+        // Find the matching contest by slug or title, if present
+        let contest = creators.find(c =>
+          (c.slug && entry.contestName === c.slug) ||
+          (c.contestTitle && entry.contestName === c.contestTitle)
+        );
+
         // Answer key logic: use custom if found, else default
         let correctAnswers = [];
         if (contest && contest.slug && contest.slug.startsWith('trivia-contest-') && contest.slug !== 'trivia-contest-default') {
@@ -521,6 +563,8 @@ router.get('/trivia', async (req, res) => {
     res.status(500).send('Failed to load trivia submissions.');
   }
 });
+
+// --- The rest of the code after /trivia route is unchanged (creators, creator-stats, logout, update-status, etc.) ---
 
 // Creators view with search bar and host
 router.get('/creators', async (req, res) => {
@@ -707,23 +751,22 @@ router.get('/creator-stats/:slug', async (req, res) => {
     const contestEntries = uploads.filter(entry => entry.contestName === contestName);
     const numEntries = contestEntries.length;
 
-    // Business rules
+       // Business rules
     const entryFee = 100;
-    const minEntries = 20;
-    const seedAmount = 1000;
+
+    // Use new contest duration/seed/min logic
+    let duration = contest?.durationMonths ? parseInt(contest.durationMonths, 10) : (isPlatform ? 12 : 1);
+    let seedAmount = contest?.seedAmount;
+    let minEntries = contest?.minEntries;
+    if (!seedAmount || !minEntries) {
+      if (duration === 1) { seedAmount = 250; minEntries = 20; }
+      else if (duration === 3) { seedAmount = 500; minEntries = 40; }
+      else if (duration === 6) { seedAmount = 750; minEntries = 60; }
+      else { seedAmount = 1000; minEntries = 80; }
+    }
 
     // Prize calculation
     let pot = 0, reserve = 0, creatorEarnings = 0, platformEarnings = 0, seedInPot = false;
-    // Add seed if at least one entry
-    if (numEntries > 0) {
-      pot += seedAmount;
-      seedInPot = true;
-    }
-    // Remove seed if not enough entries
-    if (numEntries < minEntries && seedInPot) {
-      pot -= seedAmount;
-      seedInPot = false;
-    }
     // Split per entry
     for (let i = 0; i < numEntries; i++) {
       if (isPlatform) {
@@ -737,8 +780,13 @@ router.get('/creator-stats/:slug', async (req, res) => {
         platformEarnings += entryFee * 0.05;
       }
     }
+    // Add seed if minimum entries met
+    if (numEntries >= minEntries) {
+      pot += seedAmount;
+      seedInPot = true;
+    }
 
-   res.send(`
+    res.send(`
   <!DOCTYPE html>
   <html lang="en">
   <head>
@@ -758,13 +806,13 @@ router.get('/creator-stats/:slug', async (req, res) => {
   <body>
     <h1>Stats for "${contestName}"</h1>
     <div class="stat"><strong>Number of Entries:</strong> ${numEntries}</div>
-    <div class="stat"><strong>Current Prize Pot:</strong> $${pot < 0 ? 0 : pot.toFixed(2)} ${seedInPot ? '(Seeded)' : (numEntries > 0 && numEntries < 20 ? '(Seed removed - not enough entries)' : '')}</div>
+    <div class="stat"><strong>Current Prize Pot:</strong> $${pot < 0 ? 0 : pot.toFixed(2)} ${seedInPot ? '(Seeded)' : (numEntries > 0 && numEntries < minEntries ? '(Seed removed - not enough entries)' : '')}</div>
     <div class="stat"><strong>Reserve:</strong> $${reserve.toFixed(2)}</div>
     <div class="stat"><strong>Creator Earnings:</strong> $${creatorEarnings.toFixed(2)}</div>
     <div class="stat"><strong>Platform Earnings:</strong> $${platformEarnings.toFixed(2)}</div>
     <div class="stat"><strong>Contest Type:</strong> ${isPlatform ? 'Platform (Contests Unlimited)' : 'Custom'}</div>
-    <div class="stat"><strong>Seed Rule:</strong> $1000 is seeded in the prize pot if there is at least 1 entry, but removed if the contest does not reach 20 entries.</div>
-    <div class="stat"><strong>Split:</strong> ${
+        <div class="stat"><strong>Seed Rule:</strong> $${seedAmount} is seeded in the prize pot if the contest reaches at least ${minEntries} entries by contest close. Winner always receives 60% of entry fees regardless.</div>
+    <div class="stat"><strong>Duration:</strong> ${duration === 1 ? '1 month' : duration === 12 ? '1 year' : `${duration} months`}</div>    <div class="stat"><strong>Split:</strong> ${
       isPlatform
         ? "60% pot, 10% reserve, 30% platform"
         : "60% pot, 25% creator, 10% reserve, 5% platform"

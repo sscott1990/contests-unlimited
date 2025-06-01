@@ -12,13 +12,23 @@ const DEFAULT_CONTEST_START = new Date('2025-05-30T14:00:00Z'); // <-- Set to yo
 const DEFAULT_CONTEST_DURATION_MS = 365 * 24 * 60 * 60 * 1000; // 1 year
 
 // ---- DEFAULT CONTESTS ALWAYS DISPLAYED ----
-// Remove slug, use contestTitle as key for all logic
 const PLATFORM_CONTESTS = [
   { contestTitle: 'Art Contest' },
   { contestTitle: 'Photo Contest' },
   { contestTitle: 'Trivia Contest' },
   { contestTitle: 'Caption Contest' }
 ];
+
+// Seed/minimum settings by duration (in months)
+const CREATOR_CONTEST_SEED_MATRIX = [
+  { months: 1, seed: 250, min: 20 },
+  { months: 3, seed: 500, min: 40 },
+  { months: 6, seed: 750, min: 60 },
+  { months: 12, seed: 1000, min: 80 },
+];
+
+const DEFAULT_CONTEST_SEED = 1000;
+const DEFAULT_CONTEST_MIN = 80;
 
 function loadJsonFromS3(key, callback) {
   s3.getObject({
@@ -42,6 +52,17 @@ function loadJsonFromS3(key, callback) {
 // Helper to determine if contest is platform-run
 function isPlatformContest(creator) {
   return !creator || (typeof creator === 'string' && creator.trim().toLowerCase() === "contests unlimited");
+}
+
+// Helper for seed/minimum logic for creators
+function getSeedAndMin(durationMonths, isPlatform) {
+  if (isPlatform) {
+    return { seed: DEFAULT_CONTEST_SEED, min: DEFAULT_CONTEST_MIN };
+  }
+  const found = CREATOR_CONTEST_SEED_MATRIX.find(e => e.months === durationMonths);
+  if (found) return { seed: found.seed, min: found.min };
+  // fallback: use 1 month settings if not specified
+  return { seed: 250, min: 20 };
 }
 
 // Revised prize calculation logic: seed is only counted if min entries reached (at end), or shown as "potential" if ongoing.
@@ -75,8 +96,29 @@ function calculatePrizesByContest(uploads, creatorsArray, nowMs = Date.now()) {
     const isPlatform = isPlatformContest(creator);
 
     const entryFee = 100;
-    const minEntries = 70; // changed from 20 to 70 for both default and creator contests
-    const seedAmount = 1000;
+
+    // --- Determine contest duration (in months) ---
+    let durationMonths = 12;
+    let seedAmount = DEFAULT_CONTEST_SEED;
+    let minEntries = DEFAULT_CONTEST_MIN;
+    // Platform contests always 1 year
+    if (isPlatform) {
+      durationMonths = 12;
+      seedAmount = DEFAULT_CONTEST_SEED;
+      minEntries = DEFAULT_CONTEST_MIN;
+    } else {
+      // Creator contests: try to get duration from contestInfo
+      if (contestInfo.durationMonths) {
+        durationMonths = parseInt(contestInfo.durationMonths, 10) || 1;
+      } else if (contestInfo.endDate && contestInfo.startDate) {
+        // fallback: infer months from start/end date
+        const ms = new Date(contestInfo.endDate).getTime() - new Date(contestInfo.startDate).getTime();
+        durationMonths = Math.round(ms / (30 * 24 * 60 * 60 * 1000)) || 1;
+      }
+      const matrix = getSeedAndMin(durationMonths, isPlatform);
+      seedAmount = matrix.seed;
+      minEntries = matrix.min;
+    }
 
     let totalEntries = entries.length;
     let pot = 0, reserve = 0, creatorEarnings = 0, platformEarnings = 0;
@@ -153,6 +195,9 @@ function calculatePrizesByContest(uploads, creatorsArray, nowMs = Date.now()) {
       endDateMs,
       contestTitle: displayTitle || contestName,
       creator: contestInfo.creator || 'Contests Unlimited',
+      seedAmount,
+      minEntries,
+      durationMonths
     };
   }
   return prizes;
@@ -178,16 +223,12 @@ router.get('/', (req, res) => {
         }
       }
 
-      const seedAmount = 1000;
-      const entryFee = 100;
-
       let prizes = calculatePrizesByContest(uploads, creatorsArray);
 
       // ---- INJECT DEFAULT CONTESTS IF MISSING OR ADJUST FOR SEED ----
       for (const def of PLATFORM_CONTESTS) {
         const key = def.contestTitle;
         if (!prizes[key]) {
-          // If there are no entries, pot is $0, but potential seed will be messaged
           prizes[key] = {
             totalEntries: 0,
             pot: 0,
@@ -199,32 +240,33 @@ router.get('/', (req, res) => {
             isPlatform: true,
             endDateMs: DEFAULT_CONTEST_START.getTime() + DEFAULT_CONTEST_DURATION_MS,
             contestTitle: def.contestTitle,
-            creator: 'Contests Unlimited'
+            creator: 'Contests Unlimited',
+            seedAmount: DEFAULT_CONTEST_SEED,
+            minEntries: DEFAULT_CONTEST_MIN,
+            durationMonths: 12
           };
         } else if (prizes[key].isPlatform) {
-          // If platform contest exists (with entries), recalc pot for platform default
           let totalEntries = prizes[key].totalEntries || 0;
           let endDateMs = prizes[key].endDateMs || (DEFAULT_CONTEST_START.getTime() + DEFAULT_CONTEST_DURATION_MS);
           let nowMs = Date.now();
-
           let pot = 0;
           if (endDateMs && nowMs > endDateMs) {
-            if (totalEntries >= 70) {
-              pot = seedAmount + (totalEntries * entryFee * 0.6);
+            if (totalEntries >= DEFAULT_CONTEST_MIN) {
+              pot = DEFAULT_CONTEST_SEED + (totalEntries * 100 * 0.6);
               prizes[key].seedIncluded = true;
               prizes[key].seedEligible = true;
             } else {
-              pot = totalEntries * entryFee * 0.6;
+              pot = totalEntries * 100 * 0.6;
               prizes[key].seedIncluded = false;
               prizes[key].seedEligible = false;
             }
           } else {
-            if (totalEntries >= 70) {
-              pot = seedAmount + (totalEntries * entryFee * 0.6);
+            if (totalEntries >= DEFAULT_CONTEST_MIN) {
+              pot = DEFAULT_CONTEST_SEED + (totalEntries * 100 * 0.6);
               prizes[key].seedIncluded = true;
               prizes[key].seedEligible = true;
             } else if (totalEntries > 0) {
-              pot = totalEntries * entryFee * 0.6;
+              pot = totalEntries * 100 * 0.6;
               prizes[key].seedIncluded = false;
               prizes[key].seedEligible = false;
             } else {
@@ -234,6 +276,9 @@ router.get('/', (req, res) => {
             }
           }
           prizes[key].pot = pot;
+          prizes[key].seedAmount = DEFAULT_CONTEST_SEED;
+          prizes[key].minEntries = DEFAULT_CONTEST_MIN;
+          prizes[key].durationMonths = 12;
         }
       }
 
@@ -248,46 +293,40 @@ router.get('/', (req, res) => {
       // ---- DEDUPLICATE/MERGE PLATFORM CONTESTS BY TITLE ----
       for (const def of PLATFORM_CONTESTS) {
         const key = def.contestTitle;
-        // Find all contest keys that match this contestTitle and are platform
         const matchingKeys = Object.keys(prizes).filter(prKey =>
           prizes[prKey].isPlatform && prizes[prKey].contestTitle === key && prKey !== key
         );
         if (matchingKeys.length > 0) {
-          // Merge all data into the main (canonical) key, then delete the rest
           const base = prizes[key];
           let mergedEntries = base.totalEntries;
           let mergedEndDateMs = base.endDateMs;
           for (const k of matchingKeys) {
             const p = prizes[k];
             mergedEntries += p.totalEntries;
-            // Use the later end date if both exist
             if (!mergedEndDateMs || (p.endDateMs && p.endDateMs > mergedEndDateMs)) {
               mergedEndDateMs = p.endDateMs;
             }
             delete prizes[k];
           }
-          // After summing entries, recalculate the pot from scratch based on mergedEntries
           base.totalEntries = mergedEntries;
           base.endDateMs = mergedEndDateMs;
-
-          // Correct pot/seed logic for platform contest
           if (base.endDateMs && Date.now() > base.endDateMs) {
-            if (mergedEntries >= 70) {
-              base.pot = 1000 + (mergedEntries * 60);
+            if (mergedEntries >= DEFAULT_CONTEST_MIN) {
+              base.pot = DEFAULT_CONTEST_SEED + (mergedEntries * 100 * 0.6);
               base.seedIncluded = true;
               base.seedEligible = true;
             } else {
-              base.pot = mergedEntries * 60;
+              base.pot = mergedEntries * 100 * 0.6;
               base.seedIncluded = false;
               base.seedEligible = false;
             }
           } else {
-            if (mergedEntries >= 70) {
-              base.pot = 1000 + (mergedEntries * 60);
+            if (mergedEntries >= DEFAULT_CONTEST_MIN) {
+              base.pot = DEFAULT_CONTEST_SEED + (mergedEntries * 100 * 0.6);
               base.seedIncluded = true;
               base.seedEligible = true;
             } else if (mergedEntries > 0) {
-              base.pot = mergedEntries * 60;
+              base.pot = mergedEntries * 100 * 0.6;
               base.seedIncluded = false;
               base.seedEligible = false;
             } else {
@@ -296,6 +335,9 @@ router.get('/', (req, res) => {
               base.seedEligible = false;
             }
           }
+          base.seedAmount = DEFAULT_CONTEST_SEED;
+          base.minEntries = DEFAULT_CONTEST_MIN;
+          base.durationMonths = 12;
         }
       }
       // ---- END DEDUPLICATION ----
@@ -322,16 +364,17 @@ router.get('/', (req, res) => {
           if (!data) return '';
           let seedText = '';
           if (data.seedIncluded && data.seedEligible) {
-            seedText = `<span style="color: #070;">(Seeded with $1000!)</span>`;
-          } else if (!data.seedIncluded && data.totalEntries < 70 && data.totalEntries > 0) {
-            seedText = `<span style="color: #070;">(Seed will be added ONLY if entries reach 70 or more by contest close. Winner always receives 60% of entry fees regardless of entry count.)</span>`;
+            seedText = `<span style="color: #070;">(Seeded with $${data.seedAmount}!)</span>`;
+          } else if (!data.seedIncluded && data.totalEntries < data.minEntries && data.totalEntries > 0) {
+            seedText = `<span style="color: #070;">(Seed will be added ONLY if entries reach ${data.minEntries} or more by contest close. Winner always receives 60% of entry fees regardless of entry count.)</span>`;
           } else if (!data.seedIncluded && data.totalEntries === 0) {
-            seedText = `<span style="color: #070;">(Seed will be added ONLY if entries reach 70 or more by contest close. Winner always receives 60% of entry fees regardless of entry count.)</span>`;
+            seedText = `<span style="color: #070;">(Seed will be added ONLY if entries reach ${data.minEntries} or more by contest close. Winner always receives 60% of entry fees regardless of entry count.)</span>`;
           } else if (!data.seedIncluded && data.totalEntries > 0 && data.endDateMs && Date.now() > data.endDateMs) {
             seedText = `<span style="color: #b00;">(Seed not awarded - not enough entries. Winner receives 60% of entry fees.)</span>`;
           }
+          let durationText = data.isPlatform ? '1 year' : (data.durationMonths === 1 ? '1 month' : `${data.durationMonths} months`);
           return `<li>
-            <strong>${data.contestTitle}</strong>: $${data.pot.toFixed(2)} — Entries: ${data.totalEntries}
+            <strong>${data.contestTitle}</strong>: $${data.pot.toFixed(2)} — Entries: ${data.totalEntries} — Duration: ${durationText}
             <em style="color: #666; font-size: 0.9em;">(Hosted by ${data.creator})</em>
             ${seedText}
             <div>Ends in: <span class="countdown" data-endtime="${data.endDateMs}"></span></div>
@@ -405,7 +448,15 @@ router.get('/', (req, res) => {
               <h2>Start Your Own Contest</h2>
               <p style="font-size: 1.1em; max-width: 600px; margin: 0 auto;">
                 Create your own contest to earn <strong>25% of all entry fees!</strong><br>
-                <em>Each contest is seeded with $1000, but seed is only awarded if there are at least <strong>70 entries</strong> by the time it closes. Each entry is $100, with 60% to the pot (always paid to the winner), 25% to you, 10% to reserve, and 5% to platform.</em>
+                <em>
+                  Choose your contest duration:<br>
+                  1 month: $250 seed, 20 entries minimum<br>
+                  3 months: $500 seed, 40 entries minimum<br>
+                  6 months: $750 seed, 60 entries minimum<br>
+                  1 year: $1000 seed, 80 entries minimum<br>
+                  <br>
+                  <strong>Winner always receives 60% of entry fees, plus the seed if the minimum is met. Creators always receive 25% of all entry fees.</strong>
+                </em>
               </p>
               <p style="margin-top: 20px;">
                 <button onclick="window.location.href='/create.html'" style="padding: 12px 24px; background-color: #005b96; color: white; border: none; border-radius: 5px; font-size: 1em; cursor: pointer;">
@@ -423,7 +474,12 @@ router.get('/', (req, res) => {
               <h3>Terms and Conditions</h3>
               <ul>
                 <li>Each contest entry costs <strong>$100.00 USD</strong>. The entry fee is non-refundable.</li>
-                <li>Each contest is seeded with $1000, but the seed will only be awarded if the contest reaches at least <strong>70 entries</strong> by the time it closes.</li>
+                <li>Each contest is seeded according to its duration:<br>
+                  1 month: $250 seed, 20 entries minimum<br>
+                  3 months: $500 seed, 40 entries minimum<br>
+                  6 months: $750 seed, 60 entries minimum<br>
+                  1 year: $1000 seed, 80 entries minimum<br>
+                </li>
                 <li><strong>Even if the minimum for the seed is not met, the winner will always receive 60% of all entry fees collected for that contest.</strong></li>
                 <li>For custom contests: 60% of each entry fee is added to the prize pot (always paid to winner), 25% goes to the contest creator, 10% is put in reserve, and 5% goes to the platform.</li>
                 <li>For platform-run contests: 60% of each entry fee is added to the prize pot (always paid to winner), 10% goes to reserve, and 30% goes to the platform.</li>
@@ -467,7 +523,7 @@ router.get('/', (req, res) => {
                   diff -= minutes * (1000 * 60);
                   const seconds = Math.floor(diff / 1000);
 
-                  el.textContent = 
+                  el.textContent =
                     (days > 0 ? days + 'd ' : '') +
                     hours.toString().padStart(2, '0') + 'h ' +
                     minutes.toString().padStart(2, '0') + 'm ' +

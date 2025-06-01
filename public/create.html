@@ -117,7 +117,6 @@
   </style>
 </head>
 <body>
-  <h1 style="color:red">HELLO TEST</h1>
   <h1 style="text-align: center;">Submit Your Contest</h1>
   <form id="contestForm" onsubmit="return false;">
     <label for="contestType">Select Contest Type:</label>
@@ -128,6 +127,18 @@
       <option value="Trivia Contest">Trivia Contest</option>
       <option value="Caption Contest">Caption Contest</option>
     </select>
+
+    <label for="durationMonths">Contest Duration:</label>
+    <select name="durationMonths" id="durationMonths" required>
+      <option value="">-- Choose contest duration --</option>
+      <option value="1">1 month ($250 seed, 20 min entries)</option>
+      <option value="3">3 months ($500 seed, 40 min entries)</option>
+      <option value="6">6 months ($750 seed, 60 min entries)</option>
+      <option value="12">1 year ($1000 seed, 80 min entries)</option>
+    </select>
+    <div id="durationNote" style="font-size:0.95em;color:#005b96;margin-top:6px;">
+      Choose how long your contest will run. The longer the contest, the higher the seed, but more entries are required to unlock it!
+    </div>
 
     <label for="description">Description:</label>
     <textarea name="description" id="description" rows="5" required></textarea>
@@ -235,6 +246,26 @@
 
     <p><strong>Admission: <span style="color:green;">Free</span> (no charge to submit your contest)</strong></p>
 
+    <div style="margin:16px 0 12px 0;font-size:1.07em;">
+      <strong>Payout Structure:</strong>
+      <ul>
+        <li>Each entry is <strong>$100</strong>.</li>
+        <li>60% of entry fees always go to the winner.<br>
+          <em>Seed is only added if minimum entries for your selected duration is met.</em>
+        </li>
+        <li>25% to the creator, 10% to reserve, 5% to platform.</li>
+        <li>
+          <strong>Seed/Minimum Matrix:</strong>
+          <ul>
+            <li>1 month: $250 seed, 20 entry minimum</li>
+            <li>3 months: $500 seed, 40 entry minimum</li>
+            <li>6 months: $750 seed, 60 entry minimum</li>
+            <li>1 year: $1000 seed, 80 entry minimum</li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+
     <button id="submit_button" type="button" disabled>Submit</button>
   </form>
 
@@ -246,7 +277,16 @@
       <li>Submitting a contest is <strong>free</strong>. There is no fee to create or submit a contest for approval.</li>
       <li>You must be <strong>18 years of age or older</strong> to create a contest.</li>
       <li>Contests are <strong>void where prohibited</strong> by law. It is your responsibility to ensure that operating a contest is legal in your jurisdiction.</li>
-      <li>Each contest will have a unique prize pool funded by participant entries, seeded with $1000 if there is at least 1 entry and at least 20 total entries by contest close for the seed to remain. Payouts: 60% of each $100 entry to the prize pot, 25% to you as creator, 10% to reserve, and 5% to platform (for custom contests).</li>
+      <li>
+        Each contest will have a unique prize pool funded by participant entries, seeded as follows:<br>
+        <ul>
+          <li>1 month: $250 seed, 20 entry minimum</li>
+          <li>3 months: $500 seed, 40 entry minimum</li>
+          <li>6 months: $750 seed, 60 entry minimum</li>
+          <li>1 year: $1000 seed, 80 entry minimum</li>
+        </ul>
+        Payouts: 60% of each $100 entry to the prize pot, 25% to you as creator, 10% to reserve, and 5% to platform (for custom contests).
+      </li>
       <li>At the conclusion of the contest, a single winner will be selected and awarded the full prize pool amount. Winners are notified and paid within 7–14 business days after verification.</li>
       <li>Contest creators are responsible for ensuring fair play and compliance with all stated contest rules.</li>
       <li>Attempts to manipulate, defraud, or otherwise compromise the integrity of any contest will result in disqualification and potential forfeiture of rewards.</li>
@@ -266,10 +306,8 @@
 
   <script>
     document.addEventListener('DOMContentLoaded', function() {
-      console.log("JS loaded!");
-
       // -- State restriction and submit enable logic --
-      const restrictedStates = ['NY', 'WA', 'NJ', 'PR', 'GU', 'AS', 'VI', 'MP', 'RI']; // Modify as needed
+      const restrictedStates = ['NY', 'WA', 'NJ', 'PR', 'GU', 'AS', 'VI', 'MP', 'RI'];
       const stateSelect = document.getElementById('state');
       const submitButton = document.getElementById('submit_button');
       const stateAlert = document.getElementById('stateAlert');
@@ -277,6 +315,7 @@
       const passwordInput = document.getElementById('password');
       const checkboxes = ['agreeTax', 'agree18', 'agreeFees'].map(id => document.getElementById(id));
       const contestType = document.getElementById('contestType');
+      const durationSelect = document.getElementById('durationMonths');
       const triviaBuilder = document.getElementById('triviaBuilder');
       const triviaQuestionsContainer = document.getElementById('triviaQuestionsContainer');
       const triviaQuestionsInput = document.getElementById('triviaQuestionsInput');
@@ -294,6 +333,7 @@
         const passwordFilled = passwordInput.value.trim().length > 0;
         const allFieldsFilled =
           form.elements['contestName'].value &&
+          durationSelect.value &&
           descriptionInput.value &&
           creatorInput.value &&
           emailInput.value &&
@@ -322,6 +362,7 @@
         });
 
       stateSelect.addEventListener('change', updateSubmitButton);
+      durationSelect.addEventListener('change', updateSubmitButton);
       checkboxes.forEach(cb => cb.addEventListener('change', updateSubmitButton));
       passwordInput.addEventListener('input', updateSubmitButton);
       descriptionInput.addEventListener('input', updateSubmitButton);
@@ -330,10 +371,8 @@
 
       // -- Trivia Builder Logic --
       contestType.addEventListener('change', function () {
-        console.log("Dropdown changed to", contestType.value);
         if (contestType.value === "Trivia Contest") {
-          console.log("Should show triviaBuilder now");
-          triviaBuilder.style.display = 'block'; // <-- FIXED: use 'block' to override CSS
+          triviaBuilder.style.display = 'block';
           if (triviaQuestions.length === 0) addQuestion();
         } else {
           triviaBuilder.style.display = 'none';
@@ -446,13 +485,13 @@
         // Prepare form data
         const formData = {
           contestName: form.elements['contestName'].value,
+          durationMonths: form.elements['durationMonths'].value,
           description: descriptionInput.value,
           creator: creatorInput.value,
           email: emailInput.value,
           state: form.elements['state'].value,
           password: form.elements['password'].value,
           creatorSessionId,
-          // --- FIX: always send parsed triviaQuestions as an array if present ---
           triviaQuestions: (contestType.value === "Trivia Contest" && triviaQuestionsInput.value)
             ? JSON.parse(triviaQuestionsInput.value)
             : undefined
