@@ -106,25 +106,28 @@
     }
   });
 
-  // ======= MINIMAL CHANGE: only this function updated =======
+  // ======= FIXED: Only fallback to default trivia for the default slug =======
   async function loadTriviaQuestions() {
     try {
       const slug = contestSelect.value;
-      // Try to fetch custom questions for this contest first
-      let response = await fetch('/api/custom-trivia/by-slug/' + encodeURIComponent(slug));
-      let data;
-      if (response.ok) {
-        data = await response.json();
-        // Defensive: handle if data.questions is undefined or not an array
-        if (Array.isArray(data.questions)) {
-          triviaQuestions = data.questions;
+
+      if (slug === "trivia-contest-default") {
+        // Load default trivia for the default contest only
+        const response = await fetch('/api/trivia?slug=trivia-contest-default');
+        triviaQuestions = await response.json();
+      } else if (slug.startsWith("trivia-contest-")) {
+        // Try to fetch custom questions for this contest
+        let response = await fetch('/api/custom-trivia/by-slug/' + encodeURIComponent(slug));
+        if (response.ok) {
+          const data = await response.json();
+          triviaQuestions = Array.isArray(data.questions) ? data.questions : [];
         } else {
+          // For custom trivia contests, show an error if no trivia is set!
           triviaQuestions = [];
         }
       } else {
-        // Fall back to old endpoint for default contests
-        response = await fetch('/api/trivia?slug=' + encodeURIComponent(slug));
-        triviaQuestions = await response.json();
+        // Not a trivia contest, skip
+        triviaQuestions = [];
       }
 
       triviaQuestionsDiv.innerHTML = '';
