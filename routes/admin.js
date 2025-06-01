@@ -396,48 +396,6 @@ router.get('/trivia', async (req, res) => {
           (c.contestTitle && entry.contestName === c.contestTitle)
         );
 
-        // (rest of /trivia route unchanged)
-
-
-        // ...PREVIOUS CODE UNCHANGED...
-
-// Trivia results view with search bar and host (FULL, with default and custom trivia support)
-router.get('/trivia', async (req, res) => {
-  try {
-    const uploads = await loadUploads();
-    const creators = await loadCreators();
-
-    // Load both default and custom trivia sets
-    const defaultTriviaData = await loadJSONFromS3('trivia-contest.json');
-    const customTriviaData = await loadJSONFromS3('custom-trivia.json');
-
-    // --- SEARCH LOGIC ---
-    const search = (req.query.search || '').trim().toLowerCase();
-    let filteredUploads = uploads;
-    if (search) {
-      filteredUploads = uploads.filter(upload =>
-        (upload.contestName || '').toLowerCase().includes(search) ||
-        (upload.name || '').toLowerCase().includes(search) ||
-        (creators && creators.find(c =>
-          ((c.slug && upload.contestName === c.slug) ||
-           (c.contestTitle && upload.contestName === c.contestTitle)) &&
-          (c.creator || '').toLowerCase().includes(search)
-        ))
-      );
-    }
-
-    const scored = filteredUploads
-      .filter(entry =>
-        (Array.isArray(entry.triviaAnswers) && entry.triviaAnswers.length > 0) ||
-        (typeof entry.correctCount === 'number' && typeof entry.timeTaken === 'number')
-      )
-      .map(entry => {
-        // Find the matching contest by slug or title, if present
-        let contest = creators.find(c =>
-          (c.slug && entry.contestName === c.slug) ||
-          (c.contestTitle && entry.contestName === c.contestTitle)
-        );
-
         // Answer key logic: use custom if found, else default
         let correctAnswers = [];
         if (contest && contest.slug && contest.slug.startsWith('trivia-contest-') && contest.slug !== 'trivia-contest-default') {
@@ -563,8 +521,6 @@ router.get('/trivia', async (req, res) => {
     res.status(500).send('Failed to load trivia submissions.');
   }
 });
-
-// --- The rest of the code after /trivia route is unchanged (creators, creator-stats, logout, update-status, etc.) ---
 
 // Creators view with search bar and host
 router.get('/creators', async (req, res) => {
