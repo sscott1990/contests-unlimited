@@ -264,10 +264,10 @@
     </p>
   </div>
 
-    <script>
+  <script>
     document.addEventListener('DOMContentLoaded', function() {
-      console.log("JS loaded", document.getElementById('contestType'), 
-document.getElementById('triviaBuilder'));
+      console.log("JS loaded!");
+
       // -- State restriction and submit enable logic --
       const restrictedStates = ['NY', 'WA', 'NJ', 'PR', 'GU', 'AS', 'VI', 'MP', 'RI']; // Modify as needed
       const stateSelect = document.getElementById('state');
@@ -330,7 +330,9 @@ document.getElementById('triviaBuilder'));
 
       // -- Trivia Builder Logic --
       contestType.addEventListener('change', function () {
+        console.log("Dropdown changed to", contestType.value);
         if (contestType.value === "Trivia Contest") {
+          console.log("Should show triviaBuilder now");
           triviaBuilder.style.display = '';
           if (triviaQuestions.length === 0) addQuestion();
         } else {
