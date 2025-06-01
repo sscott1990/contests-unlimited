@@ -333,7 +333,7 @@
         console.log("Dropdown changed to", contestType.value);
         if (contestType.value === "Trivia Contest") {
           console.log("Should show triviaBuilder now");
-          triviaBuilder.style.display = '';
+          triviaBuilder.style.display = 'block'; // <-- FIXED: use 'block' to override CSS
           if (triviaQuestions.length === 0) addQuestion();
         } else {
           triviaBuilder.style.display = 'none';
