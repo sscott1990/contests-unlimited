@@ -452,7 +452,10 @@
           state: form.elements['state'].value,
           password: form.elements['password'].value,
           creatorSessionId,
-          triviaQuestions: (contestType.value === "Trivia Contest" && triviaQuestionsInput.value) ? triviaQuestionsInput.value : undefined
+          // --- FIX: always send parsed triviaQuestions as an array if present ---
+          triviaQuestions: (contestType.value === "Trivia Contest" && triviaQuestionsInput.value)
+            ? JSON.parse(triviaQuestionsInput.value)
+            : undefined
         };
         try {
           const response = await fetch('/api/creator/upload', {

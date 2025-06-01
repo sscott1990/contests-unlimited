@@ -106,11 +106,21 @@
     }
   });
 
+  // ======= MODIFIED: loadTriviaQuestions fetches by-slug endpoint =======
   async function loadTriviaQuestions() {
     try {
       const slug = contestSelect.value;
-      const response = await fetch('/api/trivia?slug=' + encodeURIComponent(slug));
-      triviaQuestions = await response.json();
+      // Try to fetch custom questions for this contest first
+      let response = await fetch('/api/trivia/by-slug/' + encodeURIComponent(slug));
+      let data;
+      if (response.ok) {
+        data = await response.json();
+        triviaQuestions = data.questions;
+      } else {
+        // Fall back to old endpoint for default contests
+        response = await fetch('/api/trivia?slug=' + encodeURIComponent(slug));
+        triviaQuestions = await response.json();
+      }
 
       triviaQuestionsDiv.innerHTML = '';
       triviaQuestions.forEach((q, index) => {

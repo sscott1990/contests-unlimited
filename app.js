@@ -132,6 +132,7 @@ async function saveCreators(creators) {
 }
 
 // === 📦 Helpers for Trivia Sets ===
+// Now trivia-contest.json is an ARRAY of contest objects (not an object/dict)
 async function getTriviaSets() {
   try {
     const data = await s3.getObject({
@@ -140,7 +141,7 @@ async function getTriviaSets() {
     }).promise();
     return JSON.parse(data.Body.toString('utf-8'));
   } catch (err) {
-    if (err.code === 'NoSuchKey') return {};
+    if (err.code === 'NoSuchKey') return []; // CHANGED: Array, not object
     throw err;
   }
 }
@@ -301,14 +302,21 @@ app.post('/api/creator/upload', upload.none(), async (req, res) => {
 
     // === NEW: Save custom trivia if present and this is a Trivia Contest ===
     if (contestName === "Trivia Contest" && req.body.triviaQuestions) {
-      let triviaSets = await getTriviaSets();
-      try {
-        triviaSets[slug] = JSON.parse(req.body.triviaQuestions);
-        await saveTriviaSets(triviaSets);
-      } catch(e) {
-        console.error('Failed to save custom trivia:', e);
-        // Optionally, handle error (e.g. do NOT approve contest if trivia is invalid, etc)
-      }
+      let triviaSets = await getTriviaSets(); // triviaSets is now an array
+      let parsedQuestions = Array.isArray(req.body.triviaQuestions)
+        ? req.body.triviaQuestions
+        : JSON.parse(req.body.triviaQuestions);
+
+      // Remove any existing contest with this slug
+      triviaSets = triviaSets.filter(c => c.slug !== slug);
+
+      // Add this contest's trivia set as an object with slug and questions
+      triviaSets.push({
+        slug,
+        questions: parsedQuestions
+      });
+
+      await saveTriviaSets(triviaSets);
     }
 
     res.redirect('/success-creator-submitted.html');
@@ -395,6 +403,20 @@ app.get('/api/contest/:slug', async (req, res) => {
   } catch (err) {
     console.error('Failed to fetch contest:', err);
     res.status(500).json({ error: 'Failed to fetch contest' });
+  }
+});
+
+// === New: API to fetch trivia questions for a contest by slug ===
+app.get('/api/trivia/by-slug/:slug', async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const triviaSets = await getTriviaSets();
+    const found = triviaSets.find(c => c.slug === slug);
+    if (!found) return res.status(404).json({ error: "Trivia not found" });
+    res.json({ questions: found.questions });
+  } catch (err) {
+    console.error('Failed to fetch trivia for contest:', err);
+    res.status(500).json({ error: 'Failed to fetch trivia for contest' });
   }
 });
 
