@@ -75,7 +75,7 @@ function calculatePrizesByContest(uploads, creatorsArray, nowMs = Date.now()) {
     const isPlatform = isPlatformContest(creator);
 
     const entryFee = 100;
-    const minEntries = 20;
+    const minEntries = 70; // changed from 20 to 70 for both default and creator contests
     const seedAmount = 1000;
 
     let totalEntries = entries.length;
@@ -107,33 +107,28 @@ function calculatePrizesByContest(uploads, creatorsArray, nowMs = Date.now()) {
         pot = seedAmount + (totalEntries * entryFee * 0.6);
         seedIncluded = true;
         seedEligible = true;
-      } else if (totalEntries > 0) {
-        // Not enough entries, no seed, no 60% growth
-        pot = 0;
-        seedIncluded = false;
-        seedEligible = false;
       } else {
-        // No entries at all, nothing in pot
-        pot = 0;
+        // Contest ended & not enough entries: 60% of entry fees only, no seed
+        pot = totalEntries * entryFee * 0.6;
         seedIncluded = false;
         seedEligible = false;
       }
     } else {
       // Contest is ongoing (not ended)
       if (totalEntries >= minEntries) {
-        // If already enough, show pot as if it ended today
+        // Now eligible: seed + 60% of all entry fees
         pot = seedAmount + (totalEntries * entryFee * 0.6);
         seedIncluded = true;
         seedEligible = true;
       } else if (totalEntries > 0) {
-        // Not enough entries yet: show only seed as "potential", do NOT add 60% growth yet
-        pot = seedAmount;
-        seedIncluded = true;
+        // Not enough entries yet: show 60% of entry fees (actual), and show "potential" seed as a message
+        pot = totalEntries * entryFee * 0.6;
+        seedIncluded = false;
         seedEligible = false;
       } else {
         // No entries yet, but show seed as "potential"
-        pot = seedAmount;
-        seedIncluded = true;
+        pot = 0;
+        seedIncluded = false;
         seedEligible = false;
       }
     }
@@ -192,14 +187,14 @@ router.get('/', (req, res) => {
       for (const def of PLATFORM_CONTESTS) {
         const key = def.contestTitle;
         if (!prizes[key]) {
-          // If there are no entries, pot is seed only
+          // If there are no entries, pot is $0, but potential seed will be messaged
           prizes[key] = {
             totalEntries: 0,
-            pot: seedAmount,
+            pot: 0,
             reserve: 0,
             creatorEarnings: 0,
             platformEarnings: 0,
-            seedIncluded: true,
+            seedIncluded: false,
             seedEligible: false,
             isPlatform: true,
             endDateMs: DEFAULT_CONTEST_START.getTime() + DEFAULT_CONTEST_DURATION_MS,
@@ -214,31 +209,27 @@ router.get('/', (req, res) => {
 
           let pot = 0;
           if (endDateMs && nowMs > endDateMs) {
-            if (totalEntries >= 20) {
+            if (totalEntries >= 70) {
               pot = seedAmount + (totalEntries * entryFee * 0.6);
               prizes[key].seedIncluded = true;
               prizes[key].seedEligible = true;
-            } else if (totalEntries > 0) {
-              pot = 0;
-              prizes[key].seedIncluded = false;
-              prizes[key].seedEligible = false;
             } else {
-              pot = 0;
+              pot = totalEntries * entryFee * 0.6;
               prizes[key].seedIncluded = false;
               prizes[key].seedEligible = false;
             }
           } else {
-            if (totalEntries >= 20) {
+            if (totalEntries >= 70) {
               pot = seedAmount + (totalEntries * entryFee * 0.6);
               prizes[key].seedIncluded = true;
               prizes[key].seedEligible = true;
             } else if (totalEntries > 0) {
-              pot = seedAmount;
-              prizes[key].seedIncluded = true;
+              pot = totalEntries * entryFee * 0.6;
+              prizes[key].seedIncluded = false;
               prizes[key].seedEligible = false;
             } else {
-              pot = seedAmount;
-              prizes[key].seedIncluded = true;
+              pot = 0;
+              prizes[key].seedIncluded = false;
               prizes[key].seedEligible = false;
             }
           }
@@ -264,15 +255,46 @@ router.get('/', (req, res) => {
         if (matchingKeys.length > 0) {
           // Merge all data into the main (canonical) key, then delete the rest
           const base = prizes[key];
+          let mergedEntries = base.totalEntries;
+          let mergedEndDateMs = base.endDateMs;
           for (const k of matchingKeys) {
             const p = prizes[k];
-            base.totalEntries += p.totalEntries;
-            base.pot += p.pot;
+            mergedEntries += p.totalEntries;
             // Use the later end date if both exist
-            if (!base.endDateMs || (p.endDateMs && p.endDateMs > base.endDateMs)) {
-              base.endDateMs = p.endDateMs;
+            if (!mergedEndDateMs || (p.endDateMs && p.endDateMs > mergedEndDateMs)) {
+              mergedEndDateMs = p.endDateMs;
             }
             delete prizes[k];
+          }
+          // After summing entries, recalculate the pot from scratch based on mergedEntries
+          base.totalEntries = mergedEntries;
+          base.endDateMs = mergedEndDateMs;
+
+          // Correct pot/seed logic for platform contest
+          if (base.endDateMs && Date.now() > base.endDateMs) {
+            if (mergedEntries >= 70) {
+              base.pot = 1000 + (mergedEntries * 60);
+              base.seedIncluded = true;
+              base.seedEligible = true;
+            } else {
+              base.pot = mergedEntries * 60;
+              base.seedIncluded = false;
+              base.seedEligible = false;
+            }
+          } else {
+            if (mergedEntries >= 70) {
+              base.pot = 1000 + (mergedEntries * 60);
+              base.seedIncluded = true;
+              base.seedEligible = true;
+            } else if (mergedEntries > 0) {
+              base.pot = mergedEntries * 60;
+              base.seedIncluded = false;
+              base.seedEligible = false;
+            } else {
+              base.pot = 0;
+              base.seedIncluded = false;
+              base.seedEligible = false;
+            }
           }
         }
       }
@@ -299,12 +321,14 @@ router.get('/', (req, res) => {
           const data = prizes[title];
           if (!data) return '';
           let seedText = '';
-          if (data.seedIncluded && !data.seedEligible) {
-            seedText = `<span style="color: #070;">(Seeded with $1000 if 20+ entries by contest close)</span>`;
-          } else if (data.seedIncluded && data.seedEligible) {
+          if (data.seedIncluded && data.seedEligible) {
             seedText = `<span style="color: #070;">(Seeded with $1000!)</span>`;
+          } else if (!data.seedIncluded && data.totalEntries < 70 && data.totalEntries > 0) {
+            seedText = `<span style="color: #070;">(Seed will be added ONLY if entries reach 70 or more by contest close. Winner always receives 60% of entry fees regardless of entry count.)</span>`;
+          } else if (!data.seedIncluded && data.totalEntries === 0) {
+            seedText = `<span style="color: #070;">(Seed will be added ONLY if entries reach 70 or more by contest close. Winner always receives 60% of entry fees regardless of entry count.)</span>`;
           } else if (!data.seedIncluded && data.totalEntries > 0 && data.endDateMs && Date.now() > data.endDateMs) {
-            seedText = `<span style="color: #b00;">(Seed removed - not enough entries)</span>`;
+            seedText = `<span style="color: #b00;">(Seed not awarded - not enough entries. Winner receives 60% of entry fees.)</span>`;
           }
           return `<li>
             <strong>${data.contestTitle}</strong>: $${data.pot.toFixed(2)} — Entries: ${data.totalEntries}
@@ -381,7 +405,7 @@ router.get('/', (req, res) => {
               <h2>Start Your Own Contest</h2>
               <p style="font-size: 1.1em; max-width: 600px; margin: 0 auto;">
                 Create your own contest to earn <strong>25% of all entry fees!</strong><br>
-                <em>Each contest is seeded with $1000, but seed is only awarded if there are at least 20 entries by the time it closes. Each entry is $100, with 60% to the pot, 25% to you, 10% to reserve, and 5% to platform.</em>
+                <em>Each contest is seeded with $1000, but seed is only awarded if there are at least <strong>70 entries</strong> by the time it closes. Each entry is $100, with 60% to the pot (always paid to the winner), 25% to you, 10% to reserve, and 5% to platform.</em>
               </p>
               <p style="margin-top: 20px;">
                 <button onclick="window.location.href='/create.html'" style="padding: 12px 24px; background-color: #005b96; color: white; border: none; border-radius: 5px; font-size: 1em; cursor: pointer;">
@@ -399,9 +423,10 @@ router.get('/', (req, res) => {
               <h3>Terms and Conditions</h3>
               <ul>
                 <li>Each contest entry costs <strong>$100.00 USD</strong>. The entry fee is non-refundable.</li>
-                <li>Each contest is seeded with $1000, but the seed will only be awarded if the contest reaches at least 20 entries by the time it closes.</li>
-                <li>For custom contests: 60% of each entry fee is added to the prize pot (after minimum entries met), 25% goes to the contest creator, 10% is put in reserve, and 5% goes to the platform.</li>
-                <li>For platform-run contests: 60% of each entry fee is added to the prize pot (after minimum entries met), 10% goes to reserve, and 30% goes to the platform.</li>
+                <li>Each contest is seeded with $1000, but the seed will only be awarded if the contest reaches at least <strong>70 entries</strong> by the time it closes.</li>
+                <li><strong>Even if the minimum for the seed is not met, the winner will always receive 60% of all entry fees collected for that contest.</strong></li>
+                <li>For custom contests: 60% of each entry fee is added to the prize pot (always paid to winner), 25% goes to the contest creator, 10% is put in reserve, and 5% goes to the platform.</li>
+                <li>For platform-run contests: 60% of each entry fee is added to the prize pot (always paid to winner), 10% goes to reserve, and 30% goes to the platform.</li>
                 <li>Each contest has a unique prize pool that grows with each valid entry and seed (if qualified).</li>
                 <li>At the end of the contest, one winner will be selected and awarded the full prize pool amount.</li>
                 <li>Winners will be notified and paid within 7–14 business days after verification.</li>
