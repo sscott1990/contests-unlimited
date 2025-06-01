@@ -359,13 +359,13 @@ router.get('/uploads', async (req, res) => {
   }
 });
 
-// Trivia results view with search bar and host (REVISED FOR CORRECT PER-CONTEST COUNT)
+// Trivia results view with search bar and host (FULL, with default and custom trivia support)
 router.get('/trivia', async (req, res) => {
   try {
     const uploads = await loadUploads();
     const creators = await loadCreators();
 
-    // Load all trivia sets
+    // Load both default and custom trivia sets
     const defaultTriviaData = await loadJSONFromS3('trivia-contest.json');
     const customTriviaData = await loadJSONFromS3('custom-trivia.json');
 
@@ -384,36 +384,30 @@ router.get('/trivia', async (req, res) => {
       );
     }
 
-    // Updated logic to support correctCount fallback if triviaAnswers is missing
     const scored = filteredUploads
       .filter(entry =>
         (Array.isArray(entry.triviaAnswers) && entry.triviaAnswers.length > 0) ||
         (typeof entry.correctCount === 'number' && typeof entry.timeTaken === 'number')
       )
       .map(entry => {
-        // Find the matching contest by slug or title
+        // Find the matching contest by slug or title, if present
         let contest = creators.find(c =>
           (c.slug && entry.contestName === c.slug) ||
           (c.contestTitle && entry.contestName === c.contestTitle)
         );
 
-        // Get correct answers for this contest
+        // Answer key logic: use custom if found, else default
         let correctAnswers = [];
-        if (contest) {
-          if (contest.slug && contest.slug.startsWith('trivia-contest-') && contest.slug !== 'trivia-contest-default') {
-            // custom trivia contest
-            const custom = customTriviaData.find(t => t.slug === contest.slug);
-            if (custom && Array.isArray(custom.questions)) {
-              correctAnswers = custom.questions.map(q => q.answer);
-            }
-          } else if (contest.slug === 'trivia-contest-default') {
-            // default trivia contest
-            correctAnswers = defaultTriviaData.map(q => q.answer);
+        if (contest && contest.slug && contest.slug.startsWith('trivia-contest-') && contest.slug !== 'trivia-contest-default') {
+          // custom trivia contest
+          const custom = customTriviaData.find(t => t.slug === contest.slug);
+          if (custom && Array.isArray(custom.questions)) {
+            correctAnswers = custom.questions.map(q => q.answer);
           }
+        } else {
+          // fallback to default
+          correctAnswers = defaultTriviaData.map(q => q.answer);
         }
-
-        // Fallback if no correctAnswers found
-        if (!correctAnswers.length) correctAnswers = [];
 
         let score = 0;
         if (Array.isArray(entry.triviaAnswers)) {
