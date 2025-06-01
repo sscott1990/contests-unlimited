@@ -93,11 +93,9 @@
       fileInput.required = false;
       triviaSection.style.display = 'block';
 
-      if (!timerStarted) {
-        await loadTriviaQuestions();
-        startTimer();
-        timerStarted = true;
-      }
+      await loadTriviaQuestions(); // Always reload trivia if contest changes
+      startTimer();
+      timerStarted = true;
     } else {
       fileInput.disabled = false;
       fileInput.style.display = '';
@@ -110,7 +108,8 @@
 
   async function loadTriviaQuestions() {
     try {
-      const response = await fetch('/api/trivia');
+      const slug = contestSelect.value;
+      const response = await fetch('/api/trivia?slug=' + encodeURIComponent(slug));
       triviaQuestions = await response.json();
 
       triviaQuestionsDiv.innerHTML = '';
@@ -205,6 +204,19 @@
   }
 
   loadApprovedContests(); // run immediately
+
+  // Optionally, auto-load trivia if a contest is pre-selected on load
+  window.addEventListener('DOMContentLoaded', () => {
+    if (contestSelect.value && contestSelect.options[contestSelect.selectedIndex].textContent.toLowerCase().includes('trivia')) {
+      fileInput.disabled = true;
+      fileInput.style.display = 'none';
+      fileInput.required = false;
+      triviaSection.style.display = 'block';
+      loadTriviaQuestions();
+      startTimer();
+      timerStarted = true;
+    }
+  });
 </script>
 </body>
 </html>

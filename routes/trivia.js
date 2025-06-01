@@ -10,14 +10,14 @@ const s3 = new AWS.S3({
 const BUCKET_NAME = process.env.S3_BUCKET_NAME;
 const TRIVIA_KEY = 'trivia-contest.json';
 
+// GET /api/trivia?slug=some-contest-slug
 router.get('/', async (req, res) => {
+  const slug = req.query.slug || "default"; // fallback to "default" trivia
+
   try {
     const data = await s3.getObject({ Bucket: BUCKET_NAME, Key: TRIVIA_KEY }).promise();
-    const questions = JSON.parse(data.Body.toString('utf-8')).map(q => ({
-      question: q.question,
-      options: q.options,
-      answer: q.answer
-    }));
+    const allTrivia = JSON.parse(data.Body.toString('utf-8'));
+    const questions = allTrivia[slug] || allTrivia["default"] || [];
 
     res.json(questions);
   } catch (err) {

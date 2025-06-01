@@ -23,6 +23,7 @@ const ENTRIES_BUCKET = process.env.S3_BUCKET_NAME;
 const ENTRIES_KEY = 'entries.json';
 const UPLOADS_KEY = 'uploads.json';
 const CREATORS_KEY = 'creator.json';
+const TRIVIA_KEY = 'trivia-contest.json'; // <--- ADDED
 
 // Serve static files
 app.use(express.static('public'));
@@ -126,6 +127,29 @@ async function saveCreators(creators) {
     Bucket: ENTRIES_BUCKET,
     Key: CREATORS_KEY,
     Body: JSON.stringify(creators, null, 2),
+    ContentType: 'application/json',
+  }).promise();
+}
+
+// === 📦 Helpers for Trivia Sets ===
+async function getTriviaSets() {
+  try {
+    const data = await s3.getObject({
+      Bucket: ENTRIES_BUCKET,
+      Key: TRIVIA_KEY,
+    }).promise();
+    return JSON.parse(data.Body.toString('utf-8'));
+  } catch (err) {
+    if (err.code === 'NoSuchKey') return {};
+    throw err;
+  }
+}
+
+async function saveTriviaSets(triviaSets) {
+  await s3.putObject({
+    Bucket: ENTRIES_BUCKET,
+    Key: TRIVIA_KEY,
+    Body: JSON.stringify(triviaSets, null, 2),
     ContentType: 'application/json',
   }).promise();
 }
@@ -244,17 +268,17 @@ app.post('/api/creator/upload', upload.none(), async (req, res) => {
     const saltRounds = 10;
     const passwordHash = await bcrypt.hash(password, saltRounds);
 
-  let endDate;
-if (
-  !creator ||
-  (typeof creator === 'string' && creator.trim().toLowerCase() === "contests unlimited")
-) {
-  // 1 year from now for "Contests Unlimited"
-  endDate = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
-} else {
-  // 30 days from now for all other creators
-  endDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-}
+    let endDate;
+    if (
+      !creator ||
+      (typeof creator === 'string' && creator.trim().toLowerCase() === "contests unlimited")
+    ) {
+      // 1 year from now for "Contests Unlimited"
+      endDate = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
+    } else {
+      // 30 days from now for all other creators
+      endDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    }
 
     // Generate a slug for this contest
     const slug = contestName.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now();
@@ -274,6 +298,18 @@ if (
     });
 
     await saveCreators(creators);
+
+    // === NEW: Save custom trivia if present and this is a Trivia Contest ===
+    if (contestName === "Trivia Contest" && req.body.triviaQuestions) {
+      let triviaSets = await getTriviaSets();
+      try {
+        triviaSets[slug] = JSON.parse(req.body.triviaQuestions);
+        await saveTriviaSets(triviaSets);
+      } catch(e) {
+        console.error('Failed to save custom trivia:', e);
+        // Optionally, handle error (e.g. do NOT approve contest if trivia is invalid, etc)
+      }
+    }
 
     res.redirect('/success-creator-submitted.html');
   } catch (err) {
