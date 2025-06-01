@@ -359,13 +359,15 @@ router.get('/uploads', async (req, res) => {
   }
 });
 
-// Trivia results view with search bar and host
+// Trivia results view with search bar and host (REVISED FOR CORRECT PER-CONTEST COUNT)
 router.get('/trivia', async (req, res) => {
   try {
     const uploads = await loadUploads();
     const creators = await loadCreators();
-    const triviaData = await loadJSONFromS3('trivia-contest.json');
-    const correctAnswers = triviaData.map(q => q.answer);
+
+    // Load all trivia sets
+    const defaultTriviaData = await loadJSONFromS3('trivia-contest.json');
+    const customTriviaData = await loadJSONFromS3('custom-trivia.json');
 
     // --- SEARCH LOGIC ---
     const search = (req.query.search || '').trim().toLowerCase();
@@ -389,6 +391,30 @@ router.get('/trivia', async (req, res) => {
         (typeof entry.correctCount === 'number' && typeof entry.timeTaken === 'number')
       )
       .map(entry => {
+        // Find the matching contest by slug or title
+        let contest = creators.find(c =>
+          (c.slug && entry.contestName === c.slug) ||
+          (c.contestTitle && entry.contestName === c.contestTitle)
+        );
+
+        // Get correct answers for this contest
+        let correctAnswers = [];
+        if (contest) {
+          if (contest.slug && contest.slug.startsWith('trivia-contest-') && contest.slug !== 'trivia-contest-default') {
+            // custom trivia contest
+            const custom = customTriviaData.find(t => t.slug === contest.slug);
+            if (custom && Array.isArray(custom.questions)) {
+              correctAnswers = custom.questions.map(q => q.answer);
+            }
+          } else if (contest.slug === 'trivia-contest-default') {
+            // default trivia contest
+            correctAnswers = defaultTriviaData.map(q => q.answer);
+          }
+        }
+
+        // Fallback if no correctAnswers found
+        if (!correctAnswers.length) correctAnswers = [];
+
         let score = 0;
         if (Array.isArray(entry.triviaAnswers)) {
           score = entry.triviaAnswers.reduce((sum, answer, i) => {
@@ -409,7 +435,7 @@ router.get('/trivia', async (req, res) => {
           );
           if (found && found.creator) host = found.creator;
         }
-        return { ...entry, score, host };
+        return { ...entry, score, host, numQuestions: correctAnswers.length };
       })
       .sort((a, b) => {
         if (b.score !== a.score) return b.score - a.score;
@@ -429,7 +455,7 @@ router.get('/trivia', async (req, res) => {
         <td>${entry.name}</td>
         <td>${entry.contestName}</td>
         <td>${entry.host}</td>
-        <td>${entry.score} / ${correctAnswers.length}</td>
+        <td>${entry.score} / ${entry.numQuestions}</td>
         <td>${typeof entry.timeTaken === 'number' ? entry.timeTaken.toFixed(3) + ' sec' : 'N/A'}</td>
       </tr>
     `).join('');
