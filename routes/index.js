@@ -438,6 +438,18 @@ router.get('/', (req, res) => {
             <h2>Current Jackpot Info</h2>
             <ul>${prizeList || '<li>No entries yet</li>'}</ul>
 
+<!-- Seed/Minimum Matrix Section -->
+<div style="margin: 35px auto 14px auto; text-align:center; max-width:550px; background:#ecf7f2; border-left:5px solid #007849; border-radius:8px; padding:14px 16px;">
+  <b>Seed Amounts & Entry Minimums for Creators:</b>
+  <ul style="list-style:none; padding-left:0; font-size:1.07em; margin:8px 0 0 0; color:#222;">
+    <li>1 month: <b>$250 seed</b>, 20 entries minimum</li>
+    <li>3 months: <b>$500 seed</b>, 40 entries minimum</li>
+    <li>6 months: <b>$750 seed</b>, 60 entries minimum</li>
+    <li>1 year: <b>$1000 seed</b>, 80 entries minimum</li>
+  </ul>
+  <span style="font-size:0.97em; color:#007849;">Seed is added to the prize pot if the minimum is met by contest close. Winner always receives 60% of entry fees regardless.</span>
+</div>
+
             <h2>Contest Rules</h2>
             <div class="rules-container">
               ${rulesHtml || '<p>No rules available.</p>'}
