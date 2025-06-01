@@ -396,7 +396,6 @@ router.get('/trivia', async (req, res) => {
           (c.contestTitle && entry.contestName === c.contestTitle)
         );
 
-        // Answer key logic: use custom if found, else default
         let correctAnswers = [];
         if (contest && contest.slug && contest.slug.startsWith('trivia-contest-') && contest.slug !== 'trivia-contest-default') {
           // custom trivia contest
@@ -714,11 +713,12 @@ router.get('/creator-stats/:slug', async (req, res) => {
     let duration = contest?.durationMonths ? parseInt(contest.durationMonths, 10) : (isPlatform ? 12 : 1);
     let seedAmount = contest?.seedAmount;
     let minEntries = contest?.minEntries;
+    // UPDATED seed/min matrix
     if (!seedAmount || !minEntries) {
-      if (duration === 1) { seedAmount = 250; minEntries = 20; }
-      else if (duration === 3) { seedAmount = 500; minEntries = 40; }
-      else if (duration === 6) { seedAmount = 750; minEntries = 60; }
-      else { seedAmount = 1000; minEntries = 80; }
+      if (duration === 1) { seedAmount = 250; minEntries = 50; }
+      else if (duration === 3) { seedAmount = 500; minEntries = 100; }
+      else if (duration === 6) { seedAmount = 750; minEntries = 150; }
+      else { seedAmount = 1000; minEntries = 200; }
     }
 
     // Prize calculation

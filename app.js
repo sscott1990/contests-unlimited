@@ -302,10 +302,10 @@ app.post('/api/creator/upload', upload.none(), async (req, res) => {
 
     // Determine seed and min entries from duration
     const seedMatrix = {
-      1: { seed: 250, min: 20 },
-      3: { seed: 500, min: 40 },
-      6: { seed: 750, min: 60 },
-      12: { seed: 1000, min: 80 }
+      1: { seed: 250, min: 50 },
+      3: { seed: 500, min: 100 },
+      6: { seed: 750, min: 150 },
+      12: { seed: 1000, min: 200 }
     };
     const { seed: seedAmount, min: minEntries } = seedMatrix[duration];
 

@@ -133,10 +133,10 @@ async function loadDashboard() {
     // fallback to logic:
     if (!seed || !min) {
       // Use duration to determine
-      if (parseInt(duration) === 1) { seed = 250; min = 20; }
-      else if (parseInt(duration) === 3) { seed = 500; min = 40; }
-      else if (parseInt(duration) === 6) { seed = 750; min = 60; }
-      else { seed = 1000; min = 80; }
+      if (parseInt(duration) === 1) { seed = 250; min = 50; }
+      else if (parseInt(duration) === 3) { seed = 500; min = 100; }
+      else if (parseInt(duration) === 6) { seed = 750; min = 150; }
+      else { seed = 1000; min = 200; }
     }
     const entries = earnings.entries || 0;
     const entriesToGo = Math.max(min - entries, 0);

@@ -21,14 +21,14 @@ const PLATFORM_CONTESTS = [
 
 // Seed/minimum settings by duration (in months)
 const CREATOR_CONTEST_SEED_MATRIX = [
-  { months: 1, seed: 250, min: 20 },
-  { months: 3, seed: 500, min: 40 },
-  { months: 6, seed: 750, min: 60 },
-  { months: 12, seed: 1000, min: 80 },
+  { months: 1, seed: 250, min: 50 },
+  { months: 3, seed: 500, min: 100 },
+  { months: 6, seed: 750, min: 150 },
+  { months: 12, seed: 1000, min: 200 },
 ];
 
 const DEFAULT_CONTEST_SEED = 1000;
-const DEFAULT_CONTEST_MIN = 80;
+const DEFAULT_CONTEST_MIN = 200; // CHANGED to match new 1-year min
 
 function loadJsonFromS3(key, callback) {
   s3.getObject({
@@ -62,7 +62,7 @@ function getSeedAndMin(durationMonths, isPlatform) {
   const found = CREATOR_CONTEST_SEED_MATRIX.find(e => e.months === durationMonths);
   if (found) return { seed: found.seed, min: found.min };
   // fallback: use 1 month settings if not specified
-  return { seed: 250, min: 20 };
+  return { seed: 250, min: 50 };
 }
 
 // Revised prize calculation logic: seed is only counted if min entries reached (at end), or shown as "potential" if ongoing.
@@ -442,10 +442,10 @@ router.get('/', (req, res) => {
 <div style="margin: 35px auto 14px auto; text-align:center; max-width:550px; background:#ecf7f2; border-left:5px solid #007849; border-radius:8px; padding:14px 16px;">
   <b>Seed Amounts & Entry Minimums for Creators:</b>
   <ul style="list-style:none; padding-left:0; font-size:1.07em; margin:8px 0 0 0; color:#222;">
-    <li>1 month: <b>$250 seed</b>, 20 entries minimum</li>
-    <li>3 months: <b>$500 seed</b>, 40 entries minimum</li>
-    <li>6 months: <b>$750 seed</b>, 60 entries minimum</li>
-    <li>1 year: <b>$1000 seed</b>, 80 entries minimum</li>
+    <li>1 month: <b>$250 seed</b>, 50 entries minimum</li>
+    <li>3 months: <b>$500 seed</b>, 100 entries minimum</li>
+    <li>6 months: <b>$750 seed</b>, 150 entries minimum</li>
+    <li>1 year: <b>$1000 seed</b>, 200 entries minimum</li>
   </ul>
   <span style="font-size:0.97em; color:#007849;">Seed is added to the prize pot if the minimum is met by contest close. Winner always receives 60% of entry fees regardless.</span>
 </div>
@@ -462,10 +462,10 @@ router.get('/', (req, res) => {
                 Create your own contest to earn <strong>25% of all entry fees!</strong><br>
                 <em>
                   Choose your contest duration:<br>
-                  1 month: $250 seed, 20 entries minimum<br>
-                  3 months: $500 seed, 40 entries minimum<br>
-                  6 months: $750 seed, 60 entries minimum<br>
-                  1 year: $1000 seed, 80 entries minimum<br>
+                  1 month: $250 seed, 50 entries minimum<br>
+                  3 months: $500 seed, 100 entries minimum<br>
+                  6 months: $750 seed, 150 entries minimum<br>
+                  1 year: $1000 seed, 200 entries minimum<br>
                   <br>
                   <strong>Winner always receives 60% of entry fees, plus the seed if the minimum is met. Creators always receive 25% of all entry fees.</strong>
                 </em>
@@ -487,10 +487,10 @@ router.get('/', (req, res) => {
               <ul>
                 <li>Each contest entry costs <strong>$100.00 USD</strong>. The entry fee is non-refundable.</li>
                 <li>Each contest is seeded according to its duration:<br>
-                  1 month: $250 seed, 20 entries minimum<br>
-                  3 months: $500 seed, 40 entries minimum<br>
-                  6 months: $750 seed, 60 entries minimum<br>
-                  1 year: $1000 seed, 80 entries minimum<br>
+                  1 month: $250 seed, 50 entries minimum<br>
+                  3 months: $500 seed, 100 entries minimum<br>
+                  6 months: $750 seed, 150 entries minimum<br>
+                  1 year: $1000 seed, 200 entries minimum<br>
                 </li>
                 <li><strong>Even if the minimum for the seed is not met, the winner will always receive 60% of all entry fees collected for that contest.</strong></li>
                 <li>For custom contests: 60% of each entry fee is added to the prize pot (always paid to winner), 25% goes to the contest creator, 10% is put in reserve, and 5% goes to the platform.</li>
