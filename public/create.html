@@ -1,7 +1,9 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
   <title>Create a Contest</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="/styles.css">
   <style>
     form {
@@ -117,7 +119,7 @@
 <body>
   <h1 style="text-align: center;">Submit Your Contest</h1>
   <form id="contestForm" onsubmit="return false;">
-    <label>Select Contest Type:</label>
+    <label for="contestType">Select Contest Type:</label>
     <select name="contestName" id="contestType" required>
       <option value="">-- Select a Contest Type --</option>
       <option value="Art Contest">Art Contest</option>
@@ -126,16 +128,16 @@
       <option value="Caption Contest">Caption Contest</option>
     </select>
 
-    <label>Description:</label>
-    <textarea name="description" rows="5" required></textarea>
+    <label for="description">Description:</label>
+    <textarea name="description" id="description" rows="5" required></textarea>
 
-    <label>Your Name:</label>
-    <input type="text" name="creator" required>
+    <label for="creator">Your Name:</label>
+    <input type="text" name="creator" id="creator" required>
 
-    <label>Email Address:</label>
-    <input type="email" name="email" required>
+    <label for="email">Email Address:</label>
+    <input type="email" name="email" id="email" required>
 
-    <label>Select Your Home State:</label>
+    <label for="state">Select Your Home State:</label>
     <select name="state" id="state" required>
       <option value="">-- Select a State --</option>
       <option value="AL">Alabama</option>
@@ -217,7 +219,7 @@
     </label>
 
     <!-- Password field for creator account -->
-    <label>Create a password:</label>
+    <label for="password">Create a password:</label>
     <input type="password" name="password" id="password" required autocomplete="new-password">
 
     <!-- Trivia builder appears only if "Trivia Contest" is selected -->
@@ -262,204 +264,210 @@
   </div>
 
   <script>
-    // -- State restriction and submit enable logic --
-    const restrictedStates = ['NY', 'WA', 'NJ', 'PR', 'GU', 'AS', 'VI', 'MP', 'RI']; // Modify as needed
-    const stateSelect = document.getElementById('state');
-    const submitButton = document.getElementById('submit_button');
-    const stateAlert = document.getElementById('stateAlert');
-    const form = document.getElementById('contestForm');
-    const passwordInput = document.getElementById('password');
-    const checkboxes = ['agreeTax', 'agree18', 'agreeFees'].map(id => document.getElementById(id));
-    const contestType = document.getElementById('contestType');
-    const triviaBuilder = document.getElementById('triviaBuilder');
-    const triviaQuestionsContainer = document.getElementById('triviaQuestionsContainer');
-    const triviaQuestionsInput = document.getElementById('triviaQuestionsInput');
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log("JS loaded", document.getElementById('contestType'), document.getElementById('triviaBuilder'));
+      // -- State restriction and submit enable logic --
+      const restrictedStates = ['NY', 'WA', 'NJ', 'PR', 'GU', 'AS', 'VI', 'MP', 'RI']; // Modify as needed
+      const stateSelect = document.getElementById('state');
+      const submitButton = document.getElementById('submit_button');
+      const stateAlert = document.getElementById('stateAlert');
+      const form = document.getElementById('contestForm');
+      const passwordInput = document.getElementById('password');
+      const checkboxes = ['agreeTax', 'agree18', 'agreeFees'].map(id => document.getElementById(id));
+      const contestType = document.getElementById('contestType');
+      const triviaBuilder = document.getElementById('triviaBuilder');
+      const triviaQuestionsContainer = document.getElementById('triviaQuestionsContainer');
+      const triviaQuestionsInput = document.getElementById('triviaQuestionsInput');
+      const descriptionInput = document.getElementById('description');
+      const creatorInput = document.getElementById('creator');
+      const emailInput = document.getElementById('email');
 
-    let creatorSessionId = null;
-    let triviaQuestions = [];
+      let creatorSessionId = null;
+      let triviaQuestions = [];
 
-    function updateSubmitButton() {
-      const allChecked = checkboxes.every(cb => cb.checked);
-      const selectedState = stateSelect.value;
-      const isRestricted = restrictedStates.includes(selectedState);
-      const passwordFilled = passwordInput.value.trim().length > 0;
-      const allFieldsFilled =
-        form.elements['contestName'].value &&
-        form.elements['description'].value &&
-        form.elements['creator'].value &&
-        form.elements['email'].value &&
-        selectedState &&
-        allChecked &&
-        passwordFilled &&
-        creatorSessionId &&
-        !isRestricted;
-      // For trivia: at least 1 question required
-      const isTrivia = contestType.value === "Trivia Contest";
-      const triviaReady = !isTrivia || (triviaQuestions.length > 0 && triviaQuestions.every(q => q.question && Object.keys(q.options).length >= 2 && q.answer));
-      submitButton.disabled = !(allFieldsFilled && triviaReady);
+      function updateSubmitButton() {
+        const allChecked = checkboxes.every(cb => cb.checked);
+        const selectedState = stateSelect.value;
+        const isRestricted = restrictedStates.includes(selectedState);
+        const passwordFilled = passwordInput.value.trim().length > 0;
+        const allFieldsFilled =
+          form.elements['contestName'].value &&
+          descriptionInput.value &&
+          creatorInput.value &&
+          emailInput.value &&
+          selectedState &&
+          allChecked &&
+          passwordFilled &&
+          creatorSessionId &&
+          !isRestricted;
+        // For trivia: at least 1 question required
+        const isTrivia = contestType.value === "Trivia Contest";
+        const triviaReady = !isTrivia || (triviaQuestions.length > 0 && triviaQuestions.every(q => q.question && Object.keys(q.options).length >= 2 && q.answer));
+        submitButton.disabled = !(allFieldsFilled && triviaReady);
 
-      stateAlert.style.display = isRestricted ? 'block' : 'none';
-    }
-
-    // Fetch creatorSessionId from backend before enabling submit
-    fetch('/api/creator/session')
-      .then(res => res.json())
-      .then(data => {
-        creatorSessionId = data.creatorSessionId;
-        updateSubmitButton();
-      })
-      .catch(err => {
-        console.error('Failed to fetch creator session ID:', err);
-      });
-
-    stateSelect.addEventListener('change', updateSubmitButton);
-    checkboxes.forEach(cb => cb.addEventListener('change', updateSubmitButton));
-    passwordInput.addEventListener('input', updateSubmitButton);
-    ['contestName', 'description', 'creator', 'email'].forEach(name => {
-      form.elements[name].addEventListener('input', updateSubmitButton);
-    });
-
-    // -- Trivia Builder Logic --
-    contestType.addEventListener('change', function () {
-      if (contestType.value === "Trivia Contest") {
-        triviaBuilder.style.display = '';
-        if (triviaQuestions.length === 0) addQuestion();
-      } else {
-        triviaBuilder.style.display = 'none';
-        triviaQuestions = [];
-        triviaQuestionsContainer.innerHTML = '';
-        triviaQuestionsInput.value = '';
+        stateAlert.style.display = isRestricted ? 'block' : 'none';
       }
-      updateSubmitButton();
-    });
 
-    document.getElementById('addTriviaQuestion').addEventListener('click', addQuestion);
-
-    function addQuestion() {
-      const questionIndex = triviaQuestions.length;
-      const questionObj = { question: '', options: {}, answer: '' };
-      triviaQuestions.push(questionObj);
-
-      const div = document.createElement('div');
-      div.className = 'trivia-question';
-      div.id = 'trivia-q-' + questionIndex;
-
-      div.innerHTML = `
-        <label>Question ${questionIndex + 1}:</label>
-        <input type="text" class="trivia-question-input" placeholder="Enter question text" required><br>
-        <div class="trivia-options-list">
-          <label>Options (min 2):</label>
-          <div>
-            <input type="text" class="trivia-option-input" data-key="A" placeholder="Option A" required>
-            <input type="radio" name="trivia-answer-${questionIndex}" class="trivia-answer-radio" value="A" required> Correct
-          </div>
-          <div>
-            <input type="text" class="trivia-option-input" data-key="B" placeholder="Option B" required>
-            <input type="radio" name="trivia-answer-${questionIndex}" class="trivia-answer-radio" value="B"> Correct
-          </div>
-          <div>
-            <input type="text" class="trivia-option-input" data-key="C" placeholder="Option C">
-            <input type="radio" name="trivia-answer-${questionIndex}" class="trivia-answer-radio" value="C"> Correct
-          </div>
-          <div>
-            <input type="text" class="trivia-option-input" data-key="D" placeholder="Option D">
-            <input type="radio" name="trivia-answer-${questionIndex}" class="trivia-answer-radio" value="D"> Correct
-          </div>
-        </div>
-        <button type="button" class="remove-question-btn" style="color:#a00;margin-top:8px;">Remove Question</button>
-      `;
-      triviaQuestionsContainer.appendChild(div);
-
-      // Wire up listeners for this question
-      const questionInput = div.querySelector('.trivia-question-input');
-      const optionInputs = Array.from(div.querySelectorAll('.trivia-option-input'));
-      const answerRadios = Array.from(div.querySelectorAll('.trivia-answer-radio'));
-      const removeBtn = div.querySelector('.remove-question-btn');
-
-      questionInput.addEventListener('input', () => {
-        questionObj.question = questionInput.value;
-        updateTriviaQuestionsInput();
-      });
-      optionInputs.forEach(input => {
-        input.addEventListener('input', () => {
-          const key = input.getAttribute('data-key');
-          if (input.value.trim()) {
-            questionObj.options[key] = input.value;
-          } else {
-            delete questionObj.options[key];
-          }
-          updateTriviaQuestionsInput();
+      // Fetch creatorSessionId from backend before enabling submit
+      fetch('/api/creator/session')
+        .then(res => res.json())
+        .then(data => {
+          creatorSessionId = data.creatorSessionId;
+          updateSubmitButton();
+        })
+        .catch(err => {
+          console.error('Failed to fetch creator session ID:', err);
         });
-      });
-      answerRadios.forEach(radio => {
-        radio.addEventListener('change', () => {
-          if (radio.checked) questionObj.answer = radio.value;
-          updateTriviaQuestionsInput();
-        });
-      });
-      removeBtn.addEventListener('click', () => {
-        triviaQuestions.splice(questionIndex, 1);
-        div.remove();
-        updateTriviaQuestionsInput();
-        updateSubmitButton();
-        // Re-number remaining questions
-        Array.from(triviaQuestionsContainer.children).forEach((child, idx) => {
-          child.querySelector('label').textContent = `Question ${idx + 1}:`;
-        });
-      });
 
-      updateTriviaQuestionsInput();
-      updateSubmitButton();
-    }
+      stateSelect.addEventListener('change', updateSubmitButton);
+      checkboxes.forEach(cb => cb.addEventListener('change', updateSubmitButton));
+      passwordInput.addEventListener('input', updateSubmitButton);
+      descriptionInput.addEventListener('input', updateSubmitButton);
+      creatorInput.addEventListener('input', updateSubmitButton);
+      emailInput.addEventListener('input', updateSubmitButton);
 
-    function updateTriviaQuestionsInput() {
-      // Remove empty/incomplete questions (not enough options, no question, no answer)
-      const validQuestions = triviaQuestions
-        .map(q => ({
-          question: q.question,
-          options: Object.fromEntries(Object.entries(q.options).filter(([k, v]) => v && v.trim())),
-          answer: q.answer
-        }))
-        .filter(q =>
-          q.question &&
-          Object.keys(q.options).length >= 2 &&
-          q.answer &&
-          q.options[q.answer]
-        );
-      triviaQuestionsInput.value = JSON.stringify(validQuestions);
-      updateSubmitButton();
-    }
-
-    submitButton.addEventListener('click', async function () {
-      if (submitButton.disabled) return;
-      // Prepare form data
-      const formData = {
-        contestName: form.elements['contestName'].value,
-        description: form.elements['description'].value,
-        creator: form.elements['creator'].value,
-        email: form.elements['email'].value,
-        state: form.elements['state'].value,
-        password: form.elements['password'].value,
-        creatorSessionId,
-        triviaQuestions: (contestType.value === "Trivia Contest" && triviaQuestionsInput.value) ? triviaQuestionsInput.value : undefined
-      };
-      try {
-        const response = await fetch('/api/creator/upload', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(formData)
-        });
-        if (response.redirected) {
-          window.location.href = response.url;
-        } else if (response.ok) {
-          window.location.href = "/success-creator-submitted.html";
+      // -- Trivia Builder Logic --
+      contestType.addEventListener('change', function () {
+        if (contestType.value === "Trivia Contest") {
+          triviaBuilder.style.display = '';
+          if (triviaQuestions.length === 0) addQuestion();
         } else {
-          const errMsg = await response.text();
-          alert('Submission error: ' + errMsg);
+          triviaBuilder.style.display = 'none';
+          triviaQuestions = [];
+          triviaQuestionsContainer.innerHTML = '';
+          triviaQuestionsInput.value = '';
         }
-      } catch (err) {
-        alert('Submission failed: ' + err.message);
+        updateSubmitButton();
+      });
+
+      document.getElementById('addTriviaQuestion').addEventListener('click', addQuestion);
+
+      function addQuestion() {
+        const questionIndex = triviaQuestions.length;
+        const questionObj = { question: '', options: {}, answer: '' };
+        triviaQuestions.push(questionObj);
+
+        const div = document.createElement('div');
+        div.className = 'trivia-question';
+        div.id = 'trivia-q-' + questionIndex;
+
+        div.innerHTML = `
+          <label>Question ${questionIndex + 1}:</label>
+          <input type="text" class="trivia-question-input" placeholder="Enter question text" required><br>
+          <div class="trivia-options-list">
+            <label>Options (min 2):</label>
+            <div>
+              <input type="text" class="trivia-option-input" data-key="A" placeholder="Option A" required>
+              <input type="radio" name="trivia-answer-${questionIndex}" class="trivia-answer-radio" value="A" required> Correct
+            </div>
+            <div>
+              <input type="text" class="trivia-option-input" data-key="B" placeholder="Option B" required>
+              <input type="radio" name="trivia-answer-${questionIndex}" class="trivia-answer-radio" value="B"> Correct
+            </div>
+            <div>
+              <input type="text" class="trivia-option-input" data-key="C" placeholder="Option C">
+              <input type="radio" name="trivia-answer-${questionIndex}" class="trivia-answer-radio" value="C"> Correct
+            </div>
+            <div>
+              <input type="text" class="trivia-option-input" data-key="D" placeholder="Option D">
+              <input type="radio" name="trivia-answer-${questionIndex}" class="trivia-answer-radio" value="D"> Correct
+            </div>
+          </div>
+          <button type="button" class="remove-question-btn" style="color:#a00;margin-top:8px;">Remove Question</button>
+        `;
+        triviaQuestionsContainer.appendChild(div);
+
+        // Wire up listeners for this question
+        const questionInput = div.querySelector('.trivia-question-input');
+        const optionInputs = Array.from(div.querySelectorAll('.trivia-option-input'));
+        const answerRadios = Array.from(div.querySelectorAll('.trivia-answer-radio'));
+        const removeBtn = div.querySelector('.remove-question-btn');
+
+        questionInput.addEventListener('input', () => {
+          questionObj.question = questionInput.value;
+          updateTriviaQuestionsInput();
+        });
+        optionInputs.forEach(input => {
+          input.addEventListener('input', () => {
+            const key = input.getAttribute('data-key');
+            if (input.value.trim()) {
+              questionObj.options[key] = input.value;
+            } else {
+              delete questionObj.options[key];
+            }
+            updateTriviaQuestionsInput();
+          });
+        });
+        answerRadios.forEach(radio => {
+          radio.addEventListener('change', () => {
+            if (radio.checked) questionObj.answer = radio.value;
+            updateTriviaQuestionsInput();
+          });
+        });
+        removeBtn.addEventListener('click', () => {
+          triviaQuestions.splice(questionIndex, 1);
+          div.remove();
+          updateTriviaQuestionsInput();
+          updateSubmitButton();
+          // Re-number remaining questions
+          Array.from(triviaQuestionsContainer.children).forEach((child, idx) => {
+            child.querySelector('label').textContent = `Question ${idx + 1}:`;
+          });
+        });
+
+        updateTriviaQuestionsInput();
+        updateSubmitButton();
       }
+
+      function updateTriviaQuestionsInput() {
+        // Remove empty/incomplete questions (not enough options, no question, no answer)
+        const validQuestions = triviaQuestions
+          .map(q => ({
+            question: q.question,
+            options: Object.fromEntries(Object.entries(q.options).filter(([k, v]) => v && v.trim())),
+            answer: q.answer
+          }))
+          .filter(q =>
+            q.question &&
+            Object.keys(q.options).length >= 2 &&
+            q.answer &&
+            q.options[q.answer]
+          );
+        triviaQuestionsInput.value = JSON.stringify(validQuestions);
+        updateSubmitButton();
+      }
+
+      submitButton.addEventListener('click', async function () {
+        if (submitButton.disabled) return;
+        // Prepare form data
+        const formData = {
+          contestName: form.elements['contestName'].value,
+          description: descriptionInput.value,
+          creator: creatorInput.value,
+          email: emailInput.value,
+          state: form.elements['state'].value,
+          password: form.elements['password'].value,
+          creatorSessionId,
+          triviaQuestions: (contestType.value === "Trivia Contest" && triviaQuestionsInput.value) ? triviaQuestionsInput.value : undefined
+        };
+        try {
+          const response = await fetch('/api/creator/upload', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData)
+          });
+          if (response.redirected) {
+            window.location.href = response.url;
+          } else if (response.ok) {
+            window.location.href = "/success-creator-submitted.html";
+          } else {
+            const errMsg = await response.text();
+            alert('Submission error: ' + errMsg);
+          }
+        } catch (err) {
+          alert('Submission failed: ' + err.message);
+        }
+      });
     });
   </script>
 </body>
