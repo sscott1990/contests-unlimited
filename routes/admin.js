@@ -539,7 +539,7 @@ router.get('/creators', async (req, res) => {
         <td>${creator.description || ''}</td>
         <td>${new Date(creator.timestamp).toLocaleString()}</td>
         <td>${creator.status || 'Pending'}</td>
-        <td>${creator.slug ? `<a href="/creator-dashboard/${creator.slug}" target="_blank">Go to Dashboard</a>` : ''}</td>
+        <td>${creator.email ? `<a href="/creator-dashboard.html?email=${encodeURIComponent(creator.email)}" target="_blank">Go to Dashboard</a>` : ''}</td>
         <td>
           <button onclick="handleStatus('${creator.id || creator.timestamp}', 'approved')">Approve</button>
           <button onclick="handleStatus('${creator.id || creator.timestamp}', 'rejected')">Reject</button>

@@ -71,16 +71,21 @@ function logout() {
 }
 
 async function loadDashboard() {
-  // Get creator email from session/localStorage or prompt for it
-  let email = localStorage.getItem('creatorEmail');
+  // Get creator email from query param, then localStorage, then prompt if needed
+  function getQueryParam(name) {
+    const match = window.location.search.match(new RegExp('[?&]' + name + '=([^&]+)'));
+    return match ? decodeURIComponent(match[1].replace(/\+/g, ' ')) : null;
+  }
+
+  let email = getQueryParam('email') || localStorage.getItem('creatorEmail');
   if (!email) {
     email = prompt("Enter your creator email to view all your contests:");
     if (!email) {
       document.getElementById('info').innerText = "No email provided.";
       return;
     }
-    localStorage.setItem('creatorEmail', email);
   }
+  localStorage.setItem('creatorEmail', email);
 
   // Fetch contest info and earnings in parallel
   const [contestsRes, earningsRes] = await Promise.all([
