@@ -779,13 +779,12 @@ router.post('/update-status', express.json(), async (req, res) => {
     creators[index].status = status;
 
     let slug = null;
-    if (status === 'approved') {
-      slug = slugify(`${creators[index].contestTitle}-${Date.now()}`, { lower: true, strict: true });
-      creators[index].slug = slug;
-    } else {
-      delete creators[index].slug;
-    }
-
+   if (status === 'approved') {
+    slug = creators[index].slug; // keep the original slug!
+    // Do NOT change the slug on approval
+  } else {
+    delete creators[index].slug;
+  }
     // Save back to S3
     const params = {
       Bucket: BUCKET_NAME,
