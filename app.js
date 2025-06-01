@@ -23,7 +23,8 @@ const ENTRIES_BUCKET = process.env.S3_BUCKET_NAME;
 const ENTRIES_KEY = 'entries.json';
 const UPLOADS_KEY = 'uploads.json';
 const CREATORS_KEY = 'creator.json';
-const TRIVIA_KEY = 'trivia-contest.json'; // <--- ADDED
+const TRIVIA_KEY = 'trivia-contest.json'; // <--- default trivia
+const CUSTOM_TRIVIA_KEY = 'custom-trivia.json'; // <--- NEW: custom trivia
 
 // Serve static files
 app.use(express.static('public'));
@@ -150,6 +151,29 @@ async function saveTriviaSets(triviaSets) {
   await s3.putObject({
     Bucket: ENTRIES_BUCKET,
     Key: TRIVIA_KEY,
+    Body: JSON.stringify(triviaSets, null, 2),
+    ContentType: 'application/json',
+  }).promise();
+}
+
+// === 📦 Helpers for Custom Trivia Sets (NEW) ===
+async function getCustomTriviaSets() {
+  try {
+    const data = await s3.getObject({
+      Bucket: ENTRIES_BUCKET,
+      Key: CUSTOM_TRIVIA_KEY,
+    }).promise();
+    return JSON.parse(data.Body.toString('utf-8'));
+  } catch (err) {
+    if (err.code === 'NoSuchKey') return [];
+    throw err;
+  }
+}
+
+async function saveCustomTriviaSets(triviaSets) {
+  await s3.putObject({
+    Bucket: ENTRIES_BUCKET,
+    Key: CUSTOM_TRIVIA_KEY,
     Body: JSON.stringify(triviaSets, null, 2),
     ContentType: 'application/json',
   }).promise();
@@ -302,7 +326,7 @@ app.post('/api/creator/upload', upload.none(), async (req, res) => {
 
     // === NEW: Save custom trivia if present and this is a Trivia Contest ===
     if (contestName === "Trivia Contest" && req.body.triviaQuestions) {
-      let triviaSets = await getTriviaSets(); // triviaSets is now an array
+      let triviaSets = await getCustomTriviaSets(); // <--- CHANGED TO CUSTOM
       let parsedQuestions = Array.isArray(req.body.triviaQuestions)
         ? req.body.triviaQuestions
         : JSON.parse(req.body.triviaQuestions);
@@ -316,7 +340,7 @@ app.post('/api/creator/upload', upload.none(), async (req, res) => {
         questions: parsedQuestions
       });
 
-      await saveTriviaSets(triviaSets);
+      await saveCustomTriviaSets(triviaSets); // <--- CHANGED TO CUSTOM
     }
 
     res.redirect('/success-creator-submitted.html');
@@ -406,7 +430,7 @@ app.get('/api/contest/:slug', async (req, res) => {
   }
 });
 
-// === New: API to fetch trivia questions for a contest by slug ===
+// === New: API to fetch trivia questions for a contest by slug (for defaults only) ===
 app.get('/api/trivia/by-slug/:slug', async (req, res) => {
   try {
     const { slug } = req.params;
@@ -417,6 +441,20 @@ app.get('/api/trivia/by-slug/:slug', async (req, res) => {
   } catch (err) {
     console.error('Failed to fetch trivia for contest:', err);
     res.status(500).json({ error: 'Failed to fetch trivia for contest' });
+  }
+});
+
+// === New: API to fetch custom trivia questions for a contest by slug ===
+app.get('/api/custom-trivia/by-slug/:slug', async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const triviaSets = await getCustomTriviaSets();
+    const found = triviaSets.find(c => c.slug === slug);
+    if (!found) return res.status(404).json({ error: "Trivia not found" });
+    res.json({ questions: found.questions });
+  } catch (err) {
+    console.error('Failed to fetch custom trivia for contest:', err);
+    res.status(500).json({ error: 'Failed to fetch custom trivia for contest' });
   }
 });
 

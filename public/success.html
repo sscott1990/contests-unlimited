@@ -106,12 +106,12 @@
     }
   });
 
-  // ======= MODIFIED: loadTriviaQuestions fetches by-slug endpoint and checks array structure =======
+  // ======= MODIFIED: loadTriviaQuestions fetches from /api/custom-trivia/by-slug/ first =======
   async function loadTriviaQuestions() {
     try {
       const slug = contestSelect.value;
       // Try to fetch custom questions for this contest first
-      let response = await fetch('/api/trivia/by-slug/' + encodeURIComponent(slug));
+      let response = await fetch('/api/custom-trivia/by-slug/' + encodeURIComponent(slug));
       let data;
       if (response.ok) {
         data = await response.json();
