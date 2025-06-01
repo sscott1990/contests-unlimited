@@ -531,21 +531,29 @@ router.get('/creators', async (req, res) => {
     const start = (page - 1) * perPage;
     const paginatedCreators = filteredCreators.slice(start, start + perPage);
 
-    const rows = paginatedCreators.map(creator => `
-      <tr data-id="${creator.id || creator.timestamp}">
-        <td>${creator.creator || ''}</td>
-        <td>${creator.email || ''}</td>
-        <td>${creator.contestTitle || ''}</td>
-        <td>${creator.description || ''}</td>
-        <td>${new Date(creator.timestamp).toLocaleString()}</td>
-        <td>${creator.status || 'Pending'}</td>
-        <td>${creator.email ? `<a href="/creator-dashboard.html?email=${encodeURIComponent(creator.email)}" target="_blank">Go to Dashboard</a>` : ''}</td>
-        <td>
-          <button onclick="handleStatus('${creator.id || creator.timestamp}', 'approved')">Approve</button>
-          <button onclick="handleStatus('${creator.id || creator.timestamp}', 'rejected')">Reject</button>
-        </td>
-      </tr>
-    `).join('');
+    const now = Date.now();
+    const rows = paginatedCreators.map(creator => {
+        let isExpired = false;
+        if (creator.endDate) {
+          const end = new Date(creator.endDate).getTime();
+          if (!isNaN(end) && end < now) isExpired = true;
+        }
+        return `
+          <tr data-id="${creator.id || creator.timestamp}"${isExpired ? ' class="expired-row"' : ''}>
+            <td>${creator.creator || ''}</td>
+            <td>${creator.email || ''}</td>
+            <td>${creator.contestTitle || ''}</td>
+            <td>${creator.description || ''}</td>
+            <td>${new Date(creator.timestamp).toLocaleString()}</td>
+            <td>${creator.status || 'Pending'}</td>
+            <td>${creator.email ? `<a href="/creator-dashboard.html?email=${encodeURIComponent(creator.email)}" target="_blank">Go to Dashboard</a>` : ''}</td>
+            <td>
+              <button onclick="handleStatus('${creator.id || creator.timestamp}', 'approved')">Approve</button>
+              <button onclick="handleStatus('${creator.id || creator.timestamp}', 'rejected')">Reject</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
 
     let paginationControls = `<div style="margin-top: 1rem;">`;
     if (page > 1) {
@@ -576,6 +584,10 @@ router.get('/creators', async (req, res) => {
           .search-bar { margin-bottom: 1rem; }
           .search-bar input { padding: 6px 10px; font-size: 1em; min-width: 200px; }
           .search-bar button { padding: 6px 14px; }
+          .expired-row {
+            background: #ffeaea !important;
+            color: #a00 !important;
+          }
         </style>
       </head>
       <body>
@@ -706,36 +718,40 @@ router.get('/creator-stats/:slug', async (req, res) => {
       }
     }
 
-    res.send(`
-      <!DOCTYPE html>
-      <html lang="en">
-      <head>
-        <title>${contestName} Stats</title>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <style>
-          body { font-family: Arial, sans-serif; margin: 2rem; background: #f9f9f9; color: #333; }
-          h1 { color: #444; }
-          .stat { font-size: 1.2em; margin-bottom: 1em; }
-        </style>
-      </head>
-      <body>
-        <h1>Stats for "${contestName}"</h1>
-        <div class="stat"><strong>Number of Entries:</strong> ${numEntries}</div>
-        <div class="stat"><strong>Current Prize Pot:</strong> $${pot < 0 ? 0 : pot.toFixed(2)} ${seedInPot ? '(Seeded)' : (numEntries > 0 && numEntries < 20 ? '(Seed removed - not enough entries)' : '')}</div>
-        <div class="stat"><strong>Reserve:</strong> $${reserve.toFixed(2)}</div>
-        <div class="stat"><strong>Creator Earnings:</strong> $${creatorEarnings.toFixed(2)}</div>
-        <div class="stat"><strong>Platform Earnings:</strong> $${platformEarnings.toFixed(2)}</div>
-        <div class="stat"><strong>Contest Type:</strong> ${isPlatform ? 'Platform (Contests Unlimited)' : 'Custom'}</div>
-        <div class="stat"><strong>Seed Rule:</strong> $1000 is seeded in the prize pot if there is at least 1 entry, but removed if the contest does not reach 20 entries.</div>
-        <div class="stat"><strong>Split:</strong> ${
-          isPlatform
-            ? "60% pot, 10% reserve, 30% platform"
-            : "60% pot, 25% creator, 10% reserve, 5% platform"
-        }</div>
-      </body>
-      </html>
-    `);
+   res.send(`
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+    <title>${contestName} Stats</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      body { font-family: Arial, sans-serif; margin: 2rem; background: #f9f9f9; color: #333; }
+      h1 { color: #444; }
+      .stat { font-size: 1.2em; margin-bottom: 1em; }
+      .expired-row {
+        background: #ffeaea !important;
+        color: #a00 !important;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Stats for "${contestName}"</h1>
+    <div class="stat"><strong>Number of Entries:</strong> ${numEntries}</div>
+    <div class="stat"><strong>Current Prize Pot:</strong> $${pot < 0 ? 0 : pot.toFixed(2)} ${seedInPot ? '(Seeded)' : (numEntries > 0 && numEntries < 20 ? '(Seed removed - not enough entries)' : '')}</div>
+    <div class="stat"><strong>Reserve:</strong> $${reserve.toFixed(2)}</div>
+    <div class="stat"><strong>Creator Earnings:</strong> $${creatorEarnings.toFixed(2)}</div>
+    <div class="stat"><strong>Platform Earnings:</strong> $${platformEarnings.toFixed(2)}</div>
+    <div class="stat"><strong>Contest Type:</strong> ${isPlatform ? 'Platform (Contests Unlimited)' : 'Custom'}</div>
+    <div class="stat"><strong>Seed Rule:</strong> $1000 is seeded in the prize pot if there is at least 1 entry, but removed if the contest does not reach 20 entries.</div>
+    <div class="stat"><strong>Split:</strong> ${
+      isPlatform
+        ? "60% pot, 10% reserve, 30% platform"
+        : "60% pot, 25% creator, 10% reserve, 5% platform"
+    }</div>
+  </body>
+  </html>
+`);
   } catch (err) {
     console.error('Failed to load contest stats:', err);
     res.status(500).send('Failed to load contest stats.');
