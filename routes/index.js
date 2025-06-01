@@ -254,6 +254,30 @@ router.get('/', (req, res) => {
         }
       }
 
+      // ---- DEDUPLICATE/MERGE PLATFORM CONTESTS BY TITLE ----
+      for (const def of PLATFORM_CONTESTS) {
+        const key = def.contestTitle;
+        // Find all contest keys that match this contestTitle and are platform
+        const matchingKeys = Object.keys(prizes).filter(prKey =>
+          prizes[prKey].isPlatform && prizes[prKey].contestTitle === key && prKey !== key
+        );
+        if (matchingKeys.length > 0) {
+          // Merge all data into the main (canonical) key, then delete the rest
+          const base = prizes[key];
+          for (const k of matchingKeys) {
+            const p = prizes[k];
+            base.totalEntries += p.totalEntries;
+            base.pot += p.pot;
+            // Use the later end date if both exist
+            if (!base.endDateMs || (p.endDateMs && p.endDateMs > base.endDateMs)) {
+              base.endDateMs = p.endDateMs;
+            }
+            delete prizes[k];
+          }
+        }
+      }
+      // ---- END DEDUPLICATION ----
+
       // --- NOW LOAD RULES FROM S3 ---
       loadJsonFromS3('rules.json', (rules) => {
         if (!rules) rules = [];
