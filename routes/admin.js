@@ -396,7 +396,7 @@ router.get('/trivia', async (req, res) => {
           (c.contestTitle && entry.contestName === c.contestTitle)
         );
 
-        let correctAnswers = [];
+       let correctAnswers = [];
         if (contest && contest.slug && contest.slug.startsWith('trivia-contest-') && contest.slug !== 'trivia-contest-default') {
           // custom trivia contest
           const custom = customTriviaData.find(t => t.slug === contest.slug);
@@ -706,7 +706,7 @@ router.get('/creator-stats/:slug', async (req, res) => {
     const contestEntries = uploads.filter(entry => entry.contestName === contestName);
     const numEntries = contestEntries.length;
 
-       // Business rules
+    // Business rules
     const entryFee = 100;
 
     // Use new contest duration/seed/min logic
@@ -723,18 +723,20 @@ router.get('/creator-stats/:slug', async (req, res) => {
 
     // Prize calculation
     let pot = 0, reserve = 0, creatorEarnings = 0, platformEarnings = 0, seedInPot = false;
-    // Split per entry
-    for (let i = 0; i < numEntries; i++) {
-      if (isPlatform) {
-        pot += entryFee * 0.6;
-        reserve += entryFee * 0.1;
-        platformEarnings += entryFee * 0.3;
+    if (isPlatform) {
+      pot = numEntries * entryFee * 0.6;
+      reserve = numEntries * entryFee * 0.1;
+      platformEarnings = numEntries * entryFee * 0.3;
+    } else {
+      pot = numEntries * entryFee * 0.6;
+      reserve = numEntries * entryFee * 0.10;
+      // --- REVISED CREATOR EARNINGS LOGIC ---
+      if (numEntries <= minEntries) {
+        creatorEarnings = numEntries * entryFee * 0.25;
       } else {
-        pot += entryFee * 0.6;
-        creatorEarnings += entryFee * 0.25;
-        reserve += entryFee * 0.10;
-        platformEarnings += entryFee * 0.05;
+        creatorEarnings = minEntries * entryFee * 0.25 + (numEntries - minEntries) * entryFee * 0.30;
       }
+      platformEarnings = numEntries * entryFee * 0.05;
     }
     // Add seed if minimum entries met
     if (numEntries >= minEntries) {
@@ -767,12 +769,17 @@ router.get('/creator-stats/:slug', async (req, res) => {
     <div class="stat"><strong>Creator Earnings:</strong> $${creatorEarnings.toFixed(2)}</div>
     <div class="stat"><strong>Platform Earnings:</strong> $${platformEarnings.toFixed(2)}</div>
     <div class="stat"><strong>Contest Type:</strong> ${isPlatform ? 'Platform (Contests Unlimited)' : 'Custom'}</div>
-        <div class="stat"><strong>Seed Rule:</strong> $${seedAmount} is seeded in the prize pot if the contest reaches at least ${minEntries} entries by contest close. Winner always receives 60% of entry fees regardless.</div>
-    <div class="stat"><strong>Duration:</strong> ${duration === 1 ? '1 month' : duration === 12 ? '1 year' : `${duration} months`}</div>    <div class="stat"><strong>Split:</strong> ${
+    <div class="stat"><strong>Seed Rule:</strong> $${seedAmount} is seeded in the prize pot if the contest reaches at least ${minEntries} entries by contest close. Winner always receives 60% of entry fees regardless.</div>
+    <div class="stat"><strong>Duration:</strong> ${duration === 1 ? '1 month' : duration === 12 ? '1 year' : `${duration} months`}</div>
+    <div class="stat"><strong>Split:</strong> ${
       isPlatform
         ? "60% pot, 10% reserve, 30% platform"
-        : "60% pot, 25% creator, 10% reserve, 5% platform"
+        : "60% pot, 25% creator up to minimum, 30% above minimum, 10% reserve, 5% platform"
     }</div>
+    <div class="stat">
+      <strong>Creator Payout Explanation:</strong>
+      For the first ${minEntries} entries, the creator earns <b>25%</b> per entry. For each entry above the minimum, the creator earns <b>30%</b> per entry.
+    </div>
   </body>
   </html>
 `);

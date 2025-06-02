@@ -40,7 +40,6 @@ function parsePrize(prizeModel) {
 }
 
 const DEFAULT_ENTRY_FEE = 100;
-const CREATOR_PER_ENTRY = 25; // 25% of entry fee
 
 router.get('/creator-earnings/:email', async (req, res) => {
   try {
@@ -55,13 +54,31 @@ router.get('/creator-earnings/:email', async (req, res) => {
     const results = [];
     let totalProfit = 0;
     for (const contest of contests) {
+      // Find contest name for uploads matching this contest
+      const contestName = contest.contestTitle || contest.slug;
       const contestUploads = uploads.filter(
-        u => u.contestName === contest.slug
+        u => u.contestName === contestName
       );
       const entries = contestUploads.length;
       const entryFee = parsePrize(contest.prizeModel) || DEFAULT_ENTRY_FEE;
-      // For now, always use $25 per entry as creator profit
-      const creatorRevenue = entries * CREATOR_PER_ENTRY;
+
+      // Determine duration, min, seed
+      let duration = contest.durationMonths ? parseInt(contest.durationMonths, 10) : 1;
+      let minEntries = contest.minEntries;
+      if (!minEntries) {
+        if (duration === 1) minEntries = 50;
+        else if (duration === 3) minEntries = 100;
+        else if (duration === 6) minEntries = 150;
+        else minEntries = 200;
+      }
+
+      // Revised creator revenue logic: 25% per entry up to min, 30% above
+      let creatorRevenue = 0;
+      if (entries <= minEntries) {
+        creatorRevenue = entries * entryFee * 0.25;
+      } else {
+        creatorRevenue = minEntries * entryFee * 0.25 + (entries - minEntries) * entryFee * 0.30;
+      }
       totalProfit += creatorRevenue;
 
       results.push({

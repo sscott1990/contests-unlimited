@@ -137,7 +137,12 @@ function calculatePrizesByContest(uploads, creatorsArray, nowMs = Date.now()) {
       platformEarnings = totalEntries * entryFee * 0.3;
     } else {
       reserve = totalEntries * entryFee * 0.10;
-      creatorEarnings = totalEntries * entryFee * 0.25;
+      // --- NEW CREATOR PAYOUT LOGIC ---
+      if (totalEntries <= minEntries) {
+        creatorEarnings = totalEntries * entryFee * 0.25;
+      } else {
+        creatorEarnings = minEntries * entryFee * 0.25 + (totalEntries - minEntries) * entryFee * 0.30;
+      }
       platformEarnings = totalEntries * entryFee * 0.05;
     }
 
@@ -459,7 +464,7 @@ router.get('/', (req, res) => {
             <div style="margin-top: 40px; text-align: center;">
               <h2>Start Your Own Contest</h2>
               <p style="font-size: 1.1em; max-width: 600px; margin: 0 auto;">
-                Create your own contest to earn <strong>25% of all entry fees!</strong><br>
+                Create your own contest to earn <strong>25% of each entry up to the minimum, and 30% of every entry above the minimum!</strong><br>
                 <em>
                   Choose your contest duration:<br>
                   1 month: $250 seed, 50 entries minimum<br>
@@ -467,7 +472,7 @@ router.get('/', (req, res) => {
                   6 months: $750 seed, 150 entries minimum<br>
                   1 year: $1000 seed, 200 entries minimum<br>
                   <br>
-                  <strong>Winner always receives 60% of entry fees, plus the seed if the minimum is met. Creators always receive 25% of all entry fees.</strong>
+                  <strong>Winner always receives 60% of entry fees, plus the seed if the minimum is met. Creators earn 25% for each entry up to the minimum, and 30% for every entry above the minimum.</strong>
                 </em>
               </p>
               <p style="margin-top: 20px;">
@@ -493,7 +498,7 @@ router.get('/', (req, res) => {
                   1 year: $1000 seed, 200 entries minimum<br>
                 </li>
                 <li><strong>Even if the minimum for the seed is not met, the winner will always receive 60% of all entry fees collected for that contest.</strong></li>
-                <li>For custom contests: 60% of each entry fee is added to the prize pot (always paid to winner), 25% goes to the contest creator, 10% is put in reserve, and 5% goes to the platform.</li>
+                <li>For custom contests: 60% of each entry fee is added to the prize pot (always paid to winner), 25% goes to the contest creator for each entry up to the minimum, 30% for each entry above the minimum, 10% is put in reserve, and 5% goes to the platform.</li>
                 <li>For platform-run contests: 60% of each entry fee is added to the prize pot (always paid to winner), 10% goes to reserve, and 30% goes to the platform.</li>
                 <li>Each contest has a unique prize pool that grows with each valid entry and seed (if qualified).</li>
                 <li>At the end of the contest, one winner will be selected and awarded the full prize pool amount.</li>

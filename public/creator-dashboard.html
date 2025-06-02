@@ -140,6 +140,15 @@ async function loadDashboard() {
     }
     const entries = earnings.entries || 0;
     const entriesToGo = Math.max(min - entries, 0);
+
+    // --- CHANGE: Creator Revenue Calculation ---
+    let creatorEarnings = 0;
+    if (entries <= min) {
+      creatorEarnings = entries * 25;
+    } else {
+      creatorEarnings = min * 25 + (entries - min) * 30;
+    }
+
     html += `
       <div class="contest-block">
         <div class="info">
@@ -150,7 +159,7 @@ async function loadDashboard() {
           <div><span class="label">Seed/Minimum:</span> ${formatSeed(seed, min)}</div>
           ${data.prizeModel ? `<div class="prize"><span class="label">Prize:</span> ${sanitizeHtml(data.prizeModel)}</div>` : ""}
           <div><span class="label">Entries:</span> ${entries}</div>
-          <div><span class="label">Creator Revenue:</span> $${entries * 25}</div>
+          <div><span class="label">Creator Revenue:</span> $${creatorEarnings}</div>
           <div class="seed-info">
             ${entries >= min 
               ? `<span style="color: #070;">Seed unlocked!</span>`
