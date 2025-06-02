@@ -395,7 +395,7 @@ router.get('/trivia', async (req, res) => {
           (c.slug && entry.contestName === c.slug) ||
           (c.contestTitle && entry.contestName === c.contestTitle)
         );
-
+//ended here
        let correctAnswers = [];
         if (contest && contest.slug && contest.slug.startsWith('trivia-contest-') && contest.slug !== 'trivia-contest-default') {
           // custom trivia contest
@@ -798,8 +798,8 @@ router.get('/logout', (req, res) => {
 
 router.post('/update-status', express.json(), async (req, res) => {
   const { id, status } = req.body;
-
-  if (!id || !status) return res.status(400).json({ error: 'Missing id or status' });
+//ended here
+ if (!id || !status) return res.status(400).json({ error: 'Missing id or status' });
 
   try {
     const creators = await loadCreators();
@@ -829,6 +829,165 @@ router.post('/update-status', express.json(), async (req, res) => {
   } catch (err) {
     console.error('Error updating creator status:', err);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.get('/dashboard-financials', async (req, res) => {
+  try {
+    const [uploads, creators] = await Promise.all([
+      loadUploads(),
+      loadCreators()
+    ]);
+
+    const now = Date.now();
+    let expired = [];
+    let pending = [];
+    let totalRevenue = 0, totalWinner = 0, totalSeed = 0, totalCreator = 0, totalReserve = 0, totalPlatform = 0, myProfit = 0;
+    let outstandingToWinners = 0, outstandingToCreators = 0;
+
+    // For each contest in creators
+    for (const contest of creators) {
+      // Find all uploads for this contest
+      const contestName = contest.contestTitle;
+      const slug = contest.slug;
+      const endDate = contest.endDate ? new Date(contest.endDate).getTime() : null;
+      const isExpired = endDate && endDate < now;
+      const isPlatform = !contest.creator || (typeof contest.creator === 'string' && contest.creator.trim().toLowerCase() === "contests unlimited");
+
+      const contestEntries = uploads.filter(entry => entry.contestName === contestName);
+      const entriesCount = contestEntries.length;
+      const entryFee = 100;
+
+      // Duration/min/seed matrix logic
+      let duration = contest?.durationMonths ? parseInt(contest.durationMonths, 10) : (isPlatform ? 12 : 1);
+      let seedAmount = contest?.seedAmount;
+      let minEntries = contest?.minEntries;
+      if (!seedAmount || !minEntries) {
+        if (duration === 1) { seedAmount = 250; minEntries = 50; }
+        else if (duration === 3) { seedAmount = 500; minEntries = 100; }
+        else if (duration === 6) { seedAmount = 750; minEntries = 150; }
+        else { seedAmount = 1000; minEntries = 200; }
+      }
+
+      // Prize calculation
+      let pot = 0, reserve = 0, creatorEarnings = 0, platformEarnings = 0, seedInPot = false;
+      if (isPlatform) {
+        pot = entriesCount * entryFee * 0.6;
+        reserve = entriesCount * entryFee * 0.1;
+        platformEarnings = entriesCount * entryFee * 0.3;
+        myProfit += platformEarnings;
+        totalPlatform += platformEarnings;
+        totalReserve += reserve;
+      } else {
+        pot = entriesCount * entryFee * 0.6;
+        reserve = entriesCount * entryFee * 0.10;
+        if (entriesCount <= minEntries) {
+          creatorEarnings = entriesCount * entryFee * 0.25;
+        } else {
+          creatorEarnings = minEntries * entryFee * 0.25 + (entriesCount - minEntries) * entryFee * 0.30;
+        }
+        platformEarnings = entriesCount * entryFee * 0.05;
+        myProfit += platformEarnings;
+        totalCreator += creatorEarnings;
+        totalPlatform += platformEarnings;
+        totalReserve += reserve;
+      }
+      // Add seed if minimum entries met
+      if (entriesCount >= minEntries) {
+        pot += seedAmount;
+        seedInPot = true;
+        totalSeed += seedAmount;
+      }
+
+      const fees = entriesCount * entryFee;
+      totalRevenue += fees;
+      totalWinner += entriesCount * entryFee * 0.6;
+
+      // Outstanding logic (if you track winnerPaid/creatorPaid)
+      let winner = contest.winner || 'TBD';
+      let outstandingToWinner = (isExpired && !contest.winnerPaid) ? (pot) : 0;
+      let outstandingToCreator = (isExpired && !contest.creatorPaid) ? (creatorEarnings) : 0;
+      if (isExpired) {
+        expired.push({
+          title: contest.contestTitle,
+          slug,
+          winner,
+          winnerPayout: pot,
+          creator: contest.creator,
+          creatorPayout: creatorEarnings,
+          outstandingToWinner,
+          outstandingToCreator
+        });
+        if (outstandingToWinner) outstandingToWinners += outstandingToWinner;
+        if (outstandingToCreator) outstandingToCreators += outstandingToCreator;
+      } else {
+        pending.push({
+          title: contest.contestTitle,
+          slug,
+          entriesCount,
+          min: minEntries,
+          seed: seedAmount,
+          endDate
+        });
+      }
+    }
+
+    // Render a simple dashboard
+    res.send(`
+      <html>
+      <head>
+        <title>Admin Financial Dashboard</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 2em; }
+          h2 { color: #007849; }
+          table { border-collapse: collapse; width: 100%; margin-bottom: 2em; }
+          th, td { border: 1px solid #ccc; padding: 8px; }
+          th { background: #e6faf1; }
+        </style>
+      </head>
+      <body>
+        <h1>Admin Financial Dashboard</h1>
+        <h2>Totals</h2>
+        <ul>
+          <li><b>Total Revenue:</b> $${totalRevenue.toFixed(2)}</li>
+          <li><b>Total Winner Payout (60%):</b> $${totalWinner.toFixed(2)}</li>
+          <li><b>Total Seed Paid:</b> $${totalSeed.toFixed(2)}</li>
+          <li><b>Total Creator Payout:</b> $${totalCreator.toFixed(2)}</li>
+          <li><b>Total Reserve:</b> $${totalReserve.toFixed(2)}</li>
+          <li><b>My Profit (Platform + Creator):</b> $${myProfit.toFixed(2)}</li>
+          <li><b>Outstanding to Winners:</b> $${outstandingToWinners.toFixed(2)}</li>
+          <li><b>Outstanding to Creators:</b> $${outstandingToCreators.toFixed(2)}</li>
+        </ul>
+        <h2>Expired Contests</h2>
+        <table>
+          <tr><th>Title</th><th>Winner</th><th>Winner Payout</th><th>Creator</th><th>Creator Payout</th><th>Owed to Winner</th><th>Owed to Creator</th></tr>
+          ${expired.map(c => `<tr>
+            <td>${c.title}</td>
+            <td>${c.winner}</td>
+            <td>$${c.winnerPayout.toFixed(2)}</td>
+            <td>${c.creator}</td>
+            <td>$${c.creatorPayout.toFixed(2)}</td>
+            <td style="color:${c.outstandingToWinner ? '#d00' : '#080'}">$${c.outstandingToWinner.toFixed(2)}</td>
+            <td style="color:${c.outstandingToCreator ? '#d00' : '#080'}">$${c.outstandingToCreator.toFixed(2)}</td>
+          </tr>`).join('')}
+        </table>
+        <h2>Open Contests</h2>
+        <table>
+          <tr><th>Title</th><th>Entries</th><th>Min</th><th>Seed</th><th>Ends</th></tr>
+          ${pending.map(c => `<tr>
+            <td>${c.title}</td>
+            <td>${c.entriesCount}</td>
+            <td>${c.min}</td>
+            <td>$${c.seed}</td>
+            <td>${c.endDate ? new Date(c.endDate).toLocaleString() : ''}</td>
+          </tr>`).join('')}
+        </table>
+      </body>
+      </html>
+    `);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Failed to load admin dashboard");
   }
 });
 
