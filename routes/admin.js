@@ -163,6 +163,7 @@ router.get('/entries-view', async (req, res) => {
       <body>
         <h1>Admin Panel</h1>
         <nav>
+          <a href="/api/admin/dashboard-financials">Dashboard</a> |
           <a href="/api/admin/uploads">Uploads</a> |
           <a href="/api/admin/entries-view">Entries</a> |
           <a href="/api/admin/trivia">Trivia Results</a> |
@@ -324,6 +325,7 @@ router.get('/uploads', async (req, res) => {
       <body>
         <h1>Admin Panel</h1>
         <nav>
+          <a href="/api/admin/dashboard-financials">Dashboard</a> |
           <a href="/api/admin/uploads">Uploads</a> |
           <a href="/api/admin/entries-view">Entries</a> |
           <a href="/api/admin/trivia">Trivia Results</a> |
@@ -487,6 +489,7 @@ router.get('/trivia', async (req, res) => {
       <body>
         <h1>Trivia Contest Submissions</h1>
         <nav>
+          <a href="/api/admin/dashboard-financials">Dashboard</a> |
           <a href="/api/admin/uploads">Uploads</a> |
           <a href="/api/admin/entries-view">Entries</a> |
           <a href="/api/admin/trivia">Trivia Results</a> |
@@ -612,6 +615,7 @@ router.get('/creators', async (req, res) => {
       <body>
         <h1>Contest Creators</h1>
         <nav>
+          <a href="/api/admin/dashboard-financials">Dashboard</a> |
           <a href="/api/admin/uploads">Uploads</a> |
           <a href="/api/admin/entries-view">Entries</a> |
           <a href="/api/admin/trivia">Trivia Results</a> |
@@ -854,7 +858,10 @@ router.get('/dashboard-financials', async (req, res) => {
       const isExpired = endDate && endDate < now;
       const isPlatform = !contest.creator || (typeof contest.creator === 'string' && contest.creator.trim().toLowerCase() === "contests unlimited");
 
-      const contestEntries = uploads.filter(entry => entry.contestName === contestName);
+      const contestEntries = uploads.filter(entry =>
+  entry.contestName === contest.slug ||
+  entry.contestName === contest.contestTitle
+);
       const entriesCount = contestEntries.length;
       const entryFee = 100;
 
@@ -947,6 +954,14 @@ router.get('/dashboard-financials', async (req, res) => {
       </head>
       <body>
         <h1>Admin Financial Dashboard</h1>
+<nav>
+          <a href="/api/admin/dashboard-financials">Dashboard</a> |
+          <a href="/api/admin/uploads">Uploads</a> |
+          <a href="/api/admin/entries-view">Entries</a> |
+          <a href="/api/admin/trivia">Trivia Results</a> |
+          <a href="/api/admin/creators">Creators</a> |
+          <a href="/api/admin/logout">Logout</a>
+        </nav>
         <h2>Totals</h2>
         <ul>
           <li><b>Total Revenue:</b> $${totalRevenue.toFixed(2)}</li>
