@@ -20,29 +20,9 @@
 <body>
   <h1>Thank you for entering!</h1>
 
-  <p style="max-width:600px;color:#444;font-size:1em;">
-    <strong>Entry fee: $100.</strong> 
-    <br>
-    <strong>Prize pool:</strong>
-    <ul style="margin: 8px 0 8px 16px;">
-      <li>Each contest has a prize pool seeded according to its duration:
-        <ul>
-          <li>1 month: $250 seed, 50 entry minimum</li>
-          <li>3 months: $500 seed, 100 entry minimum</li>
-          <li>6 months: $750 seed, 150 entry minimum</li>
-          <li>1 year: $1000 seed, 200 entry minimum</li>
-        </ul>
-      </li>
-      <li>If the minimum for the seed is not met, the winner still receives 60% of all entry fees collected for that contest.</li>
-      <li>
-        Payouts: 60% to prize pot (always to winner), 
-        25% to contest creator for each entry up to the minimum, 
-        30% for every entry above the minimum, 
-        10% reserve, 
-        5% platform (custom contests).
-      </li>
-    </ul>
-    Winners will be contacted via email and asked to provide their full name and mailing address to issue the prize check.
+  <!-- Prize pool display (dynamic) -->
+  <p id="prizePoolDisplay" style="max-width:600px;color:#444;font-size:1em;">
+    Loading prize pool...
   </p>
 
   <form id="uploadForm" enctype="multipart/form-data" method="POST" action="/api/payment/upload">
@@ -123,6 +103,7 @@
       clearInterval(timer);
       timerStarted = false;
     }
+    updatePrizePoolDisplay();
   });
 
   // ======= FIXED: Only fallback to default trivia for the default slug =======
@@ -259,7 +240,62 @@
       startTimer();
       timerStarted = true;
     }
+    updatePrizePoolDisplay();
   });
+
+  // ------ DYNAMIC PRIZE POOL DISPLAY LOGIC ------
+  // Map defaults by slug, fallback to 1 month if unknown
+  function getContestMinSeed(slug) {
+    // Extract seed/min from slug if known, fallback to 1 month default
+    // For "default" slugs, treat as 1 year contests
+    if (slug === "art-contest-default" ||
+        slug === "photo-contest-default" ||
+        slug === "trivia-contest-default" ||
+        slug === "caption-contest-default") {
+      return { min: 200, seed: 1000, duration: "1 year" };
+    }
+    // Try to extract duration from slug, e.g. art-contest-1748789474603
+    // If you store metadata about custom contests, fetch there
+    // Otherwise, fallback:
+    return { min: 50, seed: 250, duration: "1 month" };
+  }
+
+  async function updatePrizePoolDisplay() {
+    const contestSlug = contestSelect.value;
+    const display = document.getElementById('prizePoolDisplay');
+    if (!contestSlug) {
+      display.innerHTML = `
+        <strong>Entry fee: $100.</strong><br>
+        <strong>Prize pool:</strong> Select a contest to see the live prize pool.
+      `;
+      return;
+    }
+    try {
+      const res = await fetch('/uploads.json');
+      const uploads = await res.json();
+      // Only count entries (uploads) for this contest
+      const validEntries = uploads.filter(u => u.contestName === contestSlug);
+      const entryCount = validEntries.length;
+
+      // Get min/seed logic
+      const { min, seed, duration } = getContestMinSeed(contestSlug);
+
+      let prize = entryCount * 100 * 0.6;
+      let seedUnlocked = entryCount >= min;
+      if (seedUnlocked) prize += seed;
+
+      display.innerHTML =
+        `<strong>Entry fee: $100.</strong><br>
+        <strong>Prize pool: $${prize.toFixed(2)}</strong> ${seedUnlocked ? `(includes $${seed} seed unlocked!)` : `(seed not unlocked, needs ${min - entryCount} more entries)`}<br>
+        Entries: <strong>${entryCount}</strong> &mdash; Duration: ${duration}<br>
+        Winner receives 60% of all entry fees (plus seed if unlocked).<br>
+        <small style="color:#666;">Seed/minimums: 1 month: $250/50, 3 months: $500/100, 6 months: $750/150, 1 year: $1000/200. If minimum not met, winner still receives 60% of all entry fees. Payouts: 60% to prize pot (always to winner), 25% to contest creator to minimum, 30% for every entry above minimum, 10% reserve, 5% platform (custom contests). Winners will be contacted via email for prize delivery.</small>
+        `;
+    } catch (e) {
+      display.textContent = "Unable to load prize pool.";
+    }
+  }
+
 </script>
 </body>
 </html>
