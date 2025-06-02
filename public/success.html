@@ -92,7 +92,13 @@
       fileInput.required = false;
       triviaSection.style.display = 'block';
 
+      // Remove required from all radio buttons first
+      [...document.querySelectorAll('input[type="radio"]')].forEach(r => r.required = false);
+
       await loadTriviaQuestions(); // Always reload trivia if contest changes
+      // After trivia questions are loaded, set required on new radio buttons!
+      [...triviaQuestionsDiv.querySelectorAll('input[type="radio"]')].forEach(r => r.required = true);
+
       startTimer();
       timerStarted = true;
     } else {
@@ -100,6 +106,8 @@
       fileInput.style.display = '';
       fileInput.required = true;
       triviaSection.style.display = 'none';
+      // Remove required from all radio buttons
+      [...document.querySelectorAll('input[type="radio"]')].forEach(r => r.required = false);
       clearInterval(timer);
       timerStarted = false;
     }
@@ -243,23 +251,7 @@
     updatePrizePoolDisplay();
   });
 
-  // ------ DYNAMIC PRIZE POOL DISPLAY LOGIC ------
-  // Map defaults by slug, fallback to 1 month if unknown
-  function getContestMinSeed(slug) {
-    // Extract seed/min from slug if known, fallback to 1 month default
-    // For "default" slugs, treat as 1 year contests
-    if (slug === "art-contest-default" ||
-        slug === "photo-contest-default" ||
-        slug === "trivia-contest-default" ||
-        slug === "caption-contest-default") {
-      return { min: 200, seed: 1000, duration: "1 year" };
-    }
-    // Try to extract duration from slug, e.g. art-contest-1748789474603
-    // If you store metadata about custom contests, fetch there
-    // Otherwise, fallback:
-    return { min: 50, seed: 250, duration: "1 month" };
-  }
-
+  // ------ DYNAMIC PRIZE POOL DISPLAY LOGIC (now uses /api/prize) ------
   async function updatePrizePoolDisplay() {
     const contestSlug = contestSelect.value;
     const display = document.getElementById('prizePoolDisplay');
@@ -271,23 +263,38 @@
       return;
     }
     try {
-      const res = await fetch('/uploads.json');
-      const uploads = await res.json();
-      // Only count entries (uploads) for this contest
-      const validEntries = uploads.filter(u => u.contestName === contestSlug);
-      const entryCount = validEntries.length;
+      const res = await fetch('/api/prize');
+      const prizes = await res.json();
 
-      // Get min/seed logic
-      const { min, seed, duration } = getContestMinSeed(contestSlug);
+      // Try contestSlug exact match, then fallback to contestTitle for platform contests
+      let prizeData = prizes[contestSlug];
+      if (!prizeData) {
+        // Try mapping default platform contest slugs to titles
+        const platformMap = {
+          "art-contest-default": "Art Contest",
+          "photo-contest-default": "Photo Contest",
+          "trivia-contest-default": "Trivia Contest",
+          "caption-contest-default": "Caption Contest"
+        };
+        if (platformMap[contestSlug]) {
+          prizeData = prizes[platformMap[contestSlug]];
+        }
+      }
+      if (!prizeData) {
+        display.innerHTML = `<strong>Entry fee: $100.</strong><br>Prize pool: Not available.`;
+        return;
+      }
 
-      let prize = entryCount * 100 * 0.6;
-      let seedUnlocked = entryCount >= min;
-      if (seedUnlocked) prize += seed;
+      const { pot, totalEntries, seedAmount, seedIncluded, minEntries, durationMonths, contestTitle } = prizeData;
+      let duration = "1 month";
+      if (durationMonths === 3) duration = "3 months";
+      else if (durationMonths === 6) duration = "6 months";
+      else if (durationMonths === 12) duration = "1 year";
 
       display.innerHTML =
         `<strong>Entry fee: $100.</strong><br>
-        <strong>Prize pool: $${prize.toFixed(2)}</strong> ${seedUnlocked ? `(includes $${seed} seed unlocked!)` : `(seed not unlocked, needs ${min - entryCount} more entries)`}<br>
-        Entries: <strong>${entryCount}</strong> &mdash; Duration: ${duration}<br>
+        <strong>Prize pool: $${pot.toFixed(2)}</strong> ${seedIncluded ? `(includes $${seedAmount} seed unlocked!)` : `(seed not unlocked, needs ${minEntries - totalEntries} more entries)`}<br>
+        Entries: <strong>${totalEntries}</strong> &mdash; Duration: ${duration}<br>
         Winner receives 60% of all entry fees (plus seed if unlocked).<br>
         <small style="color:#666;">Seed/minimums: 1 month: $250/50, 3 months: $500/100, 6 months: $750/150, 1 year: $1000/200. If minimum not met, winner still receives 60% of all entry fees. Payouts: 60% to prize pot (always to winner), 25% to contest creator to minimum, 30% for every entry above minimum, 10% reserve, 5% platform (custom contests). Winners will be contacted via email for prize delivery.</small>
         `;
@@ -295,7 +302,6 @@
       display.textContent = "Unable to load prize pool.";
     }
   }
-
 </script>
 </body>
 </html>
