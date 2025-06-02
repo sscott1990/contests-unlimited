@@ -849,9 +849,24 @@ router.get('/dashboard-financials', async (req, res) => {
     let totalRevenue = 0, totalWinner = 0, totalSeed = 0, totalCreator = 0, totalReserve = 0, totalPlatform = 0, myProfit = 0;
     let outstandingToWinners = 0, outstandingToCreators = 0;
 
-    // For each contest in creators
+    // --- Platform contest config ---
+    const PLATFORM_CONTESTS = [
+      { contestTitle: "Art Contest" },
+      { contestTitle: "Photo Contest" },
+      { contestTitle: "Trivia Contest" },
+      { contestTitle: "Caption Contest" }
+    ];
+    const PLATFORM_SEED = 1000;
+    const PLATFORM_MIN = 200;
+    const PLATFORM_DURATION = 12;
+    const PLATFORM_END = new Date('2025-05-30T14:00:00Z').getTime() + 365 * 24 * 60 * 60 * 1000; // 1 year from launch
+
+    // Track which creator contests we've displayed so we don't double-count
+    const creatorContestSlugs = new Set(creators.map(c => c.slug));
+    const creatorContestTitles = new Set(creators.map(c => c.contestTitle));
+
+    // --- First, process all creator contests ---
     for (const contest of creators) {
-      // Find all uploads for this contest
       const contestName = contest.contestTitle;
       const slug = contest.slug;
       const endDate = contest.endDate ? new Date(contest.endDate).getTime() : null;
@@ -859,9 +874,9 @@ router.get('/dashboard-financials', async (req, res) => {
       const isPlatform = !contest.creator || (typeof contest.creator === 'string' && contest.creator.trim().toLowerCase() === "contests unlimited");
 
       const contestEntries = uploads.filter(entry =>
-  entry.contestName === contest.slug ||
-  entry.contestName === contest.contestTitle
-);
+        entry.contestName === contest.slug ||
+        entry.contestName === contest.contestTitle
+      );
       const entriesCount = contestEntries.length;
       const entryFee = 100;
 
@@ -930,7 +945,74 @@ router.get('/dashboard-financials', async (req, res) => {
       } else {
         pending.push({
           title: contest.contestTitle,
+          creator: contest.creator,
           slug,
+          entriesCount,
+          min: minEntries,
+          seed: seedAmount,
+          endDate
+        });
+      }
+    }
+
+    // --- Now, process default platform contests not in creator.json ---
+    for (const pc of PLATFORM_CONTESTS) {
+      if (creatorContestTitles.has(pc.contestTitle)) continue; // already handled as custom/creator contest
+
+      // Find all uploads for this contest (entries where contestName matches the title)
+      const contestEntries = uploads.filter(entry =>
+        entry.contestName === pc.contestTitle
+      );
+      const entriesCount = contestEntries.length;
+      const entryFee = 100;
+      let seedAmount = PLATFORM_SEED;
+      let minEntries = PLATFORM_MIN;
+      let duration = PLATFORM_DURATION;
+      let endDate = PLATFORM_END;
+
+      // Prize calculation
+      let pot = 0, reserve = 0, creatorEarnings = 0, platformEarnings = 0, seedInPot = false;
+      pot = entriesCount * entryFee * 0.6;
+      reserve = entriesCount * entryFee * 0.1;
+      platformEarnings = entriesCount * entryFee * 0.3;
+      myProfit += platformEarnings;
+      totalPlatform += platformEarnings;
+      totalReserve += reserve;
+
+      // Add seed if minimum entries met
+      if (entriesCount >= minEntries) {
+        pot += seedAmount;
+        seedInPot = true;
+        totalSeed += seedAmount;
+      }
+
+      const fees = entriesCount * entryFee;
+      totalRevenue += fees;
+      totalWinner += entriesCount * entryFee * 0.6;
+
+      // For expired/open logic
+      const isExpired = endDate && endDate < now;
+      let winner = 'TBD';
+      let outstandingToWinner = (isExpired) ? pot : 0;
+      let outstandingToCreator = 0; // no creator payout for platform contest
+
+      if (isExpired) {
+        expired.push({
+          title: pc.contestTitle,
+          slug: null,
+          winner,
+          winnerPayout: pot,
+          creator: 'Contests Unlimited',
+          creatorPayout: 0,
+          outstandingToWinner,
+          outstandingToCreator
+        });
+        if (outstandingToWinner) outstandingToWinners += outstandingToWinner;
+      } else {
+        pending.push({
+          title: pc.contestTitle,
+          creator: 'Contests Unlimited',
+          slug: null,
           entriesCount,
           min: minEntries,
           seed: seedAmount,
@@ -988,9 +1070,10 @@ router.get('/dashboard-financials', async (req, res) => {
         </table>
         <h2>Open Contests</h2>
         <table>
-          <tr><th>Title</th><th>Entries</th><th>Min</th><th>Seed</th><th>Ends</th></tr>
+          <tr><th>Title</th><th>Host</th><th>Entries</th><th>Min</th><th>Seed</th><th>Ends</th></tr>
           ${pending.map(c => `<tr>
             <td>${c.title}</td>
+            <td>${c.creator || 'Contests Unlimited'}</td>
             <td>${c.entriesCount}</td>
             <td>${c.min}</td>
             <td>$${c.seed}</td>
