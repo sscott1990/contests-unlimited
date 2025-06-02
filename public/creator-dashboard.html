@@ -100,16 +100,19 @@ async function loadDashboard() {
   localStorage.setItem('creatorEmail', email);
 
   // Fetch contest info and earnings in parallel
-  const [contestsRes, earningsRes] = await Promise.all([
+  const [contestsRes, earningsRes, prizeRes] = await Promise.all([
     fetch(`/api/admin/creator-stats-by-email/${encodeURIComponent(email)}`),
-    fetch(`/api/admin/creator-earnings/${encodeURIComponent(email)}`)
+    fetch(`/api/admin/creator-earnings/${encodeURIComponent(email)}`),
+    fetch('/api/prize')
   ]);
-  if (!contestsRes.ok || !earningsRes.ok) {
+  if (!contestsRes.ok || !earningsRes.ok || !prizeRes.ok) {
     document.getElementById('info').innerText = "Error loading dashboard.";
     return;
   }
   const contests = await contestsRes.json();
   const earningsData = await earningsRes.json();
+  const prizeData = await prizeRes.json();
+
   // Make a map from slug to earnings
   const earningsMap = {};
   if (earningsData && Array.isArray(earningsData.contests)) {
@@ -138,15 +141,42 @@ async function loadDashboard() {
       else if (parseInt(duration) === 6) { seed = 750; min = 150; }
       else { seed = 1000; min = 200; }
     }
-    const entries = earnings.entries || 0;
+
+    // --- Get live entry count from /api/prize ---
+    let entries = 0;
+    if (prizeData[data.slug]) {
+      entries = prizeData[data.slug].totalEntries;
+    } else if (prizeData[data.contestTitle]) {
+      entries = prizeData[data.contestTitle].totalEntries;
+    } else {
+      entries = earnings.entries || 0;
+    }
     const entriesToGo = Math.max(min - entries, 0);
 
-    // --- CHANGE: Creator Revenue Calculation ---
+    // --- Creator Revenue Calculation ---
     let creatorEarnings = 0;
     if (entries <= min) {
       creatorEarnings = entries * 25;
     } else {
       creatorEarnings = min * 25 + (entries - min) * 30;
+    }
+
+    // --- Projected max revenue if seed unlock reached ---
+    // If not yet at min, show how much they'd get at min
+    let projectedEarnings = 0;
+    if (entries < min) {
+      projectedEarnings = min * 25;
+    } else {
+      projectedEarnings = creatorEarnings; // Already at/above minimum, so actual = projected
+    }
+
+    // --- Prize pot at seed unlock ---
+    let projectedPot = 0;
+    if (prizeData[data.slug]) {
+      // Use backend logic for accuracy
+      projectedPot = seed + (min * 100 * 0.6);
+    } else {
+      projectedPot = seed + (min * 100 * 0.6);
     }
 
     html += `
@@ -159,12 +189,16 @@ async function loadDashboard() {
           <div><span class="label">Seed/Minimum:</span> ${formatSeed(seed, min)}</div>
           ${data.prizeModel ? `<div class="prize"><span class="label">Prize:</span> ${sanitizeHtml(data.prizeModel)}</div>` : ""}
           <div><span class="label">Entries:</span> ${entries}</div>
-          <div><span class="label">Creator Revenue:</span> $${creatorEarnings}</div>
+          <div><span class="label">Creator Revenue:</span> $${creatorEarnings} 
+            ${(entries < min) ? `<span style="color:#666;font-size:0.97em;">(If you reach ${min} entries, you'll receive $${projectedEarnings})</span>` : ''}
+          </div>
           <div class="seed-info">
             ${entries >= min 
               ? `<span style="color: #070;">Seed unlocked!</span>`
               : `<span>Need ${entriesToGo} more entries to unlock the seed.</span>`
             }
+            <br>
+            <span style="color:#444;">If minimum is reached, winner prize pool will be <b>$${projectedPot.toFixed(2)}</b></span>
           </div>
           <div><span class="label">Ends in:</span> <span class="cd-hold"></span></div>
         </div>
