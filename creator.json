@@ -1,1 +1,34 @@
-[]
+[
+  {
+    "sessionId": "034952b5-adc3-4f63-934f-dab0f7669432",
+    "contestTitle": "Art Contest",
+    "creator": "test homer",
+    "email": "homer@bmail.com",
+    "description": "cars",
+    "passwordHash": "$2b$10$iTBjy7v9sdy6KLxP7.5cu.X/c2ZUF0wzl0ZcFvhLfVEwJLIJyfTg2",
+    "approved": false,
+    "timestamp": "2025-04-02T10:18:38.672Z",
+    "endDate": "2025-05-02T10:18:38.672Z",
+    "durationMonths": 1,
+    "seedAmount": 250,
+    "minEntries": 50,
+    "slug": "art-contest-1748859518672",
+    "status": "approved"
+  },
+  {
+    "sessionId": "df4ce26a-81f6-4b75-8601-10bcb5b6afaf",
+    "contestTitle": "Caption Contest",
+    "creator": "test bob",
+    "email": "jjack@fmail.com",
+    "description": "test",
+    "passwordHash": "$2b$10$Ya7Bpxb4jJA3J2g/MIdEVOMqTR/1333DUAMQnE7Azt.RCoQ3bjdWO",
+    "approved": false,
+    "timestamp": "2025-04-02T10:21:01.372Z",
+    "endDate": "2025-05-02T10:21:01.372Z",
+    "durationMonths": 1,
+    "seedAmount": 250,
+    "minEntries": 50,
+    "slug": "caption-contest-1748859661372",
+    "status": "approved"
+  }
+]
