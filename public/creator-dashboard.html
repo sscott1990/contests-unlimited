@@ -23,6 +23,13 @@
   </style>
 </head>
 <body>
+<div style="margin-top:2em;">
+  <label for="w9File"><strong>Upload W-9 Form:</strong></label><br>
+  <input type="file" id="w9File" accept=".pdf" />
+  <button onclick="uploadW9()">Submit W-9</button>
+  <div id="w9Status" style="margin-top: 0.5em; font-size: 0.9em;"></div>
+</div>
+
   <div class="container">
     <button class="logout-btn" onclick="logout()">Logout</button>
     <h1>Creator Dashboard</h1>
@@ -30,6 +37,53 @@
       Loading your contests...
     </div>
   </div>
+<script>
+async function uploadW9() {
+  const fileInput = document.getElementById('w9File');
+  const status = document.getElementById('w9Status');
+  const file = fileInput.files[0];
+  if (!file) return alert("Please select a file to upload.");
+
+  const reader = new FileReader();
+  reader.onload = async function (e) {
+    const email = localStorage.getItem('creatorEmail') || prompt("Enter your email:");
+    if (!email) return alert("Email is required to identify your upload.");
+
+    const raw = new Uint8Array(e.target.result);
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const keyMaterial = await crypto.subtle.importKey("raw", new TextEncoder().encode(email), "PBKDF2", false, ["deriveKey"]);
+    const key = await crypto.subtle.deriveKey(
+      { name: "PBKDF2", salt: iv, iterations: 100000, hash: "SHA-256" },
+      keyMaterial,
+      { name: "AES-GCM", length: 256 },
+      false,
+      ["encrypt"]
+    );
+    const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, raw);
+
+    const payload = {
+      email,
+      filename: file.name,
+      iv: Array.from(iv),
+      data: Array.from(new Uint8Array(encrypted))
+    };
+
+    const res = await fetch('/api/creator/w9', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (res.ok) {
+      status.textContent = "W-9 uploaded successfully.";
+      fileInput.value = "";
+    } else {
+      status.textContent = "Failed to upload. Please try again.";
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+</script>
 <script>
 function formatCountdown(endDate) {
   function getCountdownText() {
