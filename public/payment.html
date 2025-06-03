@@ -163,15 +163,18 @@
 
     submitButton.disabled = !allFieldsFilled;
     stateAlert.style.display = isRestricted ? 'block' : 'none';
+
+    // Move these here to fix the ReferenceError
+    ageConfirm.disabled = isRestricted;
+    if (isRestricted) {
+      ageConfirm.checked = false;
+    }
   }
 
   stateSelect.addEventListener('change', updateSubmitButton);
-  updateSubmitButton(); // ✅ Ensure button is properly initialized
   ageConfirm.addEventListener('change', updateSubmitButton);
-  ageConfirm.disabled = isRestricted;
-  ageConfirm.checked = isRestricted ? false : ageConfirm.checked;
 
-
+  updateSubmitButton(); // ✅ Ensure button is properly initialized
 
   document.getElementById('checkout_button').addEventListener('click', async function () {
     try {
