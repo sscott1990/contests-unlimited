@@ -30,6 +30,34 @@
   <div id="w9Status" style="margin-top: 0.5em; font-size: 0.9em;"></div>
 </div>
 
+<div id="w9Advisory" style="
+  background: #fff3cd; 
+  border: 1px solid #ffeeba; 
+  color: #856404; 
+  padding: 1em 1.5em; 
+  margin: 2em auto; 
+  max-width: 900px; 
+  border-radius: 8px; 
+  font-weight: bold;
+  position: relative;
+  box-shadow: 0 0 10px rgba(255, 193, 7, 0.3);
+">
+  <span>
+    ⚠️ <strong>Important:</strong> Please upload your <a href="#w9File" style="color:#856404; text-decoration: underline;">W-9 form</a> before receiving any payments.
+  </span>
+  <button onclick="dismissAdvisory()" style="
+    position: absolute; 
+    top: 8px; 
+    right: 10px; 
+    background: transparent; 
+    border: none; 
+    font-size: 18px; 
+    font-weight: bold; 
+    cursor: pointer; 
+    color: #856404;
+  " aria-label="Close advisory">&times;</button>
+</div>
+
   <div class="container">
     <button class="logout-btn" onclick="logout()">Logout</button>
     <h1>Creator Dashboard</h1>
@@ -51,7 +79,7 @@ async function uploadW9() {
 
     const raw = new Uint8Array(e.target.result);
     const iv = crypto.getRandomValues(new Uint8Array(12));
-    const keyMaterial = await crypto.subtle.importKey("raw", new TextEncoder().encode(email), "PBKDF2", false, ["deriveKey"]);
+    const keyMaterial = await crypto.subtle.importKey("raw", new TextEncoder().encode(email), { name: "PBKDF2" }, false, ["deriveKey"]);
     const key = await crypto.subtle.deriveKey(
       { name: "PBKDF2", salt: iv, iterations: 100000, hash: "SHA-256" },
       keyMaterial,
@@ -272,7 +300,22 @@ async function loadDashboard() {
   });
 }
 
-window.onload = loadDashboard;
+function dismissAdvisory() {
+  const adv = document.getElementById('w9Advisory');
+  if (adv) {
+    adv.style.display = 'none';
+    sessionStorage.setItem('w9AdvisoryDismissed', 'true');
+  }
+}
+
+// On page load, check if advisory was dismissed already
+window.onload = () => {
+  if (sessionStorage.getItem('w9AdvisoryDismissed') === 'true') {
+    const adv = document.getElementById('w9Advisory');
+    if (adv) adv.style.display = 'none';
+  }
+  loadDashboard();
+};
 </script>
 </body>
 </html>
