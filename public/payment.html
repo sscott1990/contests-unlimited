@@ -104,6 +104,13 @@
 
 <div id="stateAlert" class="alert" style="display: none;">Contests for cash are not available in your state.</div>
 
+<div style="margin-top: 15px;">
+  <input type="checkbox" id="ageConfirm" required>
+  <label for="ageConfirm" style="font-size: 0.85em; color: #555;">
+    I confirm that I am 18 years of age or older.
+  </label>
+</div>
+
   <button id="checkout_button" disabled>Check Out</button>
 
 <p style="font-size: 0.85em; color: #555; margin-top: 10px;">
@@ -147,11 +154,12 @@
   const stateSelect = document.getElementById('state');
   const submitButton = document.getElementById('checkout_button');
   const stateAlert = document.getElementById('stateAlert');
+  const ageConfirm = document.getElementById('ageConfirm');
 
   function updateSubmitButton() {
     const selectedState = stateSelect.value;
     const isRestricted = restrictedStates.includes(selectedState);
-    const allFieldsFilled = selectedState && !isRestricted;
+    const allFieldsFilled = selectedState && !isRestricted && ageConfirm.checked;
 
     submitButton.disabled = !allFieldsFilled;
     stateAlert.style.display = isRestricted ? 'block' : 'none';
@@ -159,6 +167,11 @@
 
   stateSelect.addEventListener('change', updateSubmitButton);
   updateSubmitButton(); // ✅ Ensure button is properly initialized
+  ageConfirm.addEventListener('change', updateSubmitButton);
+  ageConfirm.disabled = isRestricted;
+  ageConfirm.checked = isRestricted ? false : ageConfirm.checked;
+
+
 
   document.getElementById('checkout_button').addEventListener('click', async function () {
     try {
