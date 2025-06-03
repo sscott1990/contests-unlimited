@@ -4,7 +4,7 @@
   <title>Enter Contest</title>
   <link rel="stylesheet" href="/styles.css">
   <style>
-    #checkout_button {
+     button#checkout_button {
       display: inline-block;
       font-family: sans-serif;
       font-size: 20px;
@@ -15,9 +15,15 @@
       margin-top: 20px;
       cursor: pointer;
     }
-    #checkout_button:hover {
+     button#checkout_button:hover {
       background-color: #0AC982;
     }
+
+     button#checkout_button:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+
   </style>
 </head>
 <body>
@@ -29,7 +35,7 @@
     <strong>$100 entry fee: 60% to prize pot, 25% to contest creator for each entry up to the minimum, 30% for every entry above the minimum, 10% reserve, 5% to platform (custom contests).</strong>
   </p>
 
-<label for="state">Select Your Home State:</label>
+<label for="state">Select Your Home State: <span style="font-size: 0.85em; color: #666;">(Contests may be restricted in some areas)</span></label>
     <select name="state" id="state" required>
       <option value="">-- Select a State --</option>
       <option value="AL">Alabama</option>
@@ -96,7 +102,7 @@
 
 <div id="stateAlert" class="alert" style="display: none;">Contests for cash are not available in your state.</div>
 
-  <div id="checkout_button">Check Out</div>
+  <button id="checkout_button" disabled>Check Out</button>
 
   <!-- ✅ EPD Checkout Script -->
   <script
@@ -105,67 +111,75 @@
   ></script>
 
   <script>
-     const restrictedStates = ['NY', 'WA', 'NJ', 'PR', 'GU', 'AS', 'VI', 'MP', 'RI'];
-      const stateSelect = document.getElementById('state');
-      const submitButton = document.getElementById('submit_button');
-      const stateAlert = document.getElementById('stateAlert');
-    document.getElementById('checkout_button').addEventListener('click', async function () {
-      try {
-        // Fetch sessionId (UUID) from backend
-        const response = await fetch('/api/session');
-        if (!response.ok) throw new Error('Failed to get session ID');
-        const data = await response.json();
-        const sessionId = data.sessionId;
+  const restrictedStates = ['NY', 'WA', 'NJ', 'PR', 'GU', 'AS', 'VI', 'MP', 'RI'];
+  const stateSelect = document.getElementById('state');
+  const submitButton = document.getElementById('checkout_button');
+  const stateAlert = document.getElementById('stateAlert');
 
-        // ✅ Check if CollectCheckout is loaded
-        if (
-          typeof CollectCheckout === 'undefined' ||
-          typeof CollectCheckout.redirectToCheckout !== 'function'
-        ) {
-          alert('Checkout is not available right now. Please refresh and try again.');
-          return;
-        }
+  function updateSubmitButton() {
+    const selectedState = stateSelect.value;
+    const isRestricted = restrictedStates.includes(selectedState);
+    const allFieldsFilled = selectedState && !isRestricted;
 
-        // Redirect to checkout with sessionId in successUrl
-        CollectCheckout.redirectToCheckout({
-          type: "sale",
-          lineItems: [
-            {
-              lineItemType: "purchase",
-              sku: "contest-entry-may2025",
-              quantity: 1
-            },
-          ],
-          successUrl: `https://contests-unlimited.onrender.com/success.html?session_id=${sessionId}`,
-          cancelUrl: "https://contests-unlimited.onrender.com/cancel.html",
-          receipt: {
-            showReceipt: false,
-            sendToCustomer: true,
-          },
-          collectShippingInfo: true,
-          useKount: false,
-          paymentMethods: [
-            {
-              type: "creditCard",
-              use3DSecure: false,
-            },
-            {
-              type: "check",
-            },
-          ],
-          fields: [
-            // Optional: additional fields to collect
-          ],
-        }).then((error) => {
-          if (error) {
-            console.error("Checkout redirect error:", error);
-          }
-        });
-      } catch (err) {
-        console.error('Error fetching session ID:', err);
-        alert('Failed to start checkout session. Please try again.');
+    submitButton.disabled = !allFieldsFilled;
+    stateAlert.style.display = isRestricted ? 'block' : 'none';
+  }
+
+  stateSelect.addEventListener('change', updateSubmitButton);
+  updateSubmitButton(); // ✅ Ensure button is properly initialized
+
+  document.getElementById('checkout_button').addEventListener('click', async function () {
+    try {
+      const response = await fetch('/api/session');
+      if (!response.ok) throw new Error('Failed to get session ID');
+      const data = await response.json();
+      const sessionId = data.sessionId;
+
+      if (
+        typeof CollectCheckout === 'undefined' ||
+        typeof CollectCheckout.redirectToCheckout !== 'function'
+      ) {
+        alert('Checkout is not available right now. Please refresh and try again.');
+        return;
       }
-    });
-  </script>
+
+      CollectCheckout.redirectToCheckout({
+        type: "sale",
+        lineItems: [
+          {
+            lineItemType: "purchase",
+            sku: "contest-entry-may2025",
+            quantity: 1
+          },
+        ],
+        successUrl: `https://contests-unlimited.onrender.com/success.html?session_id=${sessionId}`,
+        cancelUrl: "https://contests-unlimited.onrender.com/cancel.html",
+        receipt: {
+          showReceipt: false,
+          sendToCustomer: true,
+        },
+        collectShippingInfo: true,
+        useKount: false,
+        paymentMethods: [
+          {
+            type: "creditCard",
+            use3DSecure: false,
+          },
+          {
+            type: "check",
+          },
+        ],
+        fields: [],
+      }).then((error) => {
+        if (error) {
+          console.error("Checkout redirect error:", error);
+        }
+      });
+    } catch (err) {
+      console.error('Error fetching session ID:', err);
+      alert('Failed to start checkout session. Please try again.');
+    }
+  });
+</script>
 </body>
 </html>
