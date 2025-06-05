@@ -147,18 +147,27 @@
       // For custom caption contests, find the contest data
       const contestData = contestsData.find(contest => contest.slug === selectedSlug);
       
-      if (contestData && contestData.image) {
+      if (contestData && contestData.fileUrl) {
         const img = document.createElement('img');
-        img.src = contestData.image;
+        img.src = contestData.fileUrl;
         img.alt = 'Caption Contest Image';
         img.onerror = function() {
-          console.error('Failed to load image:', contestData.image);
+          console.error('Failed to load image:', contestData.fileUrl);
           container.innerHTML = '<p style="color: #666; text-align: center;">Image not available</p>';
         };
         
         container.appendChild(img);
         
-        // Add image description if available
+        // Add contest title and description if available
+        if (contestData.contestTitle) {
+          const title = document.createElement('h3');
+          title.textContent = contestData.contestTitle;
+          title.style.textAlign = 'center';
+          title.style.marginTop = '10px';
+          title.style.color = '#333';
+          container.appendChild(title);
+        }
+        
         if (contestData.description) {
           const description = document.createElement('p');
           description.textContent = contestData.description;
