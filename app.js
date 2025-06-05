@@ -270,10 +270,20 @@ app.post('/api/payment/upload', upload.single('file'), async (req, res) => {
   }
 });
 
-// === 🚩 Creator contest creation with password hashing, duration/seed/min logic, and endDate/slug ===
-app.post('/api/creator/upload', upload.none(), async (req, res) => {
+// === 🚩 Creator contest creation with password hashing, duration/seed/min logic, 
+app.post('/api/creator/upload', upload.single('captionFile'), async (req, res) => {
   try {
-    const { contestName, creator, email, description, creatorSessionId, prizeModel, password, durationMonths } = req.body;
+    const {
+      contestName,
+      creator,
+      email,
+      description,
+      creatorSessionId,
+      prizeModel,
+      password,
+      durationMonths,
+      triviaQuestions
+    } = req.body;
 
     if (!creatorSessionId) {
       return res.status(400).json({ error: 'Missing session_id' });
@@ -283,6 +293,7 @@ app.post('/api/creator/upload', upload.none(), async (req, res) => {
       return res.status(400).json({ error: 'Missing password' });
     }
 
+    // Check for existing submission with this sessionId
     const creators = await getCreators();
     const alreadySubmitted = creators.find(c => c.sessionId === creatorSessionId);
     if (alreadySubmitted) {
@@ -293,14 +304,12 @@ app.post('/api/creator/upload', upload.none(), async (req, res) => {
     const saltRounds = 10;
     const passwordHash = await bcrypt.hash(password, saltRounds);
 
-    // --- NEW DURATION/SEED/MIN LOGIC ---
+    // Duration and endDate logic
     let duration = parseInt(durationMonths, 10);
-    if (![1, 3, 6, 12].includes(duration)) duration = 1; // default to 1 month
-
-    // Set endDate based on duration
+    if (![1, 3, 6, 12].includes(duration)) duration = 1; // default 1 month
     const endDate = new Date(Date.now() + duration * 30 * 24 * 60 * 60 * 1000).toISOString();
 
-    // Determine seed and min entries from duration
+    // Seed and min entries based on duration
     const seedMatrix = {
       1: { seed: 250, min: 50 },
       3: { seed: 500, min: 100 },
@@ -309,37 +318,55 @@ app.post('/api/creator/upload', upload.none(), async (req, res) => {
     };
     const { seed: seedAmount, min: minEntries } = seedMatrix[duration];
 
-    // Generate a slug for this contest
+    // Create slug from contest name + timestamp
     const slug = contestName.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now();
 
+    // Handle file upload to S3 if file exists
+    let fileUrl = null;
+    if (req.file && req.file.buffer && req.file.originalname) {
+      const s3Params = {
+        Bucket: ENTRIES_BUCKET, // Your S3 bucket name (make sure this is set correctly)
+        Key: `creator-files/${slug}-${req.file.originalname}`,
+        Body: req.file.buffer,
+        ContentType: req.file.mimetype,
+        ACL: 'public-read' // Optional: make the file public or adjust as needed
+      };
+      const uploadResult = await s3.upload(s3Params).promise();
+      fileUrl = uploadResult.Location;
+    }
+
+    // Save the new creator contest info
     creators.push({
       sessionId: creatorSessionId,
       contestTitle: contestName,
-      creator: creator,
+      creator,
       email,
       description,
       prizeModel,
-      passwordHash,  // <-- Store the hash, not the raw password!
+      passwordHash,
       approved: false,
       timestamp: new Date().toISOString(),
-      endDate,       // <-- Add endDate
+      endDate,
       durationMonths: duration,
-      seedAmount,    // <-- Save seed amount
-      minEntries,    // <-- Save minimum entries
-      slug           // <-- Add slug
+      seedAmount,
+      minEntries,
+      slug,
+      fileUrl // Save S3 file URL if uploaded
     });
 
     await saveCreators(creators);
 
-    // === NEW: Save custom trivia if present and this is a Trivia Contest ===
-    if (contestName === "Trivia Contest" && req.body.triviaQuestions) {
+    // Save custom trivia if it's a Trivia Contest with questions provided
+    if (contestName === "Trivia Contest" && triviaQuestions) {
       let triviaSets = await getCustomTriviaSets();
-      let parsedQuestions = Array.isArray(req.body.triviaQuestions)
-        ? req.body.triviaQuestions
-        : JSON.parse(req.body.triviaQuestions);
+      let parsedQuestions = Array.isArray(triviaQuestions)
+        ? triviaQuestions
+        : JSON.parse(triviaQuestions);
 
+      // Remove any existing trivia set with the same slug
       triviaSets = triviaSets.filter(c => c.slug !== slug);
 
+      // Add new trivia set
       triviaSets.push({
         slug,
         questions: parsedQuestions
@@ -348,6 +375,7 @@ app.post('/api/creator/upload', upload.none(), async (req, res) => {
       await saveCustomTriviaSets(triviaSets);
     }
 
+    // Redirect to success page after submission
     res.redirect('/success-creator-submitted.html');
   } catch (err) {
     console.error('Creator submission error:', err);
