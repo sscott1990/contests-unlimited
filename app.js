@@ -329,8 +329,7 @@ app.post('/api/creator/upload', upload.single('captionFile'), async (req, res) =
         Key: `creator-files/${slug}-${req.file.originalname}`,
         Body: req.file.buffer,
         ContentType: req.file.mimetype,
-        ACL: 'public-read' // Optional: make the file public or adjust as needed
-      };
+   };
       const uploadResult = await s3.upload(s3Params).promise();
       fileUrl = uploadResult.Location;
     }
