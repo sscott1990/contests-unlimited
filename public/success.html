@@ -24,7 +24,6 @@
     Loading prize pool...
   </p>
 
-  <!-- Image will show here if caption contest -->
   <div id="captionImageContainer"></div>
 
   <form id="uploadForm" enctype="multipart/form-data" method="POST" action="/api/payment/upload">
@@ -63,10 +62,11 @@ const triviaQuestionsDiv = document.getElementById('triviaQuestions');
 const triviaAnswersInput = document.getElementById('triviaAnswers');
 const timeTakenInput = document.getElementById('timeTaken');
 const sessionIdInput = document.getElementById('sessionIdInput');
-const captionImageContainer = document.getElementById('captionImageContainer'); // Added reference
+const captionImageContainer = document.getElementById('captionImageContainer');
 
 let timer, startTime, triviaQuestions = [];
 let timerStarted = false;
+let creatorData = [];
 
 const SESSION_KEY = "cu_session_id";
 const urlParams = new URLSearchParams(window.location.search);
@@ -83,6 +83,19 @@ if (!sessionId) {
     sessionIdInput.value = sessionId;
     localStorage.setItem(SESSION_KEY, sessionId);
 }
+
+// Fetch creator data once on page load
+async function fetchCreatorData() {
+    try {
+        const response = await fetch("https://your-s3-bucket-url/creator.json");
+        creatorData = await response.json();
+    } catch (error) {
+        console.error("Error fetching creator data:", error);
+        creatorData = [];
+    }
+}
+
+fetchCreatorData();
 
 contestSelect.addEventListener('change', async function () {
     const selectedSlug = contestSelect.value;
@@ -113,142 +126,66 @@ contestSelect.addEventListener('change', async function () {
 
     updatePrizePoolDisplay();
 
-    // New logic to update caption contest image
     if (selectedSlug.startsWith("caption-contest-")) {
-        fetch("https://your-s3-bucket-url/creator.json")
-            .then(response => response.json())
-            .then(data => {
-                const contest = data.find(item => item.slug === selectedSlug);
-                if (contest && contest.fileUrl) {
-                    captionImageContainer.innerHTML = `<img src="${contest.fileUrl}" alt="Caption Contest Image" 
-                        style="max-width: 100%; border: 2px solid #ccc; border-radius: 10px; margin-top: 20px;">`;
-                } else {
-                    captionImageContainer.innerHTML = ""; // Clears the container if no image is found
-                }
-            })
-            .catch(error => console.error("Error fetching JSON:", error));
+        const contest = creatorData.find(item => item.slug === selectedSlug);
+        captionImageContainer.innerHTML = contest && contest.fileUrl ? 
+            `<img src="${contest.fileUrl}" alt="Caption Contest Image" style="max-width: 100%; border: 2px solid #ccc; border-radius: 10px; margin-top: 20px;">` 
+            : "";
     } else {
-        captionImageContainer.innerHTML = ""; // Clears the image when a non-caption contest is selected
+        captionImageContainer.innerHTML = "";
     }
 });
 
-async function loadTriviaQuestions() {
-    try {
-        const slug = contestSelect.value;
-
-        if (slug === "trivia-contest-default") {
-            const response = await fetch('/api/trivia?slug=trivia-contest-default');
-            triviaQuestions = await response.json();
-        } else if (slug.startsWith("trivia-contest-")) {
-            let response = await fetch('/api/custom-trivia/by-slug/' + encodeURIComponent(slug));
-            if (response.ok) {
-                const data = await response.json();
-                triviaQuestions = Array.isArray(data.questions) ? data.questions : [];
-            } else {
-                triviaQuestions = [];
-            }
-        } else {
-            triviaQuestions = [];
-        }
-
-        triviaQuestionsDiv.innerHTML = '';
-        if (!triviaQuestions || triviaQuestions.length === 0) {
-            triviaQuestionsDiv.innerHTML = '<p>No trivia questions available for this contest.</p>';
-            document.querySelector('button[type="submit"]').disabled = true;
-            return;
-        }
-
-        triviaQuestions.forEach((q, index) => {
-            const div = document.createElement('div');
-            div.classList.add('question');
-
-            const optionsHtml = Object.entries(q.options).map(([key, val]) => `
-                <label><input type="radio" name="q${index}" value="${key}" required> ${val}</label><br>
-            `).join('');
-
-            div.innerHTML = `<p>${index + 1}. ${q.question}</p>${optionsHtml}`;
-            triviaQuestionsDiv.appendChild(div);
-        });
-        document.querySelector('button[type="submit"]').disabled = false;
-    } catch (err) {
-        console.error('Error loading trivia:', err);
-        triviaQuestionsDiv.innerHTML = '<p>Failed to load trivia questions. Please try again later.</p>';
-        document.querySelector('button[type="submit"]').disabled = true;
-    }
-}
-
-// Pre-select and show caption contest image based on URL parameters
-const type = urlParams.get('type');
-const imgParam = urlParams.get('img');
-const imgSlug = urlParams.get('slug');
-
-if (type === 'caption' && imgParam && imgSlug && imgSlug.startsWith('caption-contest-')) {
-    contestSelect.value = imgSlug;
-    captionImageContainer.innerHTML = `<img src="${decodeURIComponent(imgParam)}" alt="Caption Contest Image" 
-        style="max-width: 100%; border: 2px solid #ccc; border-radius: 10px; margin-top: 20px;">`;
-}
-
-window.addEventListener('DOMContentLoaded', () => {
-    if (contestSelect.value && contestSelect.options[contestSelect.selectedIndex].textContent.toLowerCase().includes('trivia')) {
-        fileInput.disabled = true;
-        fileInput.style.display = 'none';
-        fileInput.required = false;
-        triviaSection.style.display = 'block';
-        loadTriviaQuestions();
-        startTimer();
-        timerStarted = true;
-    }
-    updatePrizePoolDisplay();
-});
-
-  async function updatePrizePoolDisplay() {
+// Keep existing logic for prize pool updates
+async function updatePrizePoolDisplay() {
     const contestSlug = contestSelect.value;
     const display = document.getElementById('prizePoolDisplay');
     if (!contestSlug) {
-      display.innerHTML = `
-        <strong>Entry fee: $100.</strong><br>
-        <strong>Prize pool:</strong> Select a contest to see the live prize pool.
-      `;
-      return;
+        display.innerHTML = `<strong>Entry fee: $100.</strong><br><strong>Prize pool:</strong> Select a contest to see the live prize pool.`;
+        return;
     }
     try {
-      const res = await fetch('/api/prize');
-      const prizes = await res.json();
+        const res = await fetch('/api/prize');
+        const prizes = await res.json();
+        let prizeData = prizes[contestSlug];
 
-      let prizeData = prizes[contestSlug];
-      if (!prizeData) {
-        const platformMap = {
-          "art-contest-default": "Art Contest",
-          "photo-contest-default": "Photo Contest",
-          "trivia-contest-default": "Trivia Contest",
-          "caption-contest-default": "Caption Contest"
-        };
-        if (platformMap[contestSlug]) {
-          prizeData = prizes[platformMap[contestSlug]];
+        if (!prizeData) {
+            const platformMap = {
+                "art-contest-default": "Art Contest",
+                "photo-contest-default": "Photo Contest",
+                "trivia-contest-default": "Trivia Contest",
+                "caption-contest-default": "Caption Contest"
+            };
+            if (platformMap[contestSlug]) {
+                prizeData = prizes[platformMap[contestSlug]];
+            }
         }
-      }
-      if (!prizeData) {
-        display.innerHTML = `<strong>Entry fee: $100.</strong><br>Prize pool: Not available.`;
-        return;
-      }
+        if (!prizeData) {
+            display.innerHTML = `<strong>Entry fee: $100.</strong><br>Prize pool: Not available.`;
+            return;
+        }
 
-      const { pot, totalEntries, seedAmount, seedIncluded, minEntries, durationMonths, contestTitle } = prizeData;
-      let duration = "1 month";
-      if (durationMonths === 3) duration = "3 months";
-      else if (durationMonths === 6) duration = "6 months";
-      else if (durationMonths === 12) duration = "1 year";
+        const { pot, totalEntries, seedAmount, seedIncluded, minEntries, durationMonths, contestTitle } = prizeData;
+        let duration = "1 month";
+        if (durationMonths === 3) duration = "3 months";
+        else if (durationMonths === 6) duration = "6 months";
+        else if (durationMonths === 12) duration = "1 year";
 
-      display.innerHTML =
-        `<strong>Entry fee: $100.</strong><br>
-        <strong>Prize pool: $${pot.toFixed(2)}</strong> ${seedIncluded ? `(includes $${seedAmount} seed unlocked!)` : `(seed not unlocked, needs ${minEntries - totalEntries} more entries)`}<br>
-        Entries: <strong>${totalEntries}</strong> &mdash; Duration: ${duration}<br>
-        Winner receives 60% of all entry fees (plus seed if unlocked).<br>
-        <small style="color:#666;">Seed/minimums: 1 month: $250/50, 3 months: $500/100, 6 months: $750/150, 1 year: $1000/200. If minimum not met, winner still receives 60% of all entry fees. Payouts: 60% to prize pot (always to winner), 25% to contest creator to minimum, 30% for every entry above minimum, 10% reserve, 5% platform (custom contests). Winners will be contacted via email for prize delivery.</small>
-        `;
+        display.innerHTML =
+            `<strong>Entry fee: $100.</strong><br>
+            <strong>Prize pool: $${pot.toFixed(2)}</strong> ${seedIncluded ? `(includes $${seedAmount} seed unlocked!)` : `(seed not unlocked, needs ${minEntries - totalEntries} more entries)`}<br>
+            Entries: <strong>${totalEntries}</strong> &mdash; Duration: ${duration}<br>
+            Winner receives 60% of all entry fees (plus seed if unlocked).<br>
+            <small style="color:#666;">Seed/minimums: 1 month: $250/50, 3 months: $500/100, 6 months: $750/150, 1 year: $1000/200.</small>`;
     } catch (e) {
-      display.textContent = "Unable to load prize pool.";
+        display.textContent = "Unable to load prize pool.";
     }
-  }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+    fetchCreatorData();
+    updatePrizePoolDisplay();
+});
 </script>
 </body>
 </html>
