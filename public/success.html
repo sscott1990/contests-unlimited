@@ -227,6 +227,26 @@
 
   loadApprovedContests();
 
+  // Show caption image and pre-select contest if applicable
+  const type = urlParams.get('type');
+  const imgParam = urlParams.get('img');
+  const imgSlug = urlParams.get('slug');
+
+  if (type === 'caption' && imgParam && imgSlug && imgSlug.startsWith('caption-contest-')) {
+    contestSelect.value = imgSlug; // Pre-select the contest
+    const img = document.createElement('img');
+    img.src = decodeURIComponent(imgParam);
+    img.alt = 'Caption Contest Image';
+    img.style.maxWidth = '100%';
+    img.style.border = '2px solid #ccc';
+    img.style.borderRadius = '10px';
+    img.style.marginTop = '20px';
+
+    const container = document.getElementById('captionImageContainer');
+    container.innerHTML = '';
+    container.appendChild(img);
+  }
+
   window.addEventListener('DOMContentLoaded', () => {
     if (contestSelect.value && contestSelect.options[contestSelect.selectedIndex].textContent.toLowerCase().includes('trivia')) {
       fileInput.disabled = true;
@@ -238,24 +258,6 @@
       timerStarted = true;
     }
     updatePrizePoolDisplay();
-
-    // Show caption image if applicable
-    const contestSlug = contestSelect.value;
-    const type = urlParams.get('type');
-    const imgParam = urlParams.get('img');
-    if (type === 'caption' && imgParam && contestSlug && contestSlug.startsWith('caption-contest-')) {
-      const img = document.createElement('img');
-      img.src = decodeURIComponent(imgParam);
-      img.alt = 'Caption Contest Image';
-      img.style.maxWidth = '100%';
-      img.style.border = '2px solid #ccc';
-      img.style.borderRadius = '10px';
-      img.style.marginTop = '20px';
-
-      const container = document.getElementById('captionImageContainer');
-      container.innerHTML = '';
-      container.appendChild(img);
-    }
   });
 
   async function updatePrizePoolDisplay() {
