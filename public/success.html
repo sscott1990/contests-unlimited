@@ -56,150 +56,209 @@
   <a href="/">Back to Home</a>
 
 <script>
-const contestSelect = document.getElementById('contestSelect');
-const fileInput = document.getElementById('fileInput');
-const triviaSection = document.getElementById('triviaSection');
-const triviaQuestionsDiv = document.getElementById('triviaQuestions');
-const triviaAnswersInput = document.getElementById('triviaAnswers');
-const timeTakenInput = document.getElementById('timeTaken');
-const sessionIdInput = document.getElementById('sessionIdInput');
-const captionImageContainer = document.getElementById('captionImageContainer'); // Added reference
+  const contestSelect = document.getElementById('contestSelect');
+  const fileInput = document.getElementById('fileInput');
+  const triviaSection = document.getElementById('triviaSection');
+  const triviaQuestionsDiv = document.getElementById('triviaQuestions');
+  const triviaAnswersInput = document.getElementById('triviaAnswers');
+  const timeTakenInput = document.getElementById('timeTaken');
+  const sessionIdInput = document.getElementById('sessionIdInput');
 
-let timer, startTime, triviaQuestions = [];
-let timerStarted = false;
+  let timer, startTime, triviaQuestions = [];
+  let timerStarted = false;
 
-const SESSION_KEY = "cu_session_id";
-const urlParams = new URLSearchParams(window.location.search);
-let sessionId = urlParams.get('session_id');
+  const SESSION_KEY = "cu_session_id";
+  const urlParams = new URLSearchParams(window.location.search);
+  let sessionId = urlParams.get('session_id');
 
-if (!sessionId) {
+  if (!sessionId) {
     sessionId = localStorage.getItem(SESSION_KEY);
-}
+  }
 
-if (!sessionId) {
+  if (!sessionId) {
     alert('Missing session ID. Please return to the homepage and try again.');
     document.getElementById('uploadForm').style.display = 'none';
-} else {
+  } else {
     sessionIdInput.value = sessionId;
     localStorage.setItem(SESSION_KEY, sessionId);
-}
+  }
 
-contestSelect.addEventListener('change', async function () {
-    const selectedSlug = contestSelect.value;
+  contestSelect.addEventListener('change', async function () {
     const selectedOption = contestSelect.options[contestSelect.selectedIndex];
     const isTrivia = selectedOption && selectedOption.textContent.toLowerCase().includes('trivia');
 
     if (isTrivia) {
-        fileInput.disabled = true;
-        fileInput.style.display = 'none';
-        fileInput.required = false;
-        triviaSection.style.display = 'block';
+      fileInput.disabled = true;
+      fileInput.style.display = 'none';
+      fileInput.required = false;
+      triviaSection.style.display = 'block';
 
-        [...document.querySelectorAll('input[type="radio"]')].forEach(r => r.required = false);
-        await loadTriviaQuestions();
-        [...triviaQuestionsDiv.querySelectorAll('input[type="radio"]')].forEach(r => r.required = true);
+      [...document.querySelectorAll('input[type="radio"]')].forEach(r => r.required = false);
+      await loadTriviaQuestions();
+      [...triviaQuestionsDiv.querySelectorAll('input[type="radio"]')].forEach(r => r.required = true);
 
-        startTimer();
-        timerStarted = true;
+      startTimer();
+      timerStarted = true;
     } else {
-        fileInput.disabled = false;
-        fileInput.style.display = '';
-        fileInput.required = true;
-        triviaSection.style.display = 'none';
-        [...document.querySelectorAll('input[type="radio"]')].forEach(r => r.required = false);
-        clearInterval(timer);
-        timerStarted = false;
+      fileInput.disabled = false;
+      fileInput.style.display = '';
+      fileInput.required = true;
+      triviaSection.style.display = 'none';
+      [...document.querySelectorAll('input[type="radio"]')].forEach(r => r.required = false);
+      clearInterval(timer);
+      timerStarted = false;
     }
 
     updatePrizePoolDisplay();
+  });
 
-    // New logic to update caption contest image
-    if (selectedSlug.startsWith("caption-contest-")) {
-        fetch("https://your-s3-bucket-url/creator.json")
-            .then(response => response.json())
-            .then(data => {
-                const contest = data.find(item => item.slug === selectedSlug);
-                if (contest && contest.fileUrl) {
-                    captionImageContainer.innerHTML = `<img src="${contest.fileUrl}" alt="Caption Contest Image" 
-                        style="max-width: 100%; border: 2px solid #ccc; border-radius: 10px; margin-top: 20px;">`;
-                } else {
-                    captionImageContainer.innerHTML = ""; // Clears the container if no image is found
-                }
-            })
-            .catch(error => console.error("Error fetching JSON:", error));
-    } else {
-        captionImageContainer.innerHTML = ""; // Clears the image when a non-caption contest is selected
-    }
-});
-
-async function loadTriviaQuestions() {
+  async function loadTriviaQuestions() {
     try {
-        const slug = contestSelect.value;
+      const slug = contestSelect.value;
 
-        if (slug === "trivia-contest-default") {
-            const response = await fetch('/api/trivia?slug=trivia-contest-default');
-            triviaQuestions = await response.json();
-        } else if (slug.startsWith("trivia-contest-")) {
-            let response = await fetch('/api/custom-trivia/by-slug/' + encodeURIComponent(slug));
-            if (response.ok) {
-                const data = await response.json();
-                triviaQuestions = Array.isArray(data.questions) ? data.questions : [];
-            } else {
-                triviaQuestions = [];
-            }
+      if (slug === "trivia-contest-default") {
+        const response = await fetch('/api/trivia?slug=trivia-contest-default');
+        triviaQuestions = await response.json();
+      } else if (slug.startsWith("trivia-contest-")) {
+        let response = await fetch('/api/custom-trivia/by-slug/' + encodeURIComponent(slug));
+        if (response.ok) {
+          const data = await response.json();
+          triviaQuestions = Array.isArray(data.questions) ? data.questions : [];
         } else {
-            triviaQuestions = [];
+          triviaQuestions = [];
         }
+      } else {
+        triviaQuestions = [];
+      }
 
-        triviaQuestionsDiv.innerHTML = '';
-        if (!triviaQuestions || triviaQuestions.length === 0) {
-            triviaQuestionsDiv.innerHTML = '<p>No trivia questions available for this contest.</p>';
-            document.querySelector('button[type="submit"]').disabled = true;
-            return;
-        }
-
-        triviaQuestions.forEach((q, index) => {
-            const div = document.createElement('div');
-            div.classList.add('question');
-
-            const optionsHtml = Object.entries(q.options).map(([key, val]) => `
-                <label><input type="radio" name="q${index}" value="${key}" required> ${val}</label><br>
-            `).join('');
-
-            div.innerHTML = `<p>${index + 1}. ${q.question}</p>${optionsHtml}`;
-            triviaQuestionsDiv.appendChild(div);
-        });
-        document.querySelector('button[type="submit"]').disabled = false;
-    } catch (err) {
-        console.error('Error loading trivia:', err);
-        triviaQuestionsDiv.innerHTML = '<p>Failed to load trivia questions. Please try again later.</p>';
+      triviaQuestionsDiv.innerHTML = '';
+      if (!triviaQuestions || triviaQuestions.length === 0) {
+        triviaQuestionsDiv.innerHTML = '<p>No trivia questions available for this contest.</p>';
         document.querySelector('button[type="submit"]').disabled = true;
+        return;
+      }
+
+      triviaQuestions.forEach((q, index) => {
+        const div = document.createElement('div');
+        div.classList.add('question');
+
+        const optionsHtml = Object.entries(q.options).map(([key, val]) => `
+          <label><input type="radio" name="q${index}" value="${key}" required> ${val}</label><br>
+        `).join('');
+
+        div.innerHTML = `<p>${index + 1}. ${q.question}</p>${optionsHtml}`;
+        triviaQuestionsDiv.appendChild(div);
+      });
+      document.querySelector('button[type="submit"]').disabled = false;
+    } catch (err) {
+      console.error('Error loading trivia:', err);
+      triviaQuestionsDiv.innerHTML = '<p>Failed to load trivia questions. Please try again later.</p>';
+      document.querySelector('button[type="submit"]').disabled = true;
     }
-}
+  }
 
-// Pre-select and show caption contest image based on URL parameters
-const type = urlParams.get('type');
-const imgParam = urlParams.get('img');
-const imgSlug = urlParams.get('slug');
+  function startTimer() {
+    let timeLeft = 600;
+    startTime = Date.now();
 
-if (type === 'caption' && imgParam && imgSlug && imgSlug.startsWith('caption-contest-')) {
-    contestSelect.value = imgSlug;
-    captionImageContainer.innerHTML = `<img src="${decodeURIComponent(imgParam)}" alt="Caption Contest Image" 
-        style="max-width: 100%; border: 2px solid #ccc; border-radius: 10px; margin-top: 20px;">`;
-}
+    timer = setInterval(() => {
+      timeLeft--;
+      const minutes = String(Math.floor(timeLeft / 60)).padStart(2, '0');
+      const seconds = String(timeLeft % 60).padStart(2, '0');
+      document.getElementById('timer').textContent = `${minutes}:${seconds}`;
+      if (timeLeft <= 0) {
+        clearInterval(timer);
+        lockAnswers();
+      }
+    }, 1000);
+  }
 
-window.addEventListener('DOMContentLoaded', () => {
+  function lockAnswers() {
+    const inputs = triviaSection.querySelectorAll('input[type="radio"]');
+    inputs.forEach(input => input.disabled = true);
+    alert('Time is up! Answers are now locked.');
+  }
+
+  document.getElementById('uploadForm').addEventListener('submit', function () {
+    const selectedOption = contestSelect.options[contestSelect.selectedIndex];
+    const isTrivia = selectedOption && selectedOption.textContent.toLowerCase().includes('trivia');
+    if (isTrivia) {
+      const answers = triviaQuestions.map((q, i) => {
+        const selected = document.querySelector(`input[name="q${i}"]:checked`);
+        return {
+          question: q.question,
+          selected: selected ? selected.value : null,
+          correct: selected ? selected.value === q.answer : false
+        };
+      });
+      triviaAnswersInput.value = JSON.stringify(answers);
+      timeTakenInput.value = ((Date.now() - startTime) / 1000);
+    }
+  });
+
+  async function loadApprovedContests() {
+    try {
+      const res = await fetch('/api/contests/approved');
+      const contests = await res.json();
+
+      const defaultSlugs = [
+        "art-contest-default",
+        "photo-contest-default",
+        "trivia-contest-default",
+        "caption-contest-default"
+      ];
+      const filtered = contests.filter(c =>
+        !defaultSlugs.includes(c.slug)
+      );
+      filtered.sort((a, b) =>
+        (a.contestTitle || a.name || a.slug).localeCompare(b.contestTitle || b.name || b.slug)
+      );
+
+      filtered.forEach(contest => {
+        const option = document.createElement('option');
+        option.value = contest.slug;
+        option.textContent = contest.contestTitle || contest.name || contest.slug;
+        contestSelect.appendChild(option);
+      });
+    } catch (err) {
+      console.error('Failed to load contests:', err);
+    }
+  }
+
+  loadApprovedContests();
+
+  // Show caption image and pre-select contest if applicable
+  const type = urlParams.get('type');
+  const imgParam = urlParams.get('img');
+  const imgSlug = urlParams.get('slug');
+
+  if (type === 'caption' && imgParam && imgSlug && imgSlug.startsWith('caption-contest-')) {
+    contestSelect.value = imgSlug; // Pre-select the contest
+    const img = document.createElement('img');
+    img.src = decodeURIComponent(imgParam);
+    img.alt = 'Caption Contest Image';
+    img.style.maxWidth = '100%';
+    img.style.border = '2px solid #ccc';
+    img.style.borderRadius = '10px';
+    img.style.marginTop = '20px';
+
+    const container = document.getElementById('captionImageContainer');
+    container.innerHTML = '';
+    container.appendChild(img);
+  }
+
+  window.addEventListener('DOMContentLoaded', () => {
     if (contestSelect.value && contestSelect.options[contestSelect.selectedIndex].textContent.toLowerCase().includes('trivia')) {
-        fileInput.disabled = true;
-        fileInput.style.display = 'none';
-        fileInput.required = false;
-        triviaSection.style.display = 'block';
-        loadTriviaQuestions();
-        startTimer();
-        timerStarted = true;
+      fileInput.disabled = true;
+      fileInput.style.display = 'none';
+      fileInput.required = false;
+      triviaSection.style.display = 'block';
+      loadTriviaQuestions();
+      startTimer();
+      timerStarted = true;
     }
     updatePrizePoolDisplay();
-});
+  });
 
   async function updatePrizePoolDisplay() {
     const contestSlug = contestSelect.value;
