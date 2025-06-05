@@ -20,22 +20,22 @@
 <body>
   <h1>Thank you for entering!</h1>
 
-  <!-- Prize pool display (dynamic) -->
   <p id="prizePoolDisplay" style="max-width:600px;color:#444;font-size:1em;">
     Loading prize pool...
   </p>
+
+  <!-- Image will show here if caption contest -->
+  <div id="captionImageContainer"></div>
 
   <form id="uploadForm" enctype="multipart/form-data" method="POST" action="/api/payment/upload">
     <input type="text" name="name" placeholder="Your Name" required>
 
     <select name="contestName" id="contestSelect" required>
       <option value="" disabled selected>Select Contest</option>
-      <!-- Hardcoded default contests first -->
       <option value="art-contest-default">Art Contest</option>
       <option value="photo-contest-default">Photo Contest</option>
       <option value="trivia-contest-default">Trivia Contest</option>
       <option value="caption-contest-default">Caption Contest</option>
-      <!-- JS will append approved contests after -->
     </select>
 
     <input type="file" name="file" id="fileInput" accept="image/*" required>
@@ -54,6 +54,7 @@
   </form>
 
   <a href="/">Back to Home</a>
+
 <script>
   const contestSelect = document.getElementById('contestSelect');
   const fileInput = document.getElementById('fileInput');
@@ -66,7 +67,6 @@
   let timer, startTime, triviaQuestions = [];
   let timerStarted = false;
 
-  // --- Robust session_id handling: use URL, then localStorage ---
   const SESSION_KEY = "cu_session_id";
   const urlParams = new URLSearchParams(window.location.search);
   let sessionId = urlParams.get('session_id');
@@ -86,17 +86,15 @@
   contestSelect.addEventListener('change', async function () {
     const selectedOption = contestSelect.options[contestSelect.selectedIndex];
     const isTrivia = selectedOption && selectedOption.textContent.toLowerCase().includes('trivia');
+
     if (isTrivia) {
       fileInput.disabled = true;
       fileInput.style.display = 'none';
       fileInput.required = false;
       triviaSection.style.display = 'block';
 
-      // Remove required from all radio buttons first
       [...document.querySelectorAll('input[type="radio"]')].forEach(r => r.required = false);
-
-      await loadTriviaQuestions(); // Always reload trivia if contest changes
-      // After trivia questions are loaded, set required on new radio buttons!
+      await loadTriviaQuestions();
       [...triviaQuestionsDiv.querySelectorAll('input[type="radio"]')].forEach(r => r.required = true);
 
       startTimer();
@@ -106,35 +104,30 @@
       fileInput.style.display = '';
       fileInput.required = true;
       triviaSection.style.display = 'none';
-      // Remove required from all radio buttons
       [...document.querySelectorAll('input[type="radio"]')].forEach(r => r.required = false);
       clearInterval(timer);
       timerStarted = false;
     }
+
     updatePrizePoolDisplay();
   });
 
-  // ======= FIXED: Only fallback to default trivia for the default slug =======
   async function loadTriviaQuestions() {
     try {
       const slug = contestSelect.value;
 
       if (slug === "trivia-contest-default") {
-        // Load default trivia for the default contest only
         const response = await fetch('/api/trivia?slug=trivia-contest-default');
         triviaQuestions = await response.json();
       } else if (slug.startsWith("trivia-contest-")) {
-        // Try to fetch custom questions for this contest
         let response = await fetch('/api/custom-trivia/by-slug/' + encodeURIComponent(slug));
         if (response.ok) {
           const data = await response.json();
           triviaQuestions = Array.isArray(data.questions) ? data.questions : [];
         } else {
-          // For custom trivia contests, show an error if no trivia is set!
           triviaQuestions = [];
         }
       } else {
-        // Not a trivia contest, skip
         triviaQuestions = [];
       }
 
@@ -144,6 +137,7 @@
         document.querySelector('button[type="submit"]').disabled = true;
         return;
       }
+
       triviaQuestions.forEach((q, index) => {
         const div = document.createElement('div');
         div.classList.add('question');
@@ -202,13 +196,11 @@
     }
   });
 
-  // Append approved contests from the backend after the hardcoded defaults
   async function loadApprovedContests() {
     try {
       const res = await fetch('/api/contests/approved');
       const contests = await res.json();
 
-      // Exclude default contests already hardcoded
       const defaultSlugs = [
         "art-contest-default",
         "photo-contest-default",
@@ -218,12 +210,10 @@
       const filtered = contests.filter(c =>
         !defaultSlugs.includes(c.slug)
       );
-      // Sort alphabetically
       filtered.sort((a, b) =>
         (a.contestTitle || a.name || a.slug).localeCompare(b.contestTitle || b.name || b.slug)
       );
 
-      // Append to dropdown
       filtered.forEach(contest => {
         const option = document.createElement('option');
         option.value = contest.slug;
@@ -235,9 +225,8 @@
     }
   }
 
-  loadApprovedContests(); // run immediately
+  loadApprovedContests();
 
-  // Optionally, auto-load trivia if a contest is pre-selected on load
   window.addEventListener('DOMContentLoaded', () => {
     if (contestSelect.value && contestSelect.options[contestSelect.selectedIndex].textContent.toLowerCase().includes('trivia')) {
       fileInput.disabled = true;
@@ -249,9 +238,26 @@
       timerStarted = true;
     }
     updatePrizePoolDisplay();
+
+    // Show caption image if applicable
+    const contestSlug = contestSelect.value;
+    const type = urlParams.get('type');
+    const imgParam = urlParams.get('img');
+    if (type === 'caption' && imgParam && contestSlug && contestSlug.startsWith('caption-contest-')) {
+      const img = document.createElement('img');
+      img.src = decodeURIComponent(imgParam);
+      img.alt = 'Caption Contest Image';
+      img.style.maxWidth = '100%';
+      img.style.border = '2px solid #ccc';
+      img.style.borderRadius = '10px';
+      img.style.marginTop = '20px';
+
+      const container = document.getElementById('captionImageContainer');
+      container.innerHTML = '';
+      container.appendChild(img);
+    }
   });
 
-  // ------ DYNAMIC PRIZE POOL DISPLAY LOGIC (now uses /api/prize) ------
   async function updatePrizePoolDisplay() {
     const contestSlug = contestSelect.value;
     const display = document.getElementById('prizePoolDisplay');
@@ -266,10 +272,8 @@
       const res = await fetch('/api/prize');
       const prizes = await res.json();
 
-      // Try contestSlug exact match, then fallback to contestTitle for platform contests
       let prizeData = prizes[contestSlug];
       if (!prizeData) {
-        // Try mapping default platform contest slugs to titles
         const platformMap = {
           "art-contest-default": "Art Contest",
           "photo-contest-default": "Photo Contest",
