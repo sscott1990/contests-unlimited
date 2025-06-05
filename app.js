@@ -420,7 +420,6 @@ app.post('/api/creator-login', async (req, res) => {
 });
 
 // === ✅ List approved custom contests ===
-// === ✅ List approved custom contests ===
 app.get('/api/contests/approved', async (req, res) => {
   try {
     const data = await s3.getObject({
@@ -434,19 +433,9 @@ app.get('/api/contests/approved', async (req, res) => {
     approved.sort((a, b) =>
       a.contestTitle.localeCompare(b.contestTitle)
     );
-    
-    // Return the full contest data including fileUrl
     res.json(approved.map(entry => ({
       name: `${entry.contestTitle} (hosted by ${entry.creator})`,
-      slug: entry.slug,
-      contestTitle: entry.contestTitle,
-      creator: entry.creator,
-      description: entry.description,
-      fileUrl: entry.fileUrl, // This is the key field that was missing!
-      endDate: entry.endDate,
-      durationMonths: entry.durationMonths,
-      seedAmount: entry.seedAmount,
-      minEntries: entry.minEntries
+      slug: entry.slug
     })));
   } catch (err) {
     console.error('Failed to load approved contests:', err);

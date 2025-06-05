@@ -15,16 +15,6 @@
     .question {
       margin-bottom: 15px;
     }
-    #captionImageContainer {
-      margin-top: 20px;
-    }
-    #captionImageContainer img {
-      max-width: 100%;
-      border: 2px solid #ccc;
-      border-radius: 10px;
-      display: block;
-      margin: 0 auto;
-    }
   </style>
 </head>
 <body>
@@ -76,7 +66,6 @@
 
   let timer, startTime, triviaQuestions = [];
   let timerStarted = false;
-  let contestsData = []; // Store loaded contests data
 
   const SESSION_KEY = "cu_session_id";
   const urlParams = new URLSearchParams(window.location.search);
@@ -120,68 +109,8 @@
       timerStarted = false;
     }
 
-    // Handle caption contest image display
-    await handleCaptionImageDisplay();
     updatePrizePoolDisplay();
   });
-
-  async function handleCaptionImageDisplay() {
-    const selectedSlug = contestSelect.value;
-    const container = document.getElementById('captionImageContainer');
-    
-    // Clear existing content
-    container.innerHTML = '';
-    
-    // Check if it's a caption contest
-    if (!selectedSlug || !selectedSlug.includes('caption')) {
-      return;
-    }
-
-    try {
-      // For default caption contest
-      if (selectedSlug === 'caption-contest-default') {
-        // You might want to add a default image here or leave empty
-        return;
-      }
-
-      // For custom caption contests, find the contest data
-      const contestData = contestsData.find(contest => contest.slug === selectedSlug);
-      
-      if (contestData && contestData.fileUrl) {
-        const img = document.createElement('img');
-        img.src = contestData.fileUrl;
-        img.alt = 'Caption Contest Image';
-        img.onerror = function() {
-          console.error('Failed to load image:', contestData.fileUrl);
-          container.innerHTML = '<p style="color: #666; text-align: center;">Image not available</p>';
-        };
-        
-        container.appendChild(img);
-        
-        // Add contest title and description if available
-        if (contestData.contestTitle) {
-          const title = document.createElement('h3');
-          title.textContent = contestData.contestTitle;
-          title.style.textAlign = 'center';
-          title.style.marginTop = '10px';
-          title.style.color = '#333';
-          container.appendChild(title);
-        }
-        
-        if (contestData.description) {
-          const description = document.createElement('p');
-          description.textContent = contestData.description;
-          description.style.textAlign = 'center';
-          description.style.marginTop = '10px';
-          description.style.fontStyle = 'italic';
-          description.style.color = '#666';
-          container.appendChild(description);
-        }
-      }
-    } catch (error) {
-      console.error('Error handling caption image display:', error);
-    }
-  }
 
   async function loadTriviaQuestions() {
     try {
@@ -271,9 +200,6 @@
     try {
       const res = await fetch('/api/contests/approved');
       const contests = await res.json();
-      
-      // Store contests data for later use
-      contestsData = contests;
 
       const defaultSlugs = [
         "art-contest-default",
@@ -321,10 +247,7 @@
     container.appendChild(img);
   }
 
-  window.addEventListener('DOMContentLoaded', async () => {
-    // Wait for contests to load first
-    await loadApprovedContests();
-    
+  window.addEventListener('DOMContentLoaded', () => {
     if (contestSelect.value && contestSelect.options[contestSelect.selectedIndex].textContent.toLowerCase().includes('trivia')) {
       fileInput.disabled = true;
       fileInput.style.display = 'none';
@@ -334,9 +257,6 @@
       startTimer();
       timerStarted = true;
     }
-    
-    // Handle caption image display for pre-selected contests
-    await handleCaptionImageDisplay();
     updatePrizePoolDisplay();
   });
 
