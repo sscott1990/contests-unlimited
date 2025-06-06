@@ -323,15 +323,20 @@ app.post('/api/creator/upload', upload.single('captionFile'), async (req, res) =
 
     // Handle file upload to S3 if file exists
     let fileUrl = null;
+    let uploadedFileName = null;
     if (req.file && req.file.buffer && req.file.originalname) {
+      uploadedFileName = req.file.originalname;
       const s3Params = {
         Bucket: ENTRIES_BUCKET, // Your S3 bucket name (make sure this is set correctly)
-        Key: `creator-files/${slug}-${req.file.originalname}`,
+        Key: `creator-files/${slug}-${uploadedFileName}`,
         Body: req.file.buffer,
         ContentType: req.file.mimetype,
-   };
+      };
       const uploadResult = await s3.upload(s3Params).promise();
       fileUrl = uploadResult.Location;
+      // Log for debugging
+      console.log('Uploading file to S3 key:', s3Params.Key);
+      console.log('File will be accessible at:', fileUrl);
     }
 
     // Save the new creator contest info
