@@ -179,6 +179,23 @@ async function saveCustomTriviaSets(triviaSets) {
   }).promise();
 }
 
+// === Helper for Presigned S3 URLs ===
+async function getPresignedUrlFromFileUrl(fileUrl) {
+  if (!fileUrl) return null;
+  try {
+    const url = new URL(fileUrl);
+    const key = url.pathname.startsWith('/') ? url.pathname.slice(1) : url.pathname;
+    return await s3.getSignedUrlPromise('getObject', {
+      Bucket: ENTRIES_BUCKET,
+      Key: key,
+      Expires: 900 // 15 minutes
+    });
+  } catch (e) {
+    console.warn('Could not parse key for signed URL:', fileUrl, e);
+    return null;
+  }
+}
+
 // === ✅ EPD Webhook Receiver ===
 app.post('/api/payment/webhook', rawBodyParser, async (req, res) => {
   try {
@@ -455,12 +472,19 @@ app.get('/api/contest/:slug', async (req, res) => {
     const creators = await getCreators();
     const contest = creators.find(c => c.slug === slug);
     if (!contest) return res.status(404).json({ error: "Contest not found" });
+
+    // If there's a fileUrl, convert it to a signed url
+    let signedFileUrl = null;
+    if (contest.fileUrl) {
+      signedFileUrl = await getPresignedUrlFromFileUrl(contest.fileUrl);
+    }
+
     res.json({
       contestTitle: contest.contestTitle,
       creator: contest.creator,
       endDate: contest.endDate,
       slug: contest.slug,
-      fileUrl: contest.fileUrl || null, // <-- FIXED: now includes fileUrl!
+      fileUrl: signedFileUrl, // <<--- SIGNED URL HERE!
       description: contest.description || "",
       status: contest.status || "",
       // add other fields if needed
