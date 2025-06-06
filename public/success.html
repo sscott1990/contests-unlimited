@@ -63,6 +63,7 @@
   const triviaAnswersInput = document.getElementById('triviaAnswers');
   const timeTakenInput = document.getElementById('timeTaken');
   const sessionIdInput = document.getElementById('sessionIdInput');
+  const captionImageContainer = document.getElementById('captionImageContainer');
 
   let timer, startTime, triviaQuestions = [];
   let timerStarted = false;
@@ -86,7 +87,9 @@
   contestSelect.addEventListener('change', async function () {
     const selectedOption = contestSelect.options[contestSelect.selectedIndex];
     const isTrivia = selectedOption && selectedOption.textContent.toLowerCase().includes('trivia');
+    const selectedSlug = contestSelect.value;
 
+    // Handle Trivia Contest logic
     if (isTrivia) {
       fileInput.disabled = true;
       fileInput.style.display = 'none';
@@ -107,6 +110,99 @@
       [...document.querySelectorAll('input[type="radio"]')].forEach(r => r.required = false);
       clearInterval(timer);
       timerStarted = false;
+    }
+
+    // Minimal revision: Caption Contest custom image logic
+    if (selectedSlug && selectedSlug.startsWith('caption-contest-') && selectedSlug !== "caption-contest-default") {
+      // Fetch contest info to get the fileUrl
+      try {
+        const res = await fetch('/api/contest/' + encodeURIComponent(selectedSlug));
+        if (res.ok) {
+          const data = await res.json();
+          captionImageContainer.innerHTML = '';
+          if (data.fileUrl) {
+            const img = document.createElement('img');
+            img.src = data.fileUrl;
+            img.alt = 'Caption Contest Image';
+            img.style.maxWidth = '100%';
+            img.style.border = '2px solid #ccc';
+            img.style.borderRadius = '10px';
+            img.style.marginTop = '20px';
+
+            captionImageContainer.appendChild(img);
+
+            // Add Caption Input
+            const captionForm = document.createElement('div');
+            captionForm.innerHTML = `
+              <label for="captionEntry" style="display:block;margin:14px 0 6px 0;"><b>Your Caption:</b></label>
+              <input type="text" id="captionEntry" name="captionEntry" placeholder="Write your funny caption here..." style="width:100%;padding:8px;" required>
+            `;
+            captionImageContainer.appendChild(captionForm);
+
+            // Ensure file input is hidden/disabled for custom caption contest
+            fileInput.disabled = true;
+            fileInput.style.display = 'none';
+            fileInput.required = false;
+
+            // Ensure captionEntry is submitted as "file" (simulate a file upload with caption text)
+            // Remove any previous listeners to avoid multiple
+            document.getElementById('uploadForm').onsubmit = function(e) {
+              // If not a custom caption contest, let normal submission happen
+              if (
+                !(
+                  contestSelect.value &&
+                  contestSelect.value.startsWith('caption-contest-') &&
+                  contestSelect.value !== "caption-contest-default"
+                )
+              ) return true;
+
+              const captionText = document.getElementById('captionEntry').value.trim();
+              if (!captionText) {
+                alert("Please enter your caption!");
+                e.preventDefault();
+                return false;
+              }
+
+              // Create a fake file from the caption and submit via FormData
+              e.preventDefault();
+              const formData = new FormData(document.getElementById('uploadForm'));
+              const captionBlob = new Blob([captionText], { type: "text/plain" });
+              formData.set('file', captionBlob, 'caption.txt');
+
+              fetch(document.getElementById('uploadForm').action, {
+                method: 'POST',
+                body: formData
+              }).then(resp => {
+                if (resp.redirected) {
+                  window.location.href = resp.url;
+                } else if (resp.ok) {
+                  window.location.href = "/success-submitted.html";
+                } else {
+                  resp.text().then(msg => alert(msg));
+                }
+              }).catch(err => {
+                alert("Submission failed: " + err.message);
+              });
+
+              return false;
+            };
+          } else {
+            captionImageContainer.innerHTML = '<p style="color:red;">No image found for this caption contest.</p>';
+          }
+        } else {
+          captionImageContainer.innerHTML = '<p style="color:red;">Unable to load caption contest image.</p>';
+        }
+      } catch (err) {
+        captionImageContainer.innerHTML = '<p style="color:red;">Failed to fetch caption contest image.</p>';
+      }
+    } else {
+      captionImageContainer.innerHTML = '';
+      // Restore file input
+      fileInput.disabled = false;
+      fileInput.style.display = '';
+      fileInput.required = true;
+      // Remove special onsubmit, let default happen
+      document.getElementById('uploadForm').onsubmit = null;
     }
 
     updatePrizePoolDisplay();
@@ -232,19 +328,12 @@
   const imgParam = urlParams.get('img');
   const imgSlug = urlParams.get('slug');
 
+  // The next block is kept for backwards compatibility, but actual logic is now handled in contestSelect change event
   if (type === 'caption' && imgParam && imgSlug && imgSlug.startsWith('caption-contest-')) {
     contestSelect.value = imgSlug; // Pre-select the contest
-    const img = document.createElement('img');
-    img.src = decodeURIComponent(imgParam);
-    img.alt = 'Caption Contest Image';
-    img.style.maxWidth = '100%';
-    img.style.border = '2px solid #ccc';
-    img.style.borderRadius = '10px';
-    img.style.marginTop = '20px';
-
-    const container = document.getElementById('captionImageContainer');
-    container.innerHTML = '';
-    container.appendChild(img);
+    // This will trigger the contestSelect change event,
+    // which now loads and displays the image & caption input
+    contestSelect.dispatchEvent(new Event('change'));
   }
 
   window.addEventListener('DOMContentLoaded', () => {
