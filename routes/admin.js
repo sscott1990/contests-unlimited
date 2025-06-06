@@ -85,6 +85,8 @@ router.get('/entries-view', async (req, res) => {
   try {
     const entries = await loadEntries();
     const creators = await loadCreators();
+    const uploads = await loadUploads(); // <-- Add this line
+
     if (!entries || entries.length === 0) {
       return res.send('<h2>No entries found</h2>');
     }
@@ -94,7 +96,6 @@ router.get('/entries-view', async (req, res) => {
     let filteredEntries = entries;
     if (search) {
       filteredEntries = entries.filter(entry => {
-        // Construct name, email, address as below for search as well
         const name = `${entry.billingAddress?.first_name || ''} ${entry.billingAddress?.last_name || ''}`.trim();
         const email = entry.customerEmail || entry.billingAddress?.email || '';
         const address = [
@@ -128,6 +129,7 @@ router.get('/entries-view', async (req, res) => {
     const start = (page - 1) * perPage;
     const paginatedEntries = filteredEntries.slice(start, start + perPage);
 
+    // Map upload file name (from uploads) to entries, matching on contestName and (best effort) email or name
     const rows = paginatedEntries.map(entry => {
       const name = `${entry.billingAddress?.first_name || ''} ${entry.billingAddress?.last_name || ''}`.trim();
       const email = entry.customerEmail || entry.billingAddress?.email || '';
@@ -141,6 +143,22 @@ router.get('/entries-view', async (req, res) => {
       ].filter(Boolean).join(', ');
       const contest = entry.contestName || '';
       const date = entry.timestamp ? new Date(entry.timestamp).toLocaleString() : '';
+
+      // Try to find matching upload
+      const uploadMatch = uploads.find(u =>
+        u.contestName === contest &&
+        (
+          (u.name && u.name.trim().toLowerCase() === name.toLowerCase()) ||
+          (u.email && u.email.trim().toLowerCase() === email.toLowerCase()) ||
+          (u.customerEmail && u.customerEmail.trim().toLowerCase() === email.toLowerCase())
+        )
+      );
+      const uploadFile = uploadMatch && uploadMatch.filename
+        ? uploadMatch.filename
+        : (uploadMatch && uploadMatch.fileUrl
+            ? uploadMatch.fileUrl.split('/').pop()
+            : '');
+
       return `
         <tr>
           <td>${name}</td>
@@ -148,6 +166,7 @@ router.get('/entries-view', async (req, res) => {
           <td>${address}</td>
           <td>${contest}</td>
           <td>${date}</td>
+          <td>${uploadFile || ''}</td>
         </tr>
       `;
     }).join('');
@@ -207,6 +226,7 @@ router.get('/entries-view', async (req, res) => {
               <th>Address</th>
               <th>Contest</th>
               <th>Date</th>
+              <th>File Name</th>
             </tr>
           </thead>
           <tbody>
