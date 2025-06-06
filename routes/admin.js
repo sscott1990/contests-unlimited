@@ -386,6 +386,14 @@ router.get('/uploads', async (req, res) => {
         }
       }
 
+      // Winner functionality
+      let winnerCell = '';
+      if (upload.isWinner) {
+        winnerCell = '<b style="color:green;">Winner</b>';
+      } else {
+        winnerCell = `<button onclick="confirmWinner('${upload.sessionId}', '${upload.contestName || ''}')">Winner</button>`;
+      }
+
       return `
         <tr>
           <td>${upload.name || ''}</td>
@@ -394,6 +402,7 @@ router.get('/uploads', async (req, res) => {
           <td>${date}</td>
           <td>${filename}</td>
           <td>${fileCell}</td>
+          <td>${winnerCell}</td>
         </tr>
       `;
     }));
@@ -456,6 +465,7 @@ router.get('/uploads', async (req, res) => {
               <th>Date</th>
               <th>Original Filename</th>
               <th>File</th>
+              <th>Winner</th>
             </tr>
           </thead>
           <tbody>
@@ -463,6 +473,26 @@ router.get('/uploads', async (req, res) => {
           </tbody>
         </table>
         ${paginationControls}
+        <script>
+          function confirmWinner(sessionId, contestName) {
+            if (!confirm("Are you sure about this selection?")) return;
+            fetch('/api/admin/set-winner', {
+              method: 'POST',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify({ sessionId, contestName })
+            })
+            .then(res => res.json())
+            .then(data => {
+              if (data.success) {
+                alert("Winner selected!");
+                location.reload();
+              } else {
+                alert("Failed to select winner.");
+              }
+            })
+            .catch(() => alert("Failed to select winner."));
+          }
+        </script>
       </body>
       </html>
    `);
