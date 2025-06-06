@@ -454,7 +454,11 @@ app.get('/api/contest/:slug', async (req, res) => {
       contestTitle: contest.contestTitle,
       creator: contest.creator,
       endDate: contest.endDate,
-      slug: contest.slug
+      slug: contest.slug,
+      fileUrl: contest.fileUrl || null, // <-- FIXED: now includes fileUrl!
+      description: contest.description || "",
+      status: contest.status || "",
+      // add other fields if needed
     });
   } catch (err) {
     console.error('Failed to fetch contest:', err);
