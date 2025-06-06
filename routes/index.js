@@ -19,6 +19,14 @@ const PLATFORM_CONTESTS = [
   { contestTitle: 'Caption Contest' }
 ];
 
+// Map default contest slugs to their titles
+const PLATFORM_SLUG_MAP = {
+  "art-contest-default": "Art Contest",
+  "photo-contest-default": "Photo Contest",
+  "trivia-contest-default": "Trivia Contest",
+  "caption-contest-default": "Caption Contest"
+};
+
 // Seed/minimum settings by duration (in months)
 const CREATOR_CONTEST_SEED_MATRIX = [
   { months: 1, seed: 250, min: 50 },
@@ -70,9 +78,12 @@ function calculatePrizesByContest(uploads, creatorsArray, nowMs = Date.now()) {
   // Map contestName to array of entries
   const entriesByContest = {};
   for (const upload of uploads) {
-    const contest = upload.contestName || 'Unknown';
-    if (!entriesByContest[contest]) entriesByContest[contest] = [];
-    entriesByContest[contest].push(upload);
+    // ---- PATCH: Always use string for contestName, map slug to title for platform contests ----
+    let rawContestName = upload.contestName;
+    if (Array.isArray(rawContestName)) rawContestName = rawContestName[0];
+    const contestKey = PLATFORM_SLUG_MAP[rawContestName] || rawContestName || 'Unknown';
+    if (!entriesByContest[contestKey]) entriesByContest[contestKey] = [];
+    entriesByContest[contestKey].push(upload);
   }
 
   // Build contest info by slug for access to endDate and other props

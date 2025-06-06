@@ -238,7 +238,10 @@ app.post('/api/payment/webhook', rawBodyParser, async (req, res) => {
 // === 🚩 New route for handling uploads ===
 app.post('/api/payment/upload', upload.single('file'), async (req, res) => {
   try {
-    const { name, contestName, session_id, triviaAnswers } = req.body;  // changed contest -> contestName
+    let { name, contestName, session_id, triviaAnswers } = req.body;  // PATCH: Use let, not const, for contestName
+    // PATCH: Force contestName to be a string
+    if (Array.isArray(contestName)) contestName = contestName[0];
+
     let { timeTaken } = req.body;
     const file = req.file;
 
@@ -271,7 +274,7 @@ app.post('/api/payment/upload', upload.single('file'), async (req, res) => {
     uploads.push({
       sessionId: session_id,
       name,
-      contestName,  // updated here
+      contestName,  // always a string now!
       fileUrl,
       triviaAnswers: triviaAnswers ? JSON.parse(triviaAnswers) : null,
       timeTaken,
@@ -279,6 +282,14 @@ app.post('/api/payment/upload', upload.single('file'), async (req, res) => {
     });
 
     await saveUploads(uploads);
+
+    // PATCH: Also update entries.json with contestName (if present)
+    const entries = await getEntries();
+    const entryIndex = entries.findIndex(e => e.sessionId === session_id);
+    if (entryIndex !== -1) {
+      entries[entryIndex].contestName = contestName;
+      await saveEntries(entries);
+    }
 
     res.redirect('/success-submitted.html');
   } catch (err) {
