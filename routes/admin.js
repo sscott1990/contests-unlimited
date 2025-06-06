@@ -1373,4 +1373,35 @@ router.get('/dashboard-financials', async (req, res) => {
   }
 });
 
+// --- Winner selection endpoint ---
+router.post('/set-winner', express.json(), async (req, res) => {
+  const { sessionId, contestName } = req.body;
+  if (!sessionId) return res.status(400).json({ error: 'Missing sessionId' });
+
+  try {
+    let uploads = await loadUploads();
+
+    // Allow only one winner per contest: set isWinner true for selected, false for others in same contest
+    uploads = uploads.map(u => {
+      if (u.contestName === contestName) {
+        u.isWinner = (u.sessionId === sessionId);
+      }
+      return u;
+    });
+
+    // Save back to S3
+    await s3.putObject({
+      Bucket: BUCKET_NAME,
+      Key: 'uploads.json',
+      Body: JSON.stringify(uploads, null, 2),
+      ContentType: 'application/json'
+    }).promise();
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Failed to set winner:', err);
+    res.status(500).json({ error: 'Failed to set winner' });
+  }
+});
+
 module.exports = router;
