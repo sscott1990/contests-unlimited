@@ -168,6 +168,9 @@
               const captionBlob = new Blob([captionText], { type: "text/plain" });
               formData.set('file', captionBlob, 'caption.txt');
 
+              // --- PATCH: Also add contestName as a hidden field on submission (for robustness) ---
+              formData.set('contestName', contestSelect.value);
+
               fetch(document.getElementById('uploadForm').action, {
                 method: 'POST',
                 body: formData
@@ -274,7 +277,9 @@
     alert('Time is up! Answers are now locked.');
   }
 
-  document.getElementById('uploadForm').addEventListener('submit', function () {
+  // PATCH: Ensure contestName is always included on form submit (even for default submission)
+  document.getElementById('uploadForm').addEventListener('submit', function (event) {
+    // For trivia, populate answers/time as before
     const selectedSlug = contestSelect.value;
     const isTrivia = selectedSlug && selectedSlug.startsWith("trivia-contest-");
     if (isTrivia) {
@@ -288,6 +293,17 @@
       });
       triviaAnswersInput.value = JSON.stringify(answers);
       timeTakenInput.value = ((Date.now() - startTime) / 1000);
+    }
+    // --- PATCH: Add contestName as a hidden field if missing (for robustness) ---
+    const form = event.target;
+    if (!form.querySelector('input[name="contestName"]')) {
+      const hiddenInput = document.createElement('input');
+      hiddenInput.type = "hidden";
+      hiddenInput.name = "contestName";
+      hiddenInput.value = contestSelect.value;
+      form.appendChild(hiddenInput);
+    } else {
+      form.querySelector('input[name="contestName"]').value = contestSelect.value;
     }
   });
 
