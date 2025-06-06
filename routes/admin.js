@@ -177,9 +177,7 @@ const rows = paginatedEntries.map(entry => {
       <td>${name}</td>
       <td>${email}</td>
       <td>${address}</td>
-      <td>${contest}</td>
       <td>${date}</td>
-      <td>${filename}</td>
     </tr>
   `;
 }).join('');
@@ -237,9 +235,7 @@ const rows = paginatedEntries.map(entry => {
               <th>Name</th>
               <th>Email</th>
               <th>Address</th>
-              <th>Contest</th>
               <th>Date</th>
-              <th>File Name</th>
             </tr>
           </thead>
           <tbody>
