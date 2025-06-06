@@ -300,13 +300,52 @@ router.get('/uploads', async (req, res) => {
       return { ...upload, host };
     });
 
-    const rows = uploadsWithHost.map(upload => {
+    // --- FIX: Show contest image for custom caption contests ---
+    const rows = await Promise.all(uploadsWithHost.map(async upload => {
       const date = new Date(upload.timestamp).toLocaleString();
       const filename = upload.filename || 'No file';
       const viewUrl = upload.presignedUrl;
 
+      // Find the contest object from creators
+      const creatorContest = creators.find(c =>
+        (c.slug && upload.contestName === c.slug) ||
+        (c.contestTitle && upload.contestName === c.contestTitle)
+      );
+
       let fileCell = 'No file available';
-      if (viewUrl) {
+
+      // For custom caption contests, show contest image and caption
+      if (
+        creatorContest &&
+        creatorContest.fileUrl &&
+        upload.contestName &&
+        upload.contestName.startsWith('caption-contest-') &&
+        upload.contestName !== 'caption-contest-default'
+      ) {
+        // Get presigned URL for contest image
+        let contestImageUrl = '';
+        let imgFilename = '';
+        try {
+          const url = new URL(creatorContest.fileUrl);
+          const key = url.pathname.startsWith('/') ? url.pathname.slice(1) : url.pathname;
+          contestImageUrl = await getPresignedUrl(key);
+          imgFilename = url.pathname.split('/').pop();
+        } catch (e) {
+          contestImageUrl = creatorContest.fileUrl;
+          imgFilename = '';
+        }
+
+        fileCell = `
+          <b>Caption:</b><br>
+          <pre style="max-width:320px;white-space:pre-wrap;background:#f0f0f0;padding:8px;border-radius:6px;">${(upload.fileContent || '').replace(/</g, '&lt;')}</pre>
+          <b>Image:</b><br>
+          ${contestImageUrl
+            ? `<a href="${contestImageUrl}" target="_blank">View</a><br>
+               <img src="${contestImageUrl}" alt="${imgFilename}" style="max-width: 100px;">`
+            : 'No contest image'}
+        `;
+      } else if (viewUrl) {
+        // Regular image/caption/file logic for non-custom-caption
         if (isImageFile(filename)) {
           fileCell = `<a href="${viewUrl}" target="_blank">View</a><br>
                       <img src="${viewUrl}" alt="${filename}" style="max-width: 100px;">`;
@@ -328,7 +367,7 @@ router.get('/uploads', async (req, res) => {
           <td>${fileCell}</td>
         </tr>
       `;
-    }).join('');
+    }));
 
     // Pagination controls html
     let paginationControls = `<div style="margin-top: 1rem;">`;
@@ -391,7 +430,7 @@ router.get('/uploads', async (req, res) => {
             </tr>
           </thead>
           <tbody>
-            ${rows}
+            ${rows.join('')}
           </tbody>
         </table>
         ${paginationControls}
