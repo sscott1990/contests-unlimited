@@ -3,6 +3,7 @@ const AWS = require('aws-sdk');
 const router = express.Router();
 const { loadJSONFromS3 } = require('../utils/s3Utils');
 const slugify = require('slugify');
+const fetch = require('node-fetch'); // For text file preview
 
 const s3 = new AWS.S3({
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
@@ -10,6 +11,29 @@ const s3 = new AWS.S3({
   region: process.env.AWS_REGION,
 });
 const BUCKET_NAME = process.env.S3_BUCKET_NAME;
+
+// === File type helpers ===
+const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+function isImageFile(filename) {
+  if (!filename) return false;
+  let ext = filename.split('.').pop().toLowerCase();
+  return IMAGE_EXTENSIONS.includes(`.${ext}`);
+}
+function isTextFile(filename) {
+  if (!filename) return false;
+  return filename.toLowerCase().endsWith('.txt');
+}
+async function getTextFileContents(presignedUrl) {
+  try {
+    const res = await fetch(presignedUrl);
+    if (res.ok) {
+      return await res.text();
+    }
+    return null;
+  } catch (e) {
+    return null;
+  }
+}
 
 async function loadEntries() {
   return loadJSONFromS3('entries.json');
@@ -231,31 +255,40 @@ router.get('/uploads', async (req, res) => {
     const start = (page - 1) * perPage;
     const paginatedUploads = filteredUploads.slice(start, start + perPage);
 
-    const uploadsWithPresignedUrls = await Promise.all(
+    // Get presigned URLs and file details
+    const uploadsWithDetails = await Promise.all(
       paginatedUploads.map(async (upload) => {
-        if (!upload.fileUrl) return { ...upload, presignedUrl: null };
+        if (!upload.fileUrl) return { ...upload, presignedUrl: null, fileContent: null, filename: null };
 
-        let key;
+        let key, filename;
         try {
           const url = new URL(upload.fileUrl);
           key = url.pathname.startsWith('/') ? url.pathname.slice(1) : url.pathname;
+          filename = url.pathname.split('/').pop();
         } catch (err) {
           console.warn('Invalid fileUrl:', upload.fileUrl);
-          return { ...upload, presignedUrl: null };
+          return { ...upload, presignedUrl: null, fileContent: null, filename: null };
         }
 
+        let presignedUrl = null;
         try {
-          const presignedUrl = await getPresignedUrl(key);
-          return { ...upload, presignedUrl };
+          presignedUrl = await getPresignedUrl(key);
         } catch (err) {
           console.error('Error generating presigned URL:', err);
-          return { ...upload, presignedUrl: upload.fileUrl };
+          presignedUrl = upload.fileUrl;
         }
+
+        let fileContent = null;
+        if (isTextFile(filename)) {
+          fileContent = await getTextFileContents(presignedUrl);
+        }
+
+        return { ...upload, presignedUrl, filename, fileContent };
       })
     );
 
     // Add host/creator lookup logic
-    const uploadsWithHost = uploadsWithPresignedUrls.map(upload => {
+    const uploadsWithHost = uploadsWithDetails.map(upload => {
       let host = "Contests Unlimited";
       if (creators && creators.length) {
         const found = creators.find(c =>
@@ -269,8 +302,21 @@ router.get('/uploads', async (req, res) => {
 
     const rows = uploadsWithHost.map(upload => {
       const date = new Date(upload.timestamp).toLocaleString();
-      const filename = upload.fileUrl ? upload.fileUrl.split('/').pop() : 'No file';
+      const filename = upload.filename || 'No file';
       const viewUrl = upload.presignedUrl;
+
+      let fileCell = 'No file available';
+      if (viewUrl) {
+        if (isImageFile(filename)) {
+          fileCell = `<a href="${viewUrl}" target="_blank">View</a><br>
+                      <img src="${viewUrl}" alt="${filename}" style="max-width: 100px;">`;
+        } else if (isTextFile(filename)) {
+          fileCell = `<a href="${viewUrl}" target="_blank">View Caption</a><br>
+                      <pre style="max-width:320px;white-space:pre-wrap;background:#f0f0f0;padding:8px;border-radius:6px;">${(upload.fileContent || '').replace(/</g, '&lt;')}</pre>`;
+        } else {
+          fileCell = `<a href="${viewUrl}" target="_blank">Download</a>`;
+        }
+      }
 
       return `
         <tr>
@@ -279,12 +325,7 @@ router.get('/uploads', async (req, res) => {
           <td>${upload.host || ''}</td>
           <td>${date}</td>
           <td>${filename}</td>
-          <td>
-            ${viewUrl
-              ? `<a href="${viewUrl}" target="_blank">View</a><br>
-                 <img src="${viewUrl}" alt="${filename}" style="max-width: 100px;">`
-              : 'No file available'}
-          </td>
+          <td>${fileCell}</td>
         </tr>
       `;
     }).join('');
@@ -316,6 +357,7 @@ router.get('/uploads', async (req, res) => {
           th, td { border: 1px solid #ddd; padding: 0.5rem; text-align: left; }
           th { background: #eee; }
           img { max-width: 100px; border-radius: 4px; margin-top: 0.5rem; }
+          pre { font-size: 0.97em; }
           div.pagination { margin-top: 1rem; }
           .search-bar { margin-bottom: 1rem; }
           .search-bar input { padding: 6px 10px; font-size: 1em; min-width: 200px; }
