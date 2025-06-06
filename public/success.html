@@ -85,9 +85,8 @@
   }
 
   contestSelect.addEventListener('change', async function () {
-    const selectedOption = contestSelect.options[contestSelect.selectedIndex];
-    const isTrivia = selectedOption && selectedOption.textContent.toLowerCase().includes('trivia');
     const selectedSlug = contestSelect.value;
+    const isTrivia = selectedSlug && selectedSlug.startsWith("trivia-contest-");
 
     // Handle Trivia Contest logic
     if (isTrivia) {
@@ -276,8 +275,8 @@
   }
 
   document.getElementById('uploadForm').addEventListener('submit', function () {
-    const selectedOption = contestSelect.options[contestSelect.selectedIndex];
-    const isTrivia = selectedOption && selectedOption.textContent.toLowerCase().includes('trivia');
+    const selectedSlug = contestSelect.value;
+    const isTrivia = selectedSlug && selectedSlug.startsWith("trivia-contest-");
     if (isTrivia) {
       const answers = triviaQuestions.map((q, i) => {
         const selected = document.querySelector(`input[name="q${i}"]:checked`);
@@ -307,13 +306,13 @@
         !defaultSlugs.includes(c.slug)
       );
       filtered.sort((a, b) =>
-        (a.contestTitle || a.name || a.slug).localeCompare(b.contestTitle || b.name || b.slug)
+        (a.name || a.slug).localeCompare(b.name || b.slug)
       );
 
       filtered.forEach(contest => {
         const option = document.createElement('option');
         option.value = contest.slug;
-        option.textContent = contest.contestTitle || contest.name || contest.slug;
+        option.textContent = contest.name || contest.slug;
         contestSelect.appendChild(option);
       });
     } catch (err) {
@@ -337,7 +336,9 @@
   }
 
   window.addEventListener('DOMContentLoaded', () => {
-    if (contestSelect.value && contestSelect.options[contestSelect.selectedIndex].textContent.toLowerCase().includes('trivia')) {
+    const selectedSlug = contestSelect.value;
+    const isTrivia = selectedSlug && selectedSlug.startsWith("trivia-contest-");
+    if (isTrivia) {
       fileInput.disabled = true;
       fileInput.style.display = 'none';
       fileInput.required = false;
