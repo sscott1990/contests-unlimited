@@ -462,7 +462,7 @@ router.get('/', (req, res) => {
 
 <!-- Seed/Minimum Matrix Section -->
 <div style="margin: 35px auto 14px auto; text-align:center; max-width:550px; background:#ecf7f2; border-left:5px solid #007849; border-radius:8px; padding:14px 16px;">
-  <b>Seed Amounts & Entry Minimums for Creators:</b>
+  <b>Seed Amounts & Entry Minimums:</b>
   <ul style="list-style:none; padding-left:0; font-size:1.07em; margin:8px 0 0 0; color:#222;">
     <li>1 month: <b>$250 seed</b>, 50 entries minimum</li>
     <li>3 months: <b>$500 seed</b>, 100 entries minimum</li>
