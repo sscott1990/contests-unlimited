@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Gallery - All Contest Uploads</title>
+  <link rel="stylesheet" href="/styles.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body class="gallery-background">
+  <div class="container">
+    <h1>Gallery of Contest Uploads</h1>
+    <div class="gallery-grid">
+      <% if (uploads.length === 0) { %>
+        <div class="no-image">No uploads found.</div>
+      <% } else { %>
+        <% uploads.forEach(function(upload) { %>
+          <div class="gallery-card">
+            <span class="gallery-tag"><%= upload.contestName || 'Unknown' %></span>
+            <% if (upload.presignedUrl && upload.isImageFile) { %>
+              <img class="gallery-img" src="<%= upload.presignedUrl %>" alt="Upload by <%= upload.name || 'Anonymous' %>">
+            <% } else { %>
+              <div class="no-image">No Image</div>
+            <% } %>
+            <div class="gallery-info">
+              <div><strong>Name:</strong> <%= upload.name || 'Anonymous' %></div>
+              <div><strong>Contest:</strong> <%= upload.contestName || 'Unknown' %></div>
+              <div><strong>Host:</strong> <%= upload.host || 'Contests Unlimited' %></div>
+              <div class="date"><strong>Date:</strong> <%= upload.timestamp ? (new Date(upload.timestamp).toLocaleDateString()) : '' %></div>
+            </div>
+          </div>
+        <% }); %>
+      <% } %>
+    </div>
+
+    <!-- Pagination Controls -->
+    <% if (totalPages && totalPages > 1) { %>
+      <nav class="pagination">
+        <% if (page > 1) { %>
+          <a href="?page=<%= page - 1 %>">&laquo; Previous</a>
+        <% } else { %>
+          <span class="disabled">&laquo; Previous</span>
+        <% } %>
+        <% for (var i = 1; i <= totalPages; i++) { %>
+          <% if (i === page) { %>
+            <span class="current"><%= i %></span>
+          <% } else { %>
+            <a href="?page=<%= i %>"><%= i %></a>
+          <% } %>
+        <% } %>
+        <% if (page < totalPages) { %>
+          <a href="?page=<%= page + 1 %>">Next &raquo;</a>
+        <% } else { %>
+          <span class="disabled">Next &raquo;</span>
+        <% } %>
+      </nav>
+    <% } %>
+  </div>
+</body>
+</html>

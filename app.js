@@ -26,6 +26,9 @@ const CREATORS_KEY = 'creator.json';
 const TRIVIA_KEY = 'trivia-contest.json'; // <--- default trivia
 const CUSTOM_TRIVIA_KEY = 'custom-trivia.json'; // <--- NEW: custom trivia
 
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
+
 // Serve static files
 app.use(express.static('public'));
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -635,153 +638,12 @@ app.get('/gallery', async (req, res) => {
       })
     );
 
-    // Render gallery HTML
-    res.send(`
-      <!DOCTYPE html>
-      <html lang="en">
-      <head>
-        <meta charset="UTF-8">
-        <title>Gallery - All Contest Uploads</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <style>
-          body {
-            font-family: 'Inter', Arial, sans-serif;
-            background: #fcfcfc;
-            margin: 0;
-            color: #222;
-          }
-          .container {
-            max-width: 1100px;
-            margin: 0 auto;
-            padding: 2rem 1rem;
-          }
-          h1 {
-            text-align: center;
-            color: #1a3456;
-            margin-bottom: 2rem;
-            letter-spacing: 0.03em;
-            font-size: 2.1em;
-          }
-          .gallery-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-            gap: 2rem;
-          }
-          .gallery-card {
-            background: #fff;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(34,54,80,0.06);
-            padding: 1.3rem 1rem 1rem 1rem;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            transition: box-shadow 0.18s;
-            border: 1px solid #e8e9ea;
-          }
-          .gallery-card:hover {
-            box-shadow: 0 4px 18px rgba(34,54,80,0.13);
-            border-color: #bcd2f7;
-          }
-          .gallery-img {
-            max-width: 160px;
-            max-height: 160px;
-            border-radius: 6px;
-            object-fit: cover;
-            margin-bottom: 1rem;
-            box-shadow: 0 2px 10px rgba(85,110,150,0.07);
-          }
-          .gallery-info {
-            width: 100%;
-            text-align: left;
-            font-size: 1em;
-          }
-          .gallery-info strong {
-            color: #1a3456;
-            font-weight: 500;
-          }
-          .gallery-info .date {
-            color: #789;
-            font-size: 0.97em;
-            margin-top: 0.1em;
-          }
-          .pagination {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 1rem;
-            margin: 2.5rem 0 0 0;
-            font-size: 1.1em;
-          }
-          .pagination a, .pagination span {
-            padding: 0.35em 1.1em;
-            border-radius: 6px;
-            text-decoration: none;
-            color: #1860c5;
-            background: #e9f1fd;
-            transition: background 0.15s;
-            border: 1px solid #d4e2f6;
-            margin: 0 0.15em;
-            font-weight: 500;
-          }
-          .pagination a:hover {
-            background: #c3e2fc;
-            color: #1742a3;
-          }
-          .pagination .current {
-            background: #1860c5;
-            color: #fff;
-            font-weight: bold;
-            border-color: #1860c5;
-            pointer-events: none;
-          }
-          @media (max-width: 600px) {
-            .gallery-card { padding: 1rem 0.5rem; }
-            .gallery-grid { gap: 1.2rem; }
-            .gallery-img { max-width: 100%; }
-            .pagination { flex-direction: column; gap: 0.8rem; }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <h1>Gallery of Contest Uploads</h1>
-          <div class="gallery-grid">
-            ${uploadsWithHost.map(upload => `
-              <div class="gallery-card">
-                ${upload.presignedUrl && upload.isImageFile
-                  ? `<img class="gallery-img" src="${upload.presignedUrl}" alt="Upload by ${upload.name || "Anonymous"}">`
-                  : `<div style="padding:2.2em 0;color:#aaa;text-align:center;font-size:1.2em;">No Image</div>`
-                }
-                <div class="gallery-info">
-                  <div><strong>Name:</strong> ${upload.name || 'Anonymous'}</div>
-                  <div><strong>Contest:</strong> ${upload.contestName || 'Unknown'}</div>
-                  <div><strong>Host:</strong> ${upload.host || 'Contests Unlimited'}</div>
-                  <div class="date"><strong>Date:</strong> ${upload.timestamp ? (new Date(upload.timestamp).toLocaleDateString()) : ''}</div>
-                </div>
-              </div>
-            `).join('')}
-          </div>
-          ${totalPages > 1 ? `
-          <nav class="pagination">
-            ${page > 1
-              ? `<a href="/gallery?page=${page - 1}">&laquo; Previous</a>`
-              : `<span class="disabled">&laquo; Previous</span>`
-            }
-            ${Array.from({ length: totalPages }).map((_, i) =>
-              i + 1 === page
-                ? `<span class="current">${i + 1}</span>`
-                : `<a href="/gallery?page=${i + 1}">${i + 1}</a>`
-            ).join('')}
-            ${page < totalPages
-              ? `<a href="/gallery?page=${page + 1}">Next &raquo;</a>`
-              : `<span class="disabled">Next &raquo;</span>`
-            }
-          </nav>
-          ` : ''}
-        </div>
-      </body>
-      </html>
-    `);
+    // Render gallery EJS template (views/gallery.ejs)
+    res.render('gallery', {
+      uploads: uploadsWithHost,
+      page,
+      totalPages
+    });
   } catch (err) {
     console.error('Failed to load gallery:', err);
     res.status(500).send('Failed to load gallery.');
