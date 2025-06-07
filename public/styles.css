@@ -233,3 +233,9 @@ a:hover {
   .pagination { flex-direction: column; gap: 0.8rem; }
   h1 { font-size: 1.3rem; }
 }
+
+/* Forest green gallery background */
+body.gallery-background {
+  background: linear-gradient(135deg, #14532d 0%, #228B22 100%);
+  color: #fff;
+}
