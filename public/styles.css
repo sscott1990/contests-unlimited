@@ -2,7 +2,7 @@
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background: linear-gradient(135deg, #dff9fb, #c7ecee); /* soft blue-green gradient */
-  color: #2c3e50; /* dark slate blue */
+  color: #22244c;
   margin: 40px;
   display: flex;
   flex-direction: column;
@@ -11,10 +11,12 @@ body {
 
 /* Heading */
 h1 {
-  color: #e74c3c; /* vivid red */
+  color: #e74c3c;
   margin-bottom: 20px;
-  font-size: 2rem;
-  text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+  font-size: 2.3rem;
+  font-weight: bold;
+  text-shadow: 0 2px 14px #fff6, 1px 1px 2px #fad0c433;
+  letter-spacing: 0.04em;
 }
 
 /* Form container */
@@ -36,7 +38,7 @@ form#uploadForm select,
 form#uploadForm input[type="file"] {
   padding: 12px 14px;
   font-size: 1rem;
-  border: 2px solid #a29bfe; /* soft purple border */
+  border: 2px solid #a29bfe;
   border-radius: 6px;
   background-color: #f7f1e3;
   outline-offset: 2px;
@@ -57,27 +59,28 @@ button {
   font-size: 1.1rem;
   font-weight: bold;
   color: white;
-  background: linear-gradient(to right, #ff6b81, #f0932b); /* coral to orange */
+  background: linear-gradient(90deg, #f85c7f 0%, #3ec6a8 100%);
   border: none;
   border-radius: 8px;
   cursor: pointer;
-  transition: background 0.3s ease;
+  transition: background 0.3s ease, box-shadow 0.2s;
+  box-shadow: 0 2px 10px #fad0c455;
 }
 
 form#uploadForm button:hover,
 button:hover {
-  background: linear-gradient(to right, #eb4d4b, #e67e22);
+  background: linear-gradient(90deg, #3ec6a8 0%, #f85c7f 100%);
+  box-shadow: 0 6px 24px #f85c7f33;
 }
 
 /* Back to home link */
 a {
   margin-top: 25px;
-  color: #10ac84; /* turquoise green */
+  color: #10ac84;
   text-decoration: none;
   font-weight: 600;
   transition: color 0.3s ease;
 }
-
 a:hover {
   color: #1e7e5a;
 }
@@ -92,115 +95,125 @@ a:hover {
 .gallery-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(235px, 1fr));
-  gap: 2.1rem;
+  gap: 2rem;
 }
 
 .gallery-card {
-  background: linear-gradient(120deg, #ffe7c7 0%, #e2f1fa 60%, #e4d0ff 100%);
-  border-radius: 16px;
-  box-shadow: 0 6px 28px rgba(150,80,240,0.15), 0 2px 12px rgba(34,54,80,0.15);
-  padding: 1.6rem 1rem 1.2rem 1rem;
+  background: linear-gradient(135deg, #ffd6e8 0%, #a29bfe 70%, #3ec6a8 100%);
+  border-radius: 18px;
+  box-shadow: 0 8px 28px #f85c7f33, 0 2px 16px #3ec6a833;
+  padding: 1.7rem 1.1rem 1.2rem 1.1rem;
   display: flex;
   flex-direction: column;
   align-items: center;
-  transition: box-shadow 0.18s, transform 0.18s, border 0.18s;
-  border: 2.5px solid #ea2678;
+  border: 3px solid #f85c7f;
   position: relative;
   overflow: hidden;
+  transition: box-shadow 0.18s, transform 0.18s, border 0.18s;
 }
+
 .gallery-card:hover {
-  box-shadow: 0 12px 40px 0 #ea267833, 0 4px 20px #3ec6a833;
+  box-shadow: 0 14px 40px #3ec6a866, 0 6px 32px #f85c7f66;
   border-color: #3ec6a8;
-  transform: translateY(-7px) scale(1.045);
-  background: linear-gradient(120deg, #ffd6e8 0%, #d7f9f1 100%);
+  transform: translateY(-8px) scale(1.05);
+  background: linear-gradient(135deg, #f9f871 0%, #fae1dd 100%);
 }
+
 .gallery-img {
   max-width: 170px;
   max-height: 170px;
-  border-radius: 12px;
+  border-radius: 14px;
   object-fit: cover;
-  margin-bottom: 1.1rem;
-  box-shadow: 0 2px 16px #ea267855, 0 1px 8px #3ec6a877;
-  border: 3px solid #3ec6a8;
+  margin-bottom: 1.2rem;
+  box-shadow: 0 4px 18px #f85c7f22, 0 2px 10px #3ec6a833;
+  border: 4px solid #3ec6a8;
   background: #fff;
   transition: border 0.2s;
 }
+
 .gallery-card:hover .gallery-img {
-  border-color: #ea2678;
+  border-color: #f85c7f;
 }
+
 .gallery-info {
   width: 100%;
   text-align: left;
   font-size: 1.09em;
   margin-top: 0.4em;
 }
+
 .gallery-info strong {
-  color: #ea2678;
+  color: #f85c7f;
   font-weight: 700;
   text-shadow: 0 1px 0 #ffd6e9;
 }
+
 .gallery-info .date {
   color: #3ec6a8;
-  font-size: 1.02em;
+  font-size: 1.05em;
   margin-top: 0.3em;
   font-weight: 600;
   letter-spacing: 0.04em;
 }
+
 .gallery-tag {
   display: inline-block;
-  background: linear-gradient(90deg, #ea2678 0%, #3ec6a8 100%);
+  background: linear-gradient(90deg, #f85c7f 0%, #3ec6a8 100%);
   color: #fff;
-  font-size: 0.89em;
+  font-size: 0.95em;
   font-weight: 800;
-  border-radius: 7px 7px 7px 0;
-  padding: 0.38em 0.95em;
+  border-radius: 8px 8px 8px 0;
+  padding: 0.45em 1.05em;
   position: absolute;
   top: 0;
   right: 0;
-  margin: 0.7em 0.9em 0 0;
+  margin: 0.75em 1em 0 0;
   box-shadow: 0 2px 10px #fff8;
-  letter-spacing: 0.09em;
+  letter-spacing: 0.11em;
 }
+
 .no-image {
   padding:2.2em 0;
   color:#fff;
-  background: linear-gradient(90deg, #ea2678 0%, #3ec6a8 100%);
+  background: linear-gradient(90deg, #f85c7f 0%, #3ec6a8 100%);
   border-radius: 10px;
-  opacity: 0.9;
+  opacity: 0.96;
   width: 100%;
   font-weight: 700;
   text-align: center;
   box-shadow: 0 2px 16px #ea267855;
 }
+
 .pagination {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 1rem;
+  gap: 1.15rem;
   margin: 3rem 0 0 0;
-  font-size: 1.21em;
+  font-size: 1.24em;
 }
+
 .pagination a, .pagination span {
-  padding: 0.42em 1.25em;
-  border-radius: 10px;
+  padding: 0.48em 1.32em;
+  border-radius: 12px;
   text-decoration: none;
   color: #fff;
-  background: linear-gradient(90deg, #ea2678 0%, #3ec6a8 100%);
+  background: linear-gradient(90deg, #f85c7f 0%, #3ec6a8 100%);
   transition: background 0.15s, color 0.15s, box-shadow 0.15s;
-  border: 2px solid #ea2678;
+  border: 2.5px solid #f85c7f;
   margin: 0 0.13em;
   font-weight: 800;
   box-shadow: 0 1px 6px #fff6;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
 }
 .pagination a:hover {
-  background: linear-gradient(90deg, #3ec6a8 0%, #ea2678 100%);
-  color: #ea2678;
+  background: linear-gradient(90deg, #3ec6a8 0%, #f85c7f 100%);
+  color: #f85c7f;
   border-color: #3ec6a8;
   box-shadow: 0 2px 12px #3ec6a833;
 }
 .pagination .current {
-  background: linear-gradient(90deg, #ea2678 0%, #3ec6a8 100%);
+  background: linear-gradient(90deg, #f85c7f 0%, #3ec6a8 100%);
   color: #fff;
   font-weight: bold;
   border-color: #3ec6a8;
@@ -213,9 +226,10 @@ a:hover {
   border-color: #e7d2e4;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 700px) {
   .gallery-card { padding: 1rem 0.5rem; }
-  .gallery-grid { gap: 1.2rem; }
+  .gallery-grid { gap: 1.1rem; }
   .gallery-img { max-width: 100%; }
   .pagination { flex-direction: column; gap: 0.8rem; }
+  h1 { font-size: 1.3rem; }
 }
