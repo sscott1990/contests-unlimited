@@ -441,6 +441,12 @@ router.get('/', (req, res) => {
                 left: 10px;
                 font-size: 14px;
               }
+              .gallery-link {
+                position: fixed;
+                bottom: 10px;
+                right: 10px;
+                font-size: 14px;
+              }
             </style>
           </head>
           <body>
@@ -525,6 +531,7 @@ router.get('/', (req, res) => {
             </div>
 
             <a class="admin-link" href="/api/admin/uploads">Admin</a>
+            <a class="gallery-link" href="/gallery">Gallery</a>
 
             <script>
               // Countdown script for all contests (prize list)
