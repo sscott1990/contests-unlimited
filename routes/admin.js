@@ -940,6 +940,8 @@ router.get('/logout', (req, res) => {
   res.status(401).send('Logged out');
 });
 
+// ... everything above this is unchanged ...
+
 router.post('/update-status', express.json(), async (req, res) => {
   const { id, status } = req.body;
 //ended here
@@ -975,6 +977,7 @@ router.post('/update-status', express.json(), async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
 router.get('/dashboard-financials', async (req, res) => {
   try {
     const [uploads, creators] = await Promise.all([
@@ -994,12 +997,10 @@ router.get('/dashboard-financials', async (req, res) => {
     const DEFAULT_CONTEST_SEED = 1000;
     const DEFAULT_CONTEST_MIN = 200;
 
-    // Helper: is platform contest
     function isPlatformContest(creator) {
       return !creator || (typeof creator === 'string' && creator.trim().toLowerCase() === "contests unlimited");
     }
 
-    // Helper for seed/minimum logic for creators
     function getSeedAndMin(durationMonths, isPlatform) {
       if (isPlatform) {
         return { seed: DEFAULT_CONTEST_SEED, min: DEFAULT_CONTEST_MIN };
@@ -1010,7 +1011,6 @@ router.get('/dashboard-financials', async (req, res) => {
       return { seed: 1000, min: 200 };
     }
 
-    // Calculate prizes by contest (copied from index.js, matches frontend logic)
     function calculatePrizesByContest(uploads, creatorsArray, nowMs = Date.now()) {
       const entriesByContest = {};
       for (const upload of uploads) {
@@ -1019,7 +1019,6 @@ router.get('/dashboard-financials', async (req, res) => {
         entriesByContest[contest].push(upload);
       }
 
-      // Build contest info by slug for access to endDate and other props
       const contestInfoBySlug = {};
       if (Array.isArray(creatorsArray)) {
         for (const c of creatorsArray) {
@@ -1032,7 +1031,6 @@ router.get('/dashboard-financials', async (req, res) => {
       const prizes = {};
       for (const contestName in entriesByContest) {
         const entries = entriesByContest[contestName];
-        // Find the right contest info by slug (for user contests) or by contestTitle (for platform contests)
         let contestInfo = Object.values(contestInfoBySlug).find(
           c => c.slug === contestName || c.contestTitle === contestName
         ) || {};
@@ -1041,7 +1039,6 @@ router.get('/dashboard-financials', async (req, res) => {
 
         const entryFee = 100;
 
-        // --- Determine contest duration (in months) ---
         let durationMonths = 12;
         let seedAmount = DEFAULT_CONTEST_SEED;
         let minEntries = DEFAULT_CONTEST_MIN;
@@ -1067,13 +1064,11 @@ router.get('/dashboard-financials', async (req, res) => {
         let seedIncluded = false;
         let seedEligible = false;
 
-        // Find contest end time (ms)
         let endDateMs = null;
         if (contestInfo.endDate) {
           endDateMs = new Date(contestInfo.endDate).getTime();
         }
 
-        // Calculate non-pot splits (these always accumulate)
         if (isPlatform) {
           reserve = totalEntries * entryFee * 0.1;
           platformEarnings = totalEntries * entryFee * 0.3;
@@ -1087,8 +1082,6 @@ router.get('/dashboard-financials', async (req, res) => {
           platformEarnings = totalEntries * entryFee * 0.05;
         }
 
-        // ---- POT/SEED LOGIC ----
-        // If contest has ended:
         if (endDateMs && nowMs > endDateMs) {
           if (totalEntries >= minEntries) {
             pot = seedAmount + (totalEntries * entryFee * 0.6);
@@ -1100,7 +1093,6 @@ router.get('/dashboard-financials', async (req, res) => {
             seedEligible = false;
           }
         } else {
-          // Contest is ongoing (not ended)
           if (totalEntries >= minEntries) {
             pot = seedAmount + (totalEntries * entryFee * 0.6);
             seedIncluded = true;
@@ -1116,7 +1108,6 @@ router.get('/dashboard-financials', async (req, res) => {
           }
         }
 
-        // --- Improved contestTitle fallback: prettify contestName if no title ---
         let displayTitle = contestInfo.contestTitle;
         if (!displayTitle && contestName) {
           displayTitle = contestName.replace(/-default$/, '')
@@ -1253,7 +1244,19 @@ router.get('/dashboard-financials', async (req, res) => {
       if (!data) continue;
       const entryFee = 100;
       const isExpired = data.endDateMs && now > data.endDateMs;
-      const winner = 'TBD'; // You can enhance this if you track winners
+
+      // --- WINNER LOOKUP LOGIC ---
+      let winner = 'TBD';
+      if (isExpired) {
+        const winnerUpload = uploads.find(
+          u => u.contestName === title && u.isWinner
+        );
+        if (winnerUpload) {
+          winner = winnerUpload.name || winnerUpload.email || winnerUpload.customerEmail || winnerUpload.sessionId;
+        }
+      }
+      // ---
+
       const creator = data.creator || 'Contests Unlimited';
       const entriesCount = data.totalEntries;
       const minEntries = data.minEntries;
@@ -1305,7 +1308,7 @@ router.get('/dashboard-financials', async (req, res) => {
       }
     }
 
-    // Render a simple dashboard
+    // Render a simple dashboard (unchanged)
     res.send(`
       <html>
       <head>
