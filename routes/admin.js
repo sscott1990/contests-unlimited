@@ -664,7 +664,7 @@ router.get('/trivia', async (req, res) => {
   }
 });
 
-// Creators view with search bar and host
+// Creators view with search bar and host, now with address info
 router.get('/creators', async (req, res) => {
   try {
     const creators = await loadCreators();
@@ -682,7 +682,11 @@ router.get('/creators', async (req, res) => {
         (c.email || '').toLowerCase().includes(search) ||
         (c.contestTitle || '').toLowerCase().includes(search) ||
         (c.description || '').toLowerCase().includes(search) ||
-        (c.slug || '').toLowerCase().includes(search)
+        (c.slug || '').toLowerCase().includes(search) ||
+        (c.address || '').toLowerCase().includes(search) || // allow search by address too
+        (c.city || '').toLowerCase().includes(search) ||
+        (c.state || '').toLowerCase().includes(search) ||
+        (c.zipcode || '').toLowerCase().includes(search)
       );
     }
 
@@ -700,6 +704,12 @@ router.get('/creators', async (req, res) => {
           const end = new Date(creator.endDate).getTime();
           if (!isNaN(end) && end < now) isExpired = true;
         }
+        // Format address: street, city, state ZIP
+        const addressDisplay = [
+          creator.address || "",
+          creator.city || "",
+          (creator.state || "") + (creator.zipcode ? " " + creator.zipcode : "")
+        ].filter(Boolean).join(', ');
         return `
           <tr data-id="${creator.id || creator.timestamp}"${isExpired ? ' class="expired-row"' : ''}>
             <td>${creator.creator || ''}</td>
@@ -708,6 +718,7 @@ router.get('/creators', async (req, res) => {
             <td>${creator.description || ''}</td>
             <td>${new Date(creator.timestamp).toLocaleString()}</td>
             <td>${creator.status || 'Pending'}</td>
+            <td>${addressDisplay}</td>
             <td>${creator.email ? `<a href="/creator-dashboard.html?email=${encodeURIComponent(creator.email)}" target="_blank">Go to Dashboard</a>` : ''}</td>
             <td>
               <button onclick="handleStatus('${creator.id || creator.timestamp}', 'approved')">Approve</button>
@@ -763,7 +774,7 @@ router.get('/creators', async (req, res) => {
           <a href="/api/admin/logout">Logout</a>
         </nav>
         <form class="search-bar" method="get" action="/api/admin/creators">
-          <input type="text" name="search" value="${search.replace(/"/g, "&quot;")}" placeholder="Search by name, email, or contest..." />
+          <input type="text" name="search" value="${search.replace(/"/g, "&quot;")}" placeholder="Search by name, email, contest, or address..." />
           <button type="submit">Search</button>
         </form>
         <table>
@@ -775,6 +786,7 @@ router.get('/creators', async (req, res) => {
               <th>Description</th>
               <th>Submitted</th>
               <th>Status</th>
+              <th>Address</th>
               <th>Link</th>
               <th>Actions</th>
             </tr>
@@ -803,13 +815,13 @@ router.get('/creators', async (req, res) => {
 
       if (status === 'approved' && result.slug) {
         // Add or update the link cell
-        let linkCell = row.querySelector('td:nth-child(7)');
+        let linkCell = row.querySelector('td:nth-child(8)');
         if (linkCell) {
           linkCell.innerHTML = '<a href="/contest/' + result.slug + '" target="_blank">View Contest</a>';
         }
       } else {
         // Remove link if rejected
-        let linkCell = row.querySelector('td:nth-child(7)');
+        let linkCell = row.querySelector('td:nth-child(8)');
         if (linkCell) {
           linkCell.innerHTML = '';
         }
