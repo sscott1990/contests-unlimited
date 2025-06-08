@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="/styles.css">
   <style>
+    /* ... existing styles ... */
     form {
       max-width: 600px;
       margin: 50px auto;
@@ -149,6 +150,17 @@
     <label for="email">Email Address:</label>
     <input type="email" name="email" id="email" required>
 
+    <!-- START: Physical Address Fields -->
+    <label for="address">Physical Address (Street, Apt/Suite):</label>
+    <input type="text" name="address" id="address" required>
+
+    <label for="city">City:</label>
+    <input type="text" name="city" id="city" required>
+
+    <label for="zipcode">ZIP Code:</label>
+    <input type="text" name="zipcode" id="zipcode" required pattern="\d{5}(-\d{4})?">
+    <!-- END: Physical Address Fields -->
+
     <label for="state">Select Your Home State:</label>
     <select name="state" id="state" required>
       <option value="">-- Select a State --</option>
@@ -277,6 +289,7 @@
   <a class="home-btn" href="/">← Back to Homepage</a>
 
   <div class="terms-section">
+    <!-- ... terms and conditions ... -->
     <h3>Terms and Conditions for Contest Creators</h3>
     <ul>
       <li>Submitting a contest is <strong>free</strong>. There is no fee to create or submit a contest for approval.</li>
@@ -327,6 +340,9 @@
     const descriptionInput = document.getElementById('description');
     const creatorInput = document.getElementById('creator');
     const emailInput = document.getElementById('email');
+    const addressInput = document.getElementById('address');
+    const cityInput = document.getElementById('city');
+    const zipcodeInput = document.getElementById('zipcode');
     const captionUploadSection = document.getElementById('captionUploadSection');
     const captionFileInput = document.getElementById('captionFile');
 
@@ -345,6 +361,9 @@
         descriptionInput.value &&
         creatorInput.value &&
         emailInput.value &&
+        addressInput.value &&
+        cityInput.value &&
+        zipcodeInput.value &&
         selectedState &&
         allChecked &&
         passwordFilled &&
@@ -374,6 +393,9 @@
     descriptionInput.addEventListener('input', updateSubmitButton);
     creatorInput.addEventListener('input', updateSubmitButton);
     emailInput.addEventListener('input', updateSubmitButton);
+    addressInput.addEventListener('input', updateSubmitButton);
+    cityInput.addEventListener('input', updateSubmitButton);
+    zipcodeInput.addEventListener('input', updateSubmitButton);
 
     // === Trivia Builder ===
     contestType.addEventListener('change', function () {
@@ -494,6 +516,10 @@
       formData.append('description', descriptionInput.value);
       formData.append('creator', creatorInput.value);
       formData.append('email', emailInput.value);
+      // Add address info
+      formData.append('address', addressInput.value);
+      formData.append('city', cityInput.value);
+      formData.append('zipcode', zipcodeInput.value);
       formData.append('state', stateSelect.value);
       formData.append('password', passwordInput.value);
       formData.append('creatorSessionId', creatorSessionId);

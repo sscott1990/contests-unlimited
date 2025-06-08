@@ -301,7 +301,7 @@ app.post('/api/payment/upload', upload.single('file'), async (req, res) => {
   }
 });
 
-// === 🚩 Creator contest creation with password hashing, duration/seed/min logic, 
+// === 🚩 Creator contest creation with address collection, password hashing, duration/seed/min logic, 
 app.post('/api/creator/upload', upload.single('captionFile'), async (req, res) => {
   try {
     const {
@@ -313,7 +313,11 @@ app.post('/api/creator/upload', upload.single('captionFile'), async (req, res) =
       prizeModel,
       password,
       durationMonths,
-      triviaQuestions
+      triviaQuestions,
+      address,
+      city,
+      state,
+      zipcode
     } = req.body;
 
     if (!creatorSessionId) {
@@ -358,7 +362,7 @@ app.post('/api/creator/upload', upload.single('captionFile'), async (req, res) =
     if (req.file && req.file.buffer && req.file.originalname) {
       uploadedFileName = req.file.originalname;
       const s3Params = {
-        Bucket: ENTRIES_BUCKET, // Your S3 bucket name (make sure this is set correctly)
+        Bucket: ENTRIES_BUCKET,
         Key: `creator-files/${slug}-${uploadedFileName}`,
         Body: req.file.buffer,
         ContentType: req.file.mimetype,
@@ -370,12 +374,16 @@ app.post('/api/creator/upload', upload.single('captionFile'), async (req, res) =
       console.log('File will be accessible at:', fileUrl);
     }
 
-    // Save the new creator contest info
+    // Save the new creator contest info, now including address fields
     creators.push({
       sessionId: creatorSessionId,
       contestTitle: contestName,
       creator,
       email,
+      address,     // <-- new
+      city,        // <-- new
+      state,       // <-- new
+      zipcode,     // <-- new
       description,
       prizeModel,
       passwordHash,
