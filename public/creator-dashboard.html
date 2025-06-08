@@ -16,9 +16,31 @@
     .logout-btn { float: right; margin-top: -10px; background: #fff; border: 2px solid #007849; color: #007849; padding: 0.5em 1em; border-radius: 5px; cursor: pointer; font-weight: bold; }
     .logout-btn:hover { background: #007849; color: #fff; }
     .seed-info { margin-top: 6px; color: #005b96; font-size: 0.97em;}
+    .w9-email-notice {
+      background: #e8f7ff;
+      border: 1px solid #bee3f8;
+      color: #15597c;
+      padding: 0.85em 1.5em;
+      margin: 1.25em auto 2em auto;
+      max-width: 900px;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 1.04em;
+      box-shadow: 0 0 8px rgba(30, 144, 255, 0.08);
+      display: flex;
+      align-items: center;
+      gap: 0.7em;
+    }
+    .w9-email-notice svg {
+      min-width: 1.5em;
+      min-height: 1.5em;
+      vertical-align: middle;
+      margin-right: 0.25em;
+    }
     @media (max-width: 700px) {
       .container { max-width: 100%; padding: 1em; }
       .logout-btn { float: none; display: block; margin: 1em auto; }
+      .w9-email-notice { padding: 1em 0.7em; font-size: 0.98em;}
     }
   </style>
 </head>
@@ -28,6 +50,13 @@
   <input type="file" id="w9File" accept=".pdf" />
   <button onclick="uploadW9()">Submit W-9</button>
   <div id="w9Status" style="margin-top: 0.5em; font-size: 0.9em;"></div>
+</div>
+
+<div class="w9-email-notice">
+  <svg viewBox="0 0 24 24" fill="none" width="24" height="24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#38b6ff"/><text x="12" y="17" text-anchor="middle" font-size="13" font-family="Arial, sans-serif" fill="#fff" font-weight="bold">i</text></svg>
+  <span>
+    <strong>Notice:</strong> When submitting your W-9 form, <u>please use the same email address you use for your creator account</u>. This ensures your tax forms and payments are properly matched and processed.
+  </span>
 </div>
 
 <div id="w9Advisory" style="
