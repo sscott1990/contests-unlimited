@@ -692,6 +692,29 @@ app.get('/uploads/:sessionId/:fileName', async (req, res) => {
   }
 });
 
+// === 🚩 Disqualify upload API ===
+app.post('/api/admin/disqualify-upload', async (req, res) => {
+  try {
+    const { sessionId, contestName } = req.body;
+    if (!sessionId || !contestName) {
+      return res.status(400).json({ success: false, error: 'Missing sessionId or contestName.' });
+    }
+    const uploads = await getUploads();
+    const idx = uploads.findIndex(
+      u => u.sessionId === sessionId && u.contestName === contestName
+    );
+    if (idx === -1) {
+      return res.status(404).json({ success: false, error: 'Upload not found.' });
+    }
+    uploads[idx].isDisqualified = true;
+    await saveUploads(uploads);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Failed to disqualify upload:', err);
+    res.status(500).json({ success: false, error: 'Failed to disqualify upload.' });
+  }
+});
+
 // === 🚀 Start server ===
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
