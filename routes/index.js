@@ -397,6 +397,16 @@ router.get('/', (req, res) => {
                 right: 10px;
                 font-size: 14px;
               }
+              /* Scrollable prize/host info section */
+              .contest-info-scroll {
+                max-height: 350px;
+                overflow-y: auto;
+                border: 1px solid #ddd;
+                border-radius: 6px;
+                background: #fafbfd;
+                padding: 16px;
+                margin: 20px 0 30px 0;
+              }
             </style>
           </head>
           <body>
@@ -408,7 +418,9 @@ router.get('/', (req, res) => {
             </p>
 
             <h2>Current Jackpot Info</h2>
-            <ul>${prizeList || '<li>No entries yet</li>'}</ul>
+            <div class="contest-info-scroll">
+              <ul>${prizeList || '<li>No entries yet</li>'}</ul>
+            </div>
 
 <!-- Judging Criteria Block -->
 ${judgingCriteriaHtml}
