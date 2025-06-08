@@ -405,6 +405,20 @@ router.get('/', (req, res) => {
           </div>
         `).join('');
 
+        // --- Judging Criteria Section ---
+        const judgingCriteriaHtml = `
+        <div style="margin-top: 40px; margin-bottom: 30px; background: #f5f9f7; border-left: 5px solid #0BD992; border-radius: 8px; padding: 18px 22px; max-width: 750px; margin-left: auto; margin-right: auto;">
+          <h2>Judging Criteria</h2>
+          <ul style="font-size:1.07em; color:#222;">
+            <li><b>Art Contest:</b> Creativity and originality, artistic technique and skill, adherence to theme or prompt, overall impression.</li>
+            <li><b>Photo Contest:</b> Creativity and originality, technical quality (focus, lighting, composition), relevance to theme or prompt, overall impact.</li>
+            <li><b>Caption Contest:</b> Creativity, wit, or humor; relevance to the image or prompt; clarity and conciseness.</li>
+            <li><b>Trivia Contest:</b> Number of correct answers, speed of response (if applicable). Top scorer or fastest correct responder wins; no random selection.</li>
+          </ul>
+          <div style="color:#555; font-size:0.96em; margin-top:8px;">All judging is performed solely by the contest administrator, based on these published criteria. The administrator’s decisions are final.</div>
+        </div>
+        `;
+
         res.send(`
           <!DOCTYPE html>
           <html>
@@ -459,6 +473,9 @@ router.get('/', (req, res) => {
 
             <h2>Current Jackpot Info</h2>
             <ul>${prizeList || '<li>No entries yet</li>'}</ul>
+
+<!-- Judging Criteria Block -->
+${judgingCriteriaHtml}
 
 <!-- Seed/Minimum Matrix Section -->
 <div style="margin: 35px auto 14px auto; text-align:center; max-width:550px; background:#ecf7f2; border-left:5px solid #007849; border-radius:8px; padding:14px 16px;">
