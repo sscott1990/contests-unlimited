@@ -87,14 +87,22 @@
   contestSelect.addEventListener('change', async function () {
     const selectedSlug = contestSelect.value;
     const isTrivia = selectedSlug && selectedSlug.startsWith("trivia-contest-");
+    const isCaption = selectedSlug && selectedSlug.startsWith("caption-contest-");
 
-    // Handle Trivia Contest logic
-    if (isTrivia) {
+    // PATCH: Hide file input for both trivia and caption contests
+    if (isTrivia || isCaption) {
       fileInput.disabled = true;
       fileInput.style.display = 'none';
       fileInput.required = false;
-      triviaSection.style.display = 'block';
+    } else {
+      fileInput.disabled = false;
+      fileInput.style.display = '';
+      fileInput.required = true;
+    }
 
+    // Trivia Contest logic
+    if (isTrivia) {
+      triviaSection.style.display = 'block';
       [...document.querySelectorAll('input[type="radio"]')].forEach(r => r.required = false);
       await loadTriviaQuestions();
       [...triviaQuestionsDiv.querySelectorAll('input[type="radio"]')].forEach(r => r.required = true);
@@ -102,17 +110,14 @@
       startTimer();
       timerStarted = true;
     } else {
-      fileInput.disabled = false;
-      fileInput.style.display = '';
-      fileInput.required = true;
       triviaSection.style.display = 'none';
       [...document.querySelectorAll('input[type="radio"]')].forEach(r => r.required = false);
       clearInterval(timer);
       timerStarted = false;
     }
 
-    // Minimal revision: Caption Contest custom image logic
-    if (selectedSlug && selectedSlug.startsWith('caption-contest-') && selectedSlug !== "caption-contest-default") {
+    // Caption Contest custom image logic
+    if (isCaption && selectedSlug !== "caption-contest-default") {
       // Fetch contest info to get the fileUrl
       try {
         const res = await fetch('/api/contest/' + encodeURIComponent(selectedSlug));
@@ -138,15 +143,8 @@
             `;
             captionImageContainer.appendChild(captionForm);
 
-            // Ensure file input is hidden/disabled for custom caption contest
-            fileInput.disabled = true;
-            fileInput.style.display = 'none';
-            fileInput.required = false;
-
             // Ensure captionEntry is submitted as "file" (simulate a file upload with caption text)
-            // Remove any previous listeners to avoid multiple
             document.getElementById('uploadForm').onsubmit = function(e) {
-              // If not a custom caption contest, let normal submission happen
               if (
                 !(
                   contestSelect.value &&
@@ -167,8 +165,6 @@
               const formData = new FormData(document.getElementById('uploadForm'));
               const captionBlob = new Blob([captionText], { type: "text/plain" });
               formData.set('file', captionBlob, 'caption.txt');
-
-              // --- PATCH: Also add contestName as a hidden field on submission (for robustness) ---
               formData.set('contestName', contestSelect.value);
 
               fetch(document.getElementById('uploadForm').action, {
@@ -199,11 +195,6 @@
       }
     } else {
       captionImageContainer.innerHTML = '';
-      // Restore file input
-      fileInput.disabled = false;
-      fileInput.style.display = '';
-      fileInput.required = true;
-      // Remove special onsubmit, let default happen
       document.getElementById('uploadForm').onsubmit = null;
     }
 
@@ -277,9 +268,7 @@
     alert('Time is up! Answers are now locked.');
   }
 
-  // PATCH: Ensure contestName is always included on form submit (even for default submission)
   document.getElementById('uploadForm').addEventListener('submit', function (event) {
-    // For trivia, populate answers/time as before
     const selectedSlug = contestSelect.value;
     const isTrivia = selectedSlug && selectedSlug.startsWith("trivia-contest-");
     if (isTrivia) {
@@ -294,7 +283,6 @@
       triviaAnswersInput.value = JSON.stringify(answers);
       timeTakenInput.value = ((Date.now() - startTime) / 1000);
     }
-    // --- PATCH: Add contestName as a hidden field if missing (for robustness) ---
     const form = event.target;
     if (!form.querySelector('input[name="contestName"]')) {
       const hiddenInput = document.createElement('input');
@@ -343,26 +331,13 @@
   const imgParam = urlParams.get('img');
   const imgSlug = urlParams.get('slug');
 
-  // The next block is kept for backwards compatibility, but actual logic is now handled in contestSelect change event
   if (type === 'caption' && imgParam && imgSlug && imgSlug.startsWith('caption-contest-')) {
-    contestSelect.value = imgSlug; // Pre-select the contest
-    // This will trigger the contestSelect change event,
-    // which now loads and displays the image & caption input
+    contestSelect.value = imgSlug;
     contestSelect.dispatchEvent(new Event('change'));
   }
 
   window.addEventListener('DOMContentLoaded', () => {
-    const selectedSlug = contestSelect.value;
-    const isTrivia = selectedSlug && selectedSlug.startsWith("trivia-contest-");
-    if (isTrivia) {
-      fileInput.disabled = true;
-      fileInput.style.display = 'none';
-      fileInput.required = false;
-      triviaSection.style.display = 'block';
-      loadTriviaQuestions();
-      startTimer();
-      timerStarted = true;
-    }
+    contestSelect.dispatchEvent(new Event('change'));
     updatePrizePoolDisplay();
   });
 
