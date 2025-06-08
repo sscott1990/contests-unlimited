@@ -479,7 +479,8 @@ app.get('/api/contests/approved', async (req, res) => {
     );
     res.json(approved.map(entry => ({
       name: `${entry.contestTitle} (hosted by ${entry.creator})`,
-      slug: entry.slug
+      slug: entry.slug,
+      endDate: entry.endDate
     })));
   } catch (err) {
     console.error('Failed to load approved contests:', err);
