@@ -19,12 +19,16 @@ const PLATFORM_CONTESTS = [
   { contestTitle: 'Caption Contest' }
 ];
 
-// Map default contest slugs to their titles
+// Map default contest slugs to their titles (expanded for robust mapping, including legacy values)
 const PLATFORM_SLUG_MAP = {
   "art-contest-default": "Art Contest",
+  "Art Contest": "Art Contest",
   "photo-contest-default": "Photo Contest",
+  "Photo Contest": "Photo Contest",
   "trivia-contest-default": "Trivia Contest",
-  "caption-contest-default": "Caption Contest"
+  "Trivia Contest": "Trivia Contest",
+  "caption-contest-default": "Caption Contest",
+  "Caption Contest": "Caption Contest"
 };
 
 // Seed/minimum settings by duration (in months)
@@ -81,6 +85,7 @@ function calculatePrizesByContest(uploads, creatorsArray, nowMs = Date.now()) {
     // ---- PATCH: Always use string for contestName, map slug to title for platform contests ----
     let rawContestName = upload.contestName;
     if (Array.isArray(rawContestName)) rawContestName = rawContestName[0];
+    // Expanded mapping for robust consolidation of platform contest buckets
     const contestKey = PLATFORM_SLUG_MAP[rawContestName] || rawContestName || 'Unknown';
     if (!entriesByContest[contestKey]) entriesByContest[contestKey] = [];
     entriesByContest[contestKey].push(upload);
