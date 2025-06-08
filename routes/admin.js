@@ -71,21 +71,12 @@ router.use((req, res, next) => {
 });
 
 // JSON view of Stripe entries
-router.get('/entries', async (req, res) => {
-  try {
-    const entries = await loadEntries();
-    res.json(entries);
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to load entries' });
-  }
-});
-
-// HTML view of entries with search bar (name, email, address, contest, date)
 router.get('/entries-view', async (req, res) => {
   try {
+    const RESTRICTED_STATES = ['NY', 'WA', 'NJ', 'PR', 'GU', 'AS', 'VI', 'MP', 'RI']; // Add this line
     const entries = await loadEntries();
     const creators = await loadCreators();
-    const uploads = await loadUploads(); // Make sure you add this line!
+    const uploads = await loadUploads();
 
     if (!entries || entries.length === 0) {
       return res.send('<h2>No entries found</h2>');
@@ -129,58 +120,64 @@ router.get('/entries-view', async (req, res) => {
     const start = (page - 1) * perPage;
     const paginatedEntries = filteredEntries.slice(start, start + perPage);
 
-  // Improved matching: ignore case and whitespace, always extract filename from fileUrl if present
-const rows = paginatedEntries.map(entry => {
-  const name = `${entry.billingAddress?.first_name || ''} ${entry.billingAddress?.last_name || ''}`.trim();
-  const email = (entry.customerEmail || entry.billingAddress?.email || '').trim().toLowerCase();
-  const contest = (entry.contestName || '').trim().toLowerCase();
-  const date = entry.timestamp ? new Date(entry.timestamp).toLocaleString() : '';
-  const address = [
-    entry.billingAddress?.address_1 || '',
-    entry.billingAddress?.address_2 || '',
-    entry.billingAddress?.city || '',
-    entry.billingAddress?.state || '',
-    entry.billingAddress?.postal_code || '',
-    entry.billingAddress?.country || ''
-  ].filter(Boolean).join(', ');
+    // Improved matching: ignore case and whitespace, always extract filename from fileUrl if present
+    const rows = paginatedEntries.map(entry => {
+      const name = `${entry.billingAddress?.first_name || ''} ${entry.billingAddress?.last_name || ''}`.trim();
+      const email = (entry.customerEmail || entry.billingAddress?.email || '').trim().toLowerCase();
+      const contest = (entry.contestName || '').trim().toLowerCase();
+      const date = entry.timestamp ? new Date(entry.timestamp).toLocaleString() : '';
+      const address = [
+        entry.billingAddress?.address_1 || '',
+        entry.billingAddress?.address_2 || '',
+        entry.billingAddress?.city || '',
+        entry.billingAddress?.state || '',
+        entry.billingAddress?.postal_code || '',
+        entry.billingAddress?.country || ''
+      ].filter(Boolean).join(', ');
 
-  // Try to match by contest and email, fallback to contest and name
-  let uploadMatch = uploads.find(u => {
-    const uContest = (u.contestName || '').trim().toLowerCase();
-    const uEmail = (u.email || u.customerEmail || '').trim().toLowerCase();
-    const uName = (u.name || '').trim().toLowerCase();
-    return (
-      uContest === contest &&
-      (
-        (uEmail && uEmail === email) ||
-        (uName && uName === name.toLowerCase())
-      )
-    );
-  });
+      // Flag restricted state
+      const userState = (entry.billingAddress?.state || '').toUpperCase();
+      const restrictedFlag = RESTRICTED_STATES.includes(userState)
+        ? ' <span style="color:red;font-weight:bold;">⚠️ Restricted State</span>'
+        : '';
 
-  // Always extract filename from fileUrl if present
-  let filename = '';
-  if (uploadMatch) {
-    if (uploadMatch.filename) {
-      filename = uploadMatch.filename;
-    } else if (uploadMatch.fileUrl) {
-      try {
-        filename = uploadMatch.fileUrl.split('/').pop();
-      } catch {
-        filename = '';
+      // Try to match by contest and email, fallback to contest and name
+      let uploadMatch = uploads.find(u => {
+        const uContest = (u.contestName || '').trim().toLowerCase();
+        const uEmail = (u.email || u.customerEmail || '').trim().toLowerCase();
+        const uName = (u.name || '').trim().toLowerCase();
+        return (
+          uContest === contest &&
+          (
+            (uEmail && uEmail === email) ||
+            (uName && uName === name.toLowerCase())
+          )
+        );
+      });
+
+      // Always extract filename from fileUrl if present
+      let filename = '';
+      if (uploadMatch) {
+        if (uploadMatch.filename) {
+          filename = uploadMatch.filename;
+        } else if (uploadMatch.fileUrl) {
+          try {
+            filename = uploadMatch.fileUrl.split('/').pop();
+          } catch {
+            filename = '';
+          }
+        }
       }
-    }
-  }
 
-  return `
-    <tr>
-      <td>${name}</td>
-      <td>${email}</td>
-      <td>${address}</td>
-      <td>${date}</td>
-    </tr>
-  `;
-}).join('');
+      return `
+        <tr>
+          <td>${name}${restrictedFlag}</td>
+          <td>${email}</td>
+          <td>${address}</td>
+          <td>${date}</td>
+        </tr>
+      `;
+    }).join('');
 
     // Pagination controls html
     let paginationControls = `<div style="margin-top: 1rem;">`;
@@ -212,6 +209,7 @@ const rows = paginatedEntries.map(entry => {
           .search-bar input { padding: 6px 10px; font-size: 1em; min-width: 200px; }
           .search-bar button { padding: 6px 14px; }
           div.pagination { margin-top: 1rem; }
+          .restricted-flag { color: red; font-weight: bold; }
         </style>
       </head>
       <body>
