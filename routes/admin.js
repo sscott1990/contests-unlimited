@@ -73,7 +73,7 @@ router.use((req, res, next) => {
 // JSON view of Stripe entries
 router.get('/entries-view', async (req, res) => {
   try {
-    const RESTRICTED_STATES = ['NY', 'WA', 'NJ', 'PR', 'GU', 'AS', 'VI', 'MP', 'RI']; // Add this line
+    const RESTRICTED_STATES = ['NY', 'WA', 'NJ', 'PR', 'GU', 'AS', 'VI', 'MP', 'RI', 'FL', 'AZ']; // Add this line
     const entries = await loadEntries();
     const creators = await loadCreators();
     const uploads = await loadUploads();
@@ -252,7 +252,7 @@ router.get('/entries-view', async (req, res) => {
 // HTML view of uploaded files with pagination, host column, and contest search
 router.get('/uploads', async (req, res) => {
   try {
-    const RESTRICTED_STATES = ['NY', 'WA', 'NJ', 'PR', 'GU', 'AS', 'VI', 'MP', 'RI'];
+    const RESTRICTED_STATES = ['NY', 'WA', 'NJ', 'PR', 'GU', 'AS', 'VI', 'MP', 'RI', 'FL', 'AZ'];
     const uploads = await loadUploads();
     const creators = await loadCreators();
 
@@ -686,7 +686,7 @@ router.get('/trivia', async (req, res) => {
 // Creators view with search bar and host, now with address info
 router.get('/creators', async (req, res) => {
   try {
-    const RESTRICTED_STATES = ['NY', 'WA', 'NJ', 'PR', 'GU', 'AS', 'VI', 'MP', 'RI']; // <-- Add this line if not global
+    const RESTRICTED_STATES = ['NY', 'WA', 'NJ', 'PR', 'GU', 'AS', 'VI', 'MP', 'RI', 'FL', 'AZ']; // <-- Add this line if not global
     const creators = await loadCreators();
 
     if (!creators || creators.length === 0) {
