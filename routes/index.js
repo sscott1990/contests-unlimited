@@ -523,6 +523,7 @@ router.get('/', (req, res) => {
                 <li>Only participants aged 18 and older are eligible to enter.</li>
                 <li>Any attempt to manipulate or defraud the contest will result in disqualification.</li>
                 <li>By entering, you agree to the official rules and the final decisions of the contest administrators.</li>
+                <li><strong>Judging Criteria:</strong> Winners are selected based solely on skill, creativity, accuracy, or merit as outlined in the contest description. No element of chance is used to determine winners. Judging is performed according to clear and objective criteria by the contest administrator. All entries will be judged solely by the contest administrator. The administrator’s decisions are final and based on the published judging criteria.</li>
               </ul>
               <h3>Refund Policy</h3>
               <p>All contest entry fees are <strong>non-refundable</strong>. Once payment is submitted, no refunds will be issued under any circumstances, including disqualification or withdrawal.</p>
