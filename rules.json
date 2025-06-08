@@ -4,9 +4,9 @@
     "rules": [
       "Submit one original photo related to the contest theme.",
       "Photos must be taken by the entrant and must not be AI-generated.",
-      "No watermarks or identifying text allowed.",
-      "No copyrighted material or offensive content.",
-      "Winners will be selected based on creativity and composition.",
+      "No watermarks, identifying text, or copyrighted material.",
+      "Photos must not contain offensive content.",
+      "Entries will be judged on creativity, originality, technical quality (focus, lighting, composition), relevance to the theme, and overall impact.",
       "Must be 18 years or older to enter.",
       "Void where prohibited."
     ]
@@ -14,11 +14,10 @@
   {
     "name": "Art Contest",
     "rules": [
-      "Submit one original artwork (drawing, painting, digital, etc.).",
-      "All art must be created by the entrant and must not use AI tools.",
-      "Artwork should relate to the specified theme (if applicable).",
-      "Offensive or explicit content will be disqualified.",
-      "Entries will be judged on creativity, skill, and originality.",
+      "Submit one original artwork (drawing, painting, digital, etc.) related to the contest theme.",
+      "All art must be created solely by the entrant and may not use AI tools.",
+      "Artwork should not include copyrighted material or offensive/explicit content.",
+      "Entries will be judged on creativity, originality, artistic technique/skill, adherence to theme, and overall impression.",
       "Must be 18 years or older to enter.",
       "Void where prohibited."
     ]
@@ -27,10 +26,9 @@
     "name": "Trivia Contest",
     "rules": [
       "Submit answers to the official trivia questions provided.",
-      "Only one entry per person is allowed.",
-      "Answers must be submitted before the deadline to be considered.",
-      "Winners will be determined by the number of correct answers first, then time completed to the millisecond.",
-      "In the event of a tie, a random drawing will determine the winner.",
+      "Answers must be submitted before the contest deadline.",
+      "Winners are determined by the highest number of correct answers; in case of a tie, the fastest correct entry wins.",
+      "No random selection is used.",
       "Must be 18 years or older to enter.",
       "Void where prohibited."
     ]
@@ -38,14 +36,15 @@
   {
     "name": "Caption Contest",
     "rules": [
-      "A photo will be provided for each contest.",
-      "Entrants must submit an original caption for the photo.",
-      "Captions must be family-friendly and not contain offensive language or content.",
-      "Each participant may submit only one caption per contest.",
-      "Captions are judged based on creativity, originality, and relevance to the photo.",
-      "At the end of the contest, the best caption as determined by the contest judges will win the entire prize pool.",
+      "A photo will be provided for the contest.",
+      "Submit one original, family-friendly caption relevant to the photo.",
+      "Captions must not contain offensive language or content.",
+      "Entries are judged on creativity, originality, wit/humor, clarity, and relevance to the photo.",
+      "The best caption, as determined by the contest administrator, will win the entire prize pool.",
       "Entries submitted after the contest deadline will not be considered.",
-      "By participating, you agree to abide by the official rules and the decisions of the contest administrators, which are final."
+      "By participating, you agree to abide by the official rules and the decisions of the contest administrator, which are final.",
+      "Must be 18 years or older to enter.",
+      "Void where prohibited."
     ]
   }
 ]

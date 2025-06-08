@@ -254,6 +254,7 @@ const rows = paginatedEntries.map(entry => {
 // HTML view of uploaded files with pagination, host column, and contest search
 router.get('/uploads', async (req, res) => {
   try {
+    const RESTRICTED_STATES = ['NY', 'WA', 'NJ', 'PR', 'GU', 'AS', 'VI', 'MP', 'RI']; // Add this line if not defined globally
     const uploads = await loadUploads();
     const creators = await loadCreators();
 
@@ -341,6 +342,13 @@ router.get('/uploads', async (req, res) => {
         (c.contestTitle && upload.contestName === c.contestTitle)
       );
 
+      // --- Add restricted state flag for uploads ---
+      // Try to get state from upload.state or upload.billingAddress.state
+      const userState = (upload.state || upload.billingAddress?.state || '').toUpperCase();
+      const restrictedFlag = RESTRICTED_STATES.includes(userState)
+        ? ' <span style="color:red;font-weight:bold;">⚠️ Restricted State</span>'
+        : '';
+
       let fileCell = 'No file available';
 
       // For custom caption contests, show contest image and caption
@@ -396,7 +404,7 @@ router.get('/uploads', async (req, res) => {
 
       return `
         <tr>
-          <td>${upload.name || ''}</td>
+          <td>${upload.name || ''}${restrictedFlag}</td>
           <td>${upload.contestName || ''}</td>
           <td>${upload.host || ''}</td>
           <td>${date}</td>
@@ -667,6 +675,7 @@ router.get('/trivia', async (req, res) => {
 // Creators view with search bar and host, now with address info
 router.get('/creators', async (req, res) => {
   try {
+    const RESTRICTED_STATES = ['NY', 'WA', 'NJ', 'PR', 'GU', 'AS', 'VI', 'MP', 'RI']; // <-- Add this line if not global
     const creators = await loadCreators();
 
     if (!creators || creators.length === 0) {
@@ -710,9 +719,16 @@ router.get('/creators', async (req, res) => {
           creator.city || "",
           (creator.state || "") + (creator.zipcode ? " " + creator.zipcode : "")
         ].filter(Boolean).join(', ');
+
+        // Add restricted state flag if needed
+        const creatorState = (creator.state || '').toUpperCase();
+        const restrictedFlag = RESTRICTED_STATES.includes(creatorState)
+          ? ' <span style="color:red;font-weight:bold;">⚠️ Restricted State</span>'
+          : '';
+
         return `
           <tr data-id="${creator.id || creator.timestamp}"${isExpired ? ' class="expired-row"' : ''}>
-            <td>${creator.creator || ''}</td>
+            <td>${creator.creator || ''}${restrictedFlag}</td>
             <td>${creator.email || ''}</td>
             <td>${creator.contestTitle || ''}</td>
             <td>${creator.description || ''}</td>
