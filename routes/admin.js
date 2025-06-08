@@ -401,11 +401,22 @@ router.get('/uploads', async (req, res) => {
         }
       }
 
+      // --- Winner / Disqualify logic ---
       let winnerCell = '';
-      if (upload.isWinner) {
+      // If upload is disqualified, always show Disqualified and do not show winner button
+      if (upload.isDisqualified) {
+        winnerCell = '<b style="color:red;">Disqualified</b>';
+      } else if (upload.isWinner) {
         winnerCell = '<b style="color:green;">Winner</b>';
       } else {
-        winnerCell = `<button onclick="confirmWinner('${upload.sessionId}', '${upload.contestName || ''}')">Winner</button>`;
+        // Show Disqualify button always
+        let disqualifyBtn = `<button onclick="disqualifyUpload('${upload.sessionId}', '${upload.contestName || ''}')">Disqualify</button>`;
+        // Only show Winner button if contest has ended and not disqualified
+        let winnerBtn = '';
+        if (isExpired) {
+          winnerBtn = `<button onclick="confirmWinner('${upload.sessionId}', '${upload.contestName || ''}')">Winner</button>`;
+        }
+        winnerCell = `${disqualifyBtn}${winnerBtn ? '<br>' + winnerBtn : ''}`;
       }
 
       // --- Highlight row red if contest expired ---
@@ -510,6 +521,24 @@ router.get('/uploads', async (req, res) => {
               }
             })
             .catch(() => alert("Failed to select winner."));
+          }
+          function disqualifyUpload(sessionId, contestName) {
+            if (!confirm("Are you sure you want to disqualify this entry? This cannot be undone.")) return;
+            fetch('/api/admin/disqualify-upload', {
+              method: 'POST',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify({ sessionId, contestName })
+            })
+            .then(res => res.json())
+            .then(data => {
+              if (data.success) {
+                alert("Entry disqualified!");
+                location.reload();
+              } else {
+                alert("Failed to disqualify entry.");
+              }
+            })
+            .catch(() => alert("Failed to disqualify entry."));
           }
         </script>
       </body>

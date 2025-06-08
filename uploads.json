@@ -1,1 +1,51 @@
-[]
+[
+  {
+    "sessionId": "5e2e5c4b-ef12-4fe3-b5bd-88086b9b03c9",
+    "name": "Woman Test",
+    "contestName": "trivia-contest-1749409392798",
+    "fileUrl": null,
+    "triviaAnswers": [
+      {
+        "question": "What automobile brand logo has a blue oval with the company name in he middle?",
+        "selected": "D",
+        "correct": false
+      },
+      {
+        "question": "What vehicle starts with a J?",
+        "selected": "A",
+        "correct": true
+      }
+    ],
+    "timeTaken": 22.466,
+    "timestamp": "2025-06-08T19:05:21.767Z"
+  },
+  {
+    "sessionId": "a62f2187-07c2-4eb9-b5d1-3b41ecfdd3d8",
+    "name": "Garrett Test",
+    "contestName": "trivia-contest-1749410148293",
+    "fileUrl": null,
+    "triviaAnswers": [
+      {
+        "question": "What type of brakes do semi trucks usually use?",
+        "selected": "D",
+        "correct": false
+      },
+      {
+        "question": "What type of brake is used with the engine?",
+        "selected": "C",
+        "correct": false
+      }
+    ],
+    "timeTaken": 41.193,
+    "timestamp": "2025-06-08T19:17:49.141Z"
+  },
+  {
+    "sessionId": "b231b038-3ff0-433e-bc38-f90fea76b0b4",
+    "name": "Garrett Test",
+    "contestName": "photo-contest-default",
+    "fileUrl": "https://contests-unlimited.s3.us-east-2.amazonaws.com/uploads/b231b038-3ff0-433e-bc38-f90fea76b0b4/1749411865946_test.jpg",
+    "triviaAnswers": null,
+    "timeTaken": null,
+    "timestamp": "2025-06-08T19:44:26.363Z"
+  }
+]
