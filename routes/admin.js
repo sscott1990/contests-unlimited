@@ -252,7 +252,7 @@ router.get('/entries-view', async (req, res) => {
 // HTML view of uploaded files with pagination, host column, and contest search
 router.get('/uploads', async (req, res) => {
   try {
-    const RESTRICTED_STATES = ['NY', 'WA', 'NJ', 'PR', 'GU', 'AS', 'VI', 'MP', 'RI']; // Add this line if not defined globally
+    const RESTRICTED_STATES = ['NY', 'WA', 'NJ', 'PR', 'GU', 'AS', 'VI', 'MP', 'RI'];
     const uploads = await loadUploads();
     const creators = await loadCreators();
 
@@ -328,7 +328,9 @@ router.get('/uploads', async (req, res) => {
       return { ...upload, host };
     });
 
-    // --- FIX: Show contest image for custom caption contests ---
+    // --- New: Get contest end time for each upload for "expired" highlight ---
+    const now = Date.now();
+
     const rows = await Promise.all(uploadsWithHost.map(async upload => {
       const date = new Date(upload.timestamp).toLocaleString();
       const filename = upload.filename || 'No file';
@@ -341,11 +343,19 @@ router.get('/uploads', async (req, res) => {
       );
 
       // --- Add restricted state flag for uploads ---
-      // Try to get state from upload.state or upload.billingAddress.state
       const userState = (upload.state || upload.billingAddress?.state || '').toUpperCase();
       const restrictedFlag = RESTRICTED_STATES.includes(userState)
         ? ' <span style="color:red;font-weight:bold;">⚠️ Restricted State</span>'
         : '';
+
+      // --- New: Is contest expired? ---
+      let isExpired = false;
+      if (creatorContest && creatorContest.endDate) {
+        try {
+          const endMs = new Date(creatorContest.endDate).getTime();
+          if (!isNaN(endMs) && endMs < now) isExpired = true;
+        } catch (e) {}
+      }
 
       let fileCell = 'No file available';
 
@@ -380,7 +390,6 @@ router.get('/uploads', async (req, res) => {
             : 'No contest image'}
         `;
       } else if (viewUrl) {
-        // Regular image/caption/file logic for non-custom-caption
         if (isImageFile(filename)) {
           fileCell = `<a href="${viewUrl}" target="_blank">View</a><br>
                       <img src="${viewUrl}" alt="${filename}" style="max-width: 100px;">`;
@@ -392,7 +401,6 @@ router.get('/uploads', async (req, res) => {
         }
       }
 
-      // Winner functionality
       let winnerCell = '';
       if (upload.isWinner) {
         winnerCell = '<b style="color:green;">Winner</b>';
@@ -400,8 +408,13 @@ router.get('/uploads', async (req, res) => {
         winnerCell = `<button onclick="confirmWinner('${upload.sessionId}', '${upload.contestName || ''}')">Winner</button>`;
       }
 
+      // --- Highlight row red if contest expired ---
+      const trStyle = isExpired
+        ? 'background-color:#ffd9d9;'
+        : '';
+
       return `
-        <tr>
+        <tr style="${trStyle}">
           <td>${upload.name || ''}${restrictedFlag}</td>
           <td>${upload.contestName || ''}</td>
           <td>${upload.host || ''}</td>
