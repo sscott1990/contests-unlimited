@@ -295,6 +295,7 @@
     }
   });
 
+  // PATCH: Hide expired contests in dropdown
   async function loadApprovedContests() {
     try {
       const res = await fetch('/api/contests/approved');
@@ -306,8 +307,10 @@
         "trivia-contest-default",
         "caption-contest-default"
       ];
+      const now = Date.now();
       const filtered = contests.filter(c =>
-        !defaultSlugs.includes(c.slug)
+        !defaultSlugs.includes(c.slug) &&
+        (!c.endDate || new Date(c.endDate).getTime() > now)
       );
       filtered.sort((a, b) =>
         (a.name || a.slug).localeCompare(b.name || b.slug)
