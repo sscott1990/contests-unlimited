@@ -77,21 +77,29 @@ function getSeedAndMin(durationMonths, isPlatform) {
   return { seed: 250, min: 50 };
 }
 
-// Revised prize calculation logic: seed is only counted if min entries reached (at end), or shown as "potential" if ongoing.
+// --- MAIN LOGIC PATCHED ---
 function calculatePrizesByContest(uploads, creatorsArray, nowMs = Date.now()) {
-  // Map contestName to array of entries
   const entriesByContest = {};
   for (const upload of uploads) {
-    // ---- PATCH: Always use string for contestName, map slug to title for platform contests ----
     let rawContestName = upload.contestName;
     if (Array.isArray(rawContestName)) rawContestName = rawContestName[0];
-    // Expanded mapping for robust consolidation of platform contest buckets
-    const contestKey = PLATFORM_SLUG_MAP[rawContestName] || rawContestName || 'Unknown';
+
+    // PATCH: Ensure platform contests and custom contests never overwrite each other
+    let contestKey;
+    if (PLATFORM_SLUG_MAP[rawContestName]) {
+      contestKey = PLATFORM_SLUG_MAP[rawContestName];
+    } else if (upload.contestSlug) {
+      contestKey = `custom:${upload.contestSlug}`;
+    } else if (upload.slug) {
+      contestKey = `custom:${upload.slug}`;
+    } else {
+      contestKey = rawContestName || 'Unknown';
+    }
+
     if (!entriesByContest[contestKey]) entriesByContest[contestKey] = [];
     entriesByContest[contestKey].push(upload);
   }
 
-  // Build contest info by slug for access to endDate and other props
   const contestInfoBySlug = {};
   if (Array.isArray(creatorsArray)) {
     for (const c of creatorsArray) {
@@ -102,32 +110,42 @@ function calculatePrizesByContest(uploads, creatorsArray, nowMs = Date.now()) {
   }
 
   const prizes = {};
-  for (const contestName in entriesByContest) {
-    const entries = entriesByContest[contestName];
-    // Find the right contest info by slug (for user contests) or by contestTitle (for platform contests)
-    let contestInfo = Object.values(contestInfoBySlug).find(
-      c => c.slug === contestName || c.contestTitle === contestName
-    ) || {};
-    const creator = contestInfo.creator || 'Contests Unlimited';
-    const isPlatform = isPlatformContest(creator);
+  for (const contestKey in entriesByContest) {
+    const entries = entriesByContest[contestKey];
+
+    let isPlatform = false;
+    let contestInfo = null;
+    let displayTitle = contestKey;
+    let creator = 'Contests Unlimited';
+    let endDateMs = null;
+
+    if (PLATFORM_CONTESTS.some(c => c.contestTitle === contestKey)) {
+      isPlatform = true;
+      displayTitle = contestKey;
+    } else {
+      let slug = contestKey.startsWith("custom:") ? contestKey.slice(7) : contestKey;
+      contestInfo = contestInfoBySlug[slug];
+      if (contestInfo) {
+        creator = contestInfo.creator || 'Contests Unlimited';
+        displayTitle = contestInfo.contestTitle || slug;
+        if (contestInfo.endDate) endDateMs = new Date(contestInfo.endDate).getTime();
+      }
+    }
+    if (!contestInfo && !isPlatform) contestInfo = {};
 
     const entryFee = 100;
-
-    // --- Determine contest duration (in months) ---
     let durationMonths = 12;
     let seedAmount = DEFAULT_CONTEST_SEED;
     let minEntries = DEFAULT_CONTEST_MIN;
-    // Platform contests always 1 year
     if (isPlatform) {
       durationMonths = 12;
       seedAmount = DEFAULT_CONTEST_SEED;
       minEntries = DEFAULT_CONTEST_MIN;
+      endDateMs = DEFAULT_CONTEST_START.getTime() + DEFAULT_CONTEST_DURATION_MS;
     } else {
-      // Creator contests: try to get duration from contestInfo
       if (contestInfo.durationMonths) {
         durationMonths = parseInt(contestInfo.durationMonths, 10) || 1;
       } else if (contestInfo.endDate && contestInfo.startDate) {
-        // fallback: infer months from start/end date
         const ms = new Date(contestInfo.endDate).getTime() - new Date(contestInfo.startDate).getTime();
         durationMonths = Math.round(ms / (30 * 24 * 60 * 60 * 1000)) || 1;
       }
@@ -141,19 +159,11 @@ function calculatePrizesByContest(uploads, creatorsArray, nowMs = Date.now()) {
     let seedIncluded = false;
     let seedEligible = false;
 
-    // Find contest end time (ms)
-    let endDateMs = null;
-    if (contestInfo.endDate) {
-      endDateMs = new Date(contestInfo.endDate).getTime();
-    }
-
-    // Calculate non-pot splits (these always accumulate)
     if (isPlatform) {
       reserve = totalEntries * entryFee * 0.1;
       platformEarnings = totalEntries * entryFee * 0.3;
     } else {
       reserve = totalEntries * entryFee * 0.10;
-      // --- NEW CREATOR PAYOUT LOGIC ---
       if (totalEntries <= minEntries) {
         creatorEarnings = totalEntries * entryFee * 0.25;
       } else {
@@ -162,49 +172,33 @@ function calculatePrizesByContest(uploads, creatorsArray, nowMs = Date.now()) {
       platformEarnings = totalEntries * entryFee * 0.05;
     }
 
-    // ---- POT/SEED LOGIC ----
-    // If contest has ended:
     if (endDateMs && nowMs > endDateMs) {
       if (totalEntries >= minEntries) {
-        // Seed is awarded + all entry growth
         pot = seedAmount + (totalEntries * entryFee * 0.6);
         seedIncluded = true;
         seedEligible = true;
       } else {
-        // Contest ended & not enough entries: 60% of entry fees only, no seed
         pot = totalEntries * entryFee * 0.6;
         seedIncluded = false;
         seedEligible = false;
       }
     } else {
-      // Contest is ongoing (not ended)
       if (totalEntries >= minEntries) {
-        // Now eligible: seed + 60% of all entry fees
         pot = seedAmount + (totalEntries * entryFee * 0.6);
         seedIncluded = true;
         seedEligible = true;
       } else if (totalEntries > 0) {
-        // Not enough entries yet: show 60% of entry fees (actual), and show "potential" seed as a message
         pot = totalEntries * entryFee * 0.6;
         seedIncluded = false;
         seedEligible = false;
       } else {
-        // No entries yet, but show seed as "potential"
         pot = 0;
         seedIncluded = false;
         seedEligible = false;
       }
     }
 
-    // --- Improved contestTitle fallback: prettify contestName if no title ---
-    let displayTitle = contestInfo.contestTitle;
-    if (!displayTitle && contestName) {
-      displayTitle = contestName.replace(/-default$/, '')
-        .replace(/-/g, ' ')
-        .replace(/\b\w/g, l => l.toUpperCase());
-    }
-
-    prizes[contestName] = {
+    prizes[contestKey] = {
       totalEntries,
       pot: pot < 0 ? 0 : pot,
       reserve,
@@ -214,8 +208,8 @@ function calculatePrizesByContest(uploads, creatorsArray, nowMs = Date.now()) {
       seedEligible,
       isPlatform,
       endDateMs,
-      contestTitle: displayTitle || contestName,
-      creator: contestInfo.creator || 'Contests Unlimited',
+      contestTitle: displayTitle || contestKey,
+      creator: creator,
       seedAmount,
       minEntries,
       durationMonths
@@ -231,18 +225,6 @@ router.get('/', (req, res) => {
 
     loadJsonFromS3('creator.json', (creatorsArray) => {
       if (!Array.isArray(creatorsArray)) creatorsArray = [];
-
-      // Build a map from slug -> {creator, contestTitle, endDate}
-      const contestInfoMap = {};
-      for (const c of creatorsArray) {
-        if (c.slug) {
-          contestInfoMap[c.slug] = {
-            creator: c.creator || 'Contests Unlimited',
-            contestTitle: c.contestTitle || c.slug,
-            endDate: c.endDate ? new Date(c.endDate).getTime() : null
-          };
-        }
-      }
 
       let prizes = calculatePrizesByContest(uploads, creatorsArray);
 
@@ -311,98 +293,47 @@ router.get('/', (req, res) => {
         }
       }
 
-      // ---- DEDUPLICATE/MERGE PLATFORM CONTESTS BY TITLE ----
-      for (const def of PLATFORM_CONTESTS) {
-        const key = def.contestTitle;
-        const matchingKeys = Object.keys(prizes).filter(prKey =>
-          prizes[prKey].isPlatform && prizes[prKey].contestTitle === key && prKey !== key
-        );
-        if (matchingKeys.length > 0) {
-          const base = prizes[key];
-          let mergedEntries = base.totalEntries;
-          let mergedEndDateMs = base.endDateMs;
-          for (const k of matchingKeys) {
-            const p = prizes[k];
-            mergedEntries += p.totalEntries;
-            if (!mergedEndDateMs || (p.endDateMs && p.endDateMs > mergedEndDateMs)) {
-              mergedEndDateMs = p.endDateMs;
-            }
-            delete prizes[k];
-          }
-          base.totalEntries = mergedEntries;
-          base.endDateMs = mergedEndDateMs;
-          if (base.endDateMs && Date.now() > base.endDateMs) {
-            if (mergedEntries >= DEFAULT_CONTEST_MIN) {
-              base.pot = DEFAULT_CONTEST_SEED + (mergedEntries * 100 * 0.6);
-              base.seedIncluded = true;
-              base.seedEligible = true;
-            } else {
-              base.pot = mergedEntries * 100 * 0.6;
-              base.seedIncluded = false;
-              base.seedEligible = false;
-            }
-          } else {
-            if (mergedEntries >= DEFAULT_CONTEST_MIN) {
-              base.pot = DEFAULT_CONTEST_SEED + (mergedEntries * 100 * 0.6);
-              base.seedIncluded = true;
-              base.seedEligible = true;
-            } else if (mergedEntries > 0) {
-              base.pot = mergedEntries * 100 * 0.6;
-              base.seedIncluded = false;
-              base.seedEligible = false;
-            } else {
-              base.pot = 0;
-              base.seedIncluded = false;
-              base.seedEligible = false;
-            }
-          }
-          base.seedAmount = DEFAULT_CONTEST_SEED;
-          base.minEntries = DEFAULT_CONTEST_MIN;
-          base.durationMonths = 12;
-        }
-      }
-      // ---- END DEDUPLICATION ----
+      // --- PATCH: REMOVE DEDUPLICATION/MERGE LOGIC ---
+      // (Do NOT merge by contestTitle. Each contestKey is unique for platform or custom.)
 
-      // --- NOW LOAD RULES FROM S3 ---
+      // --- PRIZE LIST order: always display platform contests first, then others alpha by title ---
+      const orderedPrizeTitles = [
+        ...PLATFORM_CONTESTS.map(c => c.contestTitle),
+        ...Object.keys(prizes).filter(title =>
+          !PLATFORM_CONTESTS.some(c => c.contestTitle === title)
+        ).sort((a, b) => {
+          const tA = prizes[a].contestTitle || a;
+          const tB = prizes[b].contestTitle || b;
+          return tA.localeCompare(tB);
+        }),
+      ];
+
+      const prizeList = orderedPrizeTitles.map((title) => {
+        const data = prizes[title];
+        if (!data) return '';
+        let seedText = '';
+        if (data.seedIncluded && data.seedEligible) {
+          seedText = `<span style="color: #070;">(Seeded with $${data.seedAmount}!)</span>`;
+        } else if (!data.seedIncluded && data.totalEntries < data.minEntries && data.totalEntries > 0) {
+          seedText = `<span style="color: #070;">(Seed will be added ONLY if entries reach ${data.minEntries} or more by contest close. Winner always receives 60% of entry fees regardless of entry count.)</span>`;
+        } else if (!data.seedIncluded && data.totalEntries === 0) {
+          seedText = `<span style="color: #070;">(Seed will be added ONLY if entries reach ${data.minEntries} or more by contest close. Winner always receives 60% of entry fees regardless of entry count.)</span>`;
+        } else if (!data.seedIncluded && data.totalEntries > 0 && data.endDateMs && Date.now() > data.endDateMs) {
+          seedText = `<span style="color: #b00;">(Seed not awarded - not enough entries. Winner receives 60% of entry fees.)</span>`;
+        }
+        let durationText = data.isPlatform ? '1 year' : (data.durationMonths === 1 ? '1 month' : `${data.durationMonths} months`);
+        return `<li>
+          <strong>${data.contestTitle}</strong>: $${data.pot.toFixed(2)} — Entries: ${data.totalEntries} — Duration: ${durationText}
+          <em style="color: #666; font-size: 0.9em;">(Hosted by ${data.creator})</em>
+          ${seedText}
+          <div>Ends in: <span class="countdown" data-endtime="${data.endDateMs}"></span></div>
+        </li>`;
+      }).join('');
+
+      // --- RULE CARDS: no timer shown ---
       loadJsonFromS3('rules.json', (rules) => {
         if (!rules) rules = [];
 
-        // --- PRIZE LIST with improved display ---
-        // Always display platform contests first, then others alpha by title
-        const orderedPrizeTitles = [
-          ...PLATFORM_CONTESTS.map(c => c.contestTitle),
-          ...Object.keys(prizes).filter(title =>
-            !PLATFORM_CONTESTS.some(c => c.contestTitle === title)
-          ).sort((a, b) => {
-            const tA = prizes[a].contestTitle || a;
-            const tB = prizes[b].contestTitle || b;
-            return tA.localeCompare(tB);
-          }),
-        ];
-
-        const prizeList = orderedPrizeTitles.map((title) => {
-          const data = prizes[title];
-          if (!data) return '';
-          let seedText = '';
-          if (data.seedIncluded && data.seedEligible) {
-            seedText = `<span style="color: #070;">(Seeded with $${data.seedAmount}!)</span>`;
-          } else if (!data.seedIncluded && data.totalEntries < data.minEntries && data.totalEntries > 0) {
-            seedText = `<span style="color: #070;">(Seed will be added ONLY if entries reach ${data.minEntries} or more by contest close. Winner always receives 60% of entry fees regardless of entry count.)</span>`;
-          } else if (!data.seedIncluded && data.totalEntries === 0) {
-            seedText = `<span style="color: #070;">(Seed will be added ONLY if entries reach ${data.minEntries} or more by contest close. Winner always receives 60% of entry fees regardless of entry count.)</span>`;
-          } else if (!data.seedIncluded && data.totalEntries > 0 && data.endDateMs && Date.now() > data.endDateMs) {
-            seedText = `<span style="color: #b00;">(Seed not awarded - not enough entries. Winner receives 60% of entry fees.)</span>`;
-          }
-          let durationText = data.isPlatform ? '1 year' : (data.durationMonths === 1 ? '1 month' : `${data.durationMonths} months`);
-          return `<li>
-            <strong>${data.contestTitle}</strong>: $${data.pot.toFixed(2)} — Entries: ${data.totalEntries} — Duration: ${durationText}
-            <em style="color: #666; font-size: 0.9em;">(Hosted by ${data.creator})</em>
-            ${seedText}
-            <div>Ends in: <span class="countdown" data-endtime="${data.endDateMs}"></span></div>
-          </li>`;
-        }).join('');
-
-        // --- RULE CARDS: no timer shown ---
         const rulesHtml = rules.map(r => `
           <div class="rule-card">
             <h3>${r.name}</h3>
