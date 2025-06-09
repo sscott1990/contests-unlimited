@@ -1008,8 +1008,6 @@ router.get('/logout', (req, res) => {
   res.status(401).send('Logged out');
 });
 
-// ... everything above this is unchanged ...
-
 router.post('/update-status', express.json(), async (req, res) => {
   const { id, status } = req.body;
 //ended here
@@ -1376,7 +1374,57 @@ router.get('/dashboard-financials', async (req, res) => {
       }
     }
 
-    // Render a simple dashboard (unchanged)
+    // ---- YTD CALCULATIONS ----
+    // 1. Get start of year
+    const nowDate = new Date();
+    const startOfYear = new Date(nowDate.getFullYear(), 0, 1).getTime();
+
+    // 2. Filter uploads to YTD uploads
+    const uploadsYTD = uploads.filter(u => {
+      const ts = new Date(u.timestamp || u.createdAt || u.updatedAt).getTime();
+      return ts >= startOfYear;
+    });
+
+    // 3. Group YTD by contest
+    const ytdByContest = {};
+    uploadsYTD.forEach(u => {
+      if (!ytdByContest[u.contestName]) ytdByContest[u.contestName] = [];
+      ytdByContest[u.contestName].push(u);
+    });
+
+    let ytdByCreator = {};
+    let ytdByWinner = {};
+    let ytdPlatform = 0;
+
+    for (const contestName in ytdByContest) {
+      const contestUploads = ytdByContest[contestName];
+      const contestInfo = creators.find(c => c.slug === contestName) || {};
+      const creator = contestInfo.creator || "Contests Unlimited";
+      const entryFee = 100;
+      const totalEntries = contestUploads.length;
+      let creatorEarnings = 0, winnerPayout = 0, platformEarnings = 0;
+      let minEntries = contestInfo.minEntries || 50;
+      if (totalEntries <= minEntries) {
+        creatorEarnings = totalEntries * entryFee * 0.25;
+        platformEarnings = totalEntries * entryFee * 0.05;
+      } else {
+        creatorEarnings = minEntries * entryFee * 0.25 + (totalEntries - minEntries) * entryFee * 0.30;
+        platformEarnings = totalEntries * entryFee * 0.05;
+      }
+      winnerPayout = totalEntries * entryFee * 0.6;
+
+      ytdByCreator[creator] = (ytdByCreator[creator] || 0) + creatorEarnings;
+      ytdPlatform += platformEarnings;
+
+      // Find winner if set for this contest
+      const winnerUpload = contestUploads.find(u => u.isWinner);
+      if (winnerUpload) {
+        const winner = winnerUpload.name || winnerUpload.customerEmail || winnerUpload.sessionId;
+        ytdByWinner[winner] = (ytdByWinner[winner] || 0) + winnerPayout;
+      }
+    }
+
+    // Render a simple dashboard (with YTD section)
     res.send(`
       <html>
       <head>
@@ -1409,6 +1457,22 @@ router.get('/dashboard-financials', async (req, res) => {
           <li><b>My Profit (Platform + Creator):</b> $${myProfit.toFixed(2)}</li>
           <li><b>Outstanding to Winners:</b> $${outstandingToWinners.toFixed(2)}</li>
           <li><b>Outstanding to Creators:</b> $${outstandingToCreators.toFixed(2)}</li>
+        </ul>
+        <h2>YTD Totals (This Year)</h2>
+        <ul>
+          <li><b>Creators:</b>
+            <ul>
+              ${Object.entries(ytdByCreator).map(([creator, payout]) =>
+                `<li>${creator}: $${payout.toFixed(2)}</li>`).join('')}
+            </ul>
+          </li>
+          <li><b>Winners:</b>
+            <ul>
+              ${Object.entries(ytdByWinner).map(([winner, payout]) =>
+                `<li>${winner}: $${payout.toFixed(2)}</li>`).join('')}
+            </ul>
+          </li>
+          <li><b>Platform:</b> $${ytdPlatform.toFixed(2)}</li>
         </ul>
         <h2>Expired Contests</h2>
         <table>
