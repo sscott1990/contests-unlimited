@@ -1392,14 +1392,19 @@ router.get('/dashboard-financials', async (req, res) => {
       ytdByContest[u.contestName].push(u);
     });
 
+    // Map for creator/winner details: payout, email, name, etc
     let ytdByCreator = {};
     let ytdByWinner = {};
     let ytdPlatform = 0;
+    let ytdCreatorsDetails = {};
+    let ytdWinnersDetails = {};
 
     for (const contestName in ytdByContest) {
       const contestUploads = ytdByContest[contestName];
       const contestInfo = creators.find(c => c.slug === contestName) || {};
       const creator = contestInfo.creator || "Contests Unlimited";
+      const creatorEmail = contestInfo.creatorEmail || contestInfo.email || "";
+      const creatorName = contestInfo.creator || "";
       const entryFee = 100;
       const totalEntries = contestUploads.length;
       let creatorEarnings = 0, winnerPayout = 0, platformEarnings = 0;
@@ -1416,15 +1421,22 @@ router.get('/dashboard-financials', async (req, res) => {
       ytdByCreator[creator] = (ytdByCreator[creator] || 0) + creatorEarnings;
       ytdPlatform += platformEarnings;
 
+      // Save details for W9 button use
+      ytdCreatorsDetails[creator] = ytdCreatorsDetails[creator] || { name: creatorName, email: creatorEmail, payout: 0 };
+      ytdCreatorsDetails[creator].payout += creatorEarnings;
+
       // Find winner if set for this contest
       const winnerUpload = contestUploads.find(u => u.isWinner);
       if (winnerUpload) {
         const winner = winnerUpload.name || winnerUpload.customerEmail || winnerUpload.sessionId;
+        const winnerEmail = winnerUpload.email || winnerUpload.customerEmail || "";
         ytdByWinner[winner] = (ytdByWinner[winner] || 0) + winnerPayout;
+        ytdWinnersDetails[winner] = ytdWinnersDetails[winner] || { name: winner, email: winnerEmail, payout: 0 };
+        ytdWinnersDetails[winner].payout += winnerPayout;
       }
     }
 
-    // Render a simple dashboard (with YTD section)
+    // Render a simple dashboard (with YTD section + W9 buttons)
     res.send(`
       <html>
       <head>
@@ -1462,14 +1474,22 @@ router.get('/dashboard-financials', async (req, res) => {
         <ul>
           <li><b>Creators:</b>
             <ul>
-              ${Object.entries(ytdByCreator).map(([creator, payout]) =>
-                `<li>${creator}: $${payout.toFixed(2)}</li>`).join('')}
+              ${Object.entries(ytdCreatorsDetails).map(([creator, details]) =>
+                `<li>${creator}: $${details.payout.toFixed(2)}
+                  ${details.payout > 600 && details.email ? 
+                    `<button onclick="showW9Iframe('${details.email}', '${details.name}')">W9</button>` : ''}
+                </li>`
+              ).join('')}
             </ul>
           </li>
           <li><b>Winners:</b>
             <ul>
-              ${Object.entries(ytdByWinner).map(([winner, payout]) =>
-                `<li>${winner}: $${payout.toFixed(2)}</li>`).join('')}
+              ${Object.entries(ytdWinnersDetails).map(([winner, details]) =>
+                `<li>${winner}: $${details.payout.toFixed(2)}
+                  ${details.payout > 600 && details.email ? 
+                    `<button onclick="showW9Iframe('${details.email}', '${details.name}')">W9</button>` : ''}
+                </li>`
+              ).join('')}
             </ul>
           </li>
           <li><b>Platform:</b> $${ytdPlatform.toFixed(2)}</li>
@@ -1499,6 +1519,30 @@ router.get('/dashboard-financials', async (req, res) => {
             <td>${c.endDate ? new Date(c.endDate).toLocaleString() : ''}</td>
           </tr>`).join('')}
         </table>
+        <!-- W9 IFrame Modal -->
+        <div id="w9-modal" style="display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); z-index:9999;">
+          <div style="background:#fff; margin:5em auto; padding:2em; width:800px; position:relative;">
+            <button style="position:absolute;top:10px;right:10px;" onclick="document.getElementById('w9-modal').style.display='none'">Close</button>
+            <iframe id="w9-iframe" height="600" width="750"></iframe>
+          </div>
+        </div>
+        <script>
+        async function showW9Iframe(email, name) {
+          // Call backend to get iFrame link
+          const res = await fetch('/api/admin/tax1099-w9-link', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ recipientEmail: email, recipientName: name })
+          });
+          const data = await res.json();
+          if (data.link) {
+            document.getElementById('w9-iframe').src = data.link;
+            document.getElementById('w9-modal').style.display = 'block';
+          } else {
+            alert('Failed to get W9 link: ' + (data.error || 'Unknown error'));
+          }
+        }
+        </script>
       </body>
       </html>
     `);
@@ -1536,6 +1580,72 @@ router.post('/set-winner', express.json(), async (req, res) => {
   } catch (err) {
     console.error('Failed to set winner:', err);
     res.status(500).json({ error: 'Failed to set winner' });
+  }
+});
+
+// --- Tax1099 W9 iFrame endpoint (updated for new API and schema) ---
+router.post('/tax1099-w9-link', async (req, res) => {
+  const { recipientEmail, recipientName } = req.body;
+
+  if (!recipientEmail || !recipientName) {
+    return res.status(400).json({ error: 'Missing recipientEmail or recipientName' });
+  }
+
+  const TAX1099_API_KEY = process.env.TAX1099_API_KEY;
+  const TAX1099_PAYER_TIN = process.env.TAX1099_PAYER_TIN;
+  const TAX1099_CLIENT_PAYER_ID = process.env.TAX1099_CLIENT_PAYER_ID;
+
+  try {
+    const fetch = (await import('node-fetch')).default;
+    const result = await fetch('https://apirecipient.1099cloud.com/api/v1/recipient/w8w9request', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'AppKey': TAX1099_API_KEY
+      },
+      body: JSON.stringify({
+        payerTin: TAX1099_PAYER_TIN,
+        clientPayerId: TAX1099_CLIENT_PAYER_ID,
+        formType: "FormW9",
+        isEmail: false,
+        isLink: true,
+        isNewView: true,
+        callbackUrl: "",
+        callbackUID: "",
+        recipientList: [
+          {
+            recipientId: 0,
+            clientRecipientId: recipientEmail,
+            recipientTin: "",
+            tinType: "",
+            firstName: recipientName,
+            middleName: "",
+            lastNameOrBusinessName: "",
+            suffix: "",
+            address: "",
+            address2: "",
+            city: "",
+            state: "",
+            zipCode: "",
+            country: "",
+            email: recipientEmail,
+            phone: "",
+            formW9Info: {}
+          }
+        ],
+        styles: {},
+        cardReferenceId: ""
+      })
+    });
+    const data = await result.json();
+    if (data && data.link) {
+      res.json({ link: data.link });
+    } else {
+      res.status(400).json({ error: "No link received", full: data });
+    }
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to get W9 iFrame link" });
   }
 });
 
