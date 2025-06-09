@@ -659,6 +659,19 @@ app.get('/gallery', async (req, res) => {
   }
 });
 
+// === 🚦 Proxy test route ===
+app.get('/test-proxy', async (req, res) => {
+  try {
+    // Use fetch or axios; fetch uses proxy if env vars are set
+    const response = await fetch('https://httpbin.org/ip');
+    const data = await response.json();
+    res.json(data); // Should show your EC2 proxy's public IP if proxy is working
+  } catch (err) {
+    console.error('Proxy test error:', err);
+    res.status(500).json({ error: 'Proxy test failed' });
+  }
+});
+
 // === 🔁 All other routes ===
 const indexRoutes = require('./routes/index');
 const adminRoutes = require('./routes/admin');
