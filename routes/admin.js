@@ -1592,10 +1592,12 @@ router.post('/tax1099-w9-link', async (req, res) => {
 
   const TAX1099_API_KEY = process.env.TAX1099_API_KEY;
   const TAX1099_PAYER_TIN = process.env.TAX1099_PAYER_TIN;
+  console.log("Tax1099 API KEY:", TAX1099_API_KEY ? "[set]" : "[missing]");
+  console.log("Tax1099 PAYER TIN:", TAX1099_PAYER_TIN ? "[set]" : "[missing]");
 
   try {
     const fetch = (await import('node-fetch')).default;
-    const result = await fetch('https://apirecipient.1099cloud.com/api/v1/recipient/w8w9request', {
+    const result = await fetch('https://sandboxapirecipient.1099cloud.com/api/v1/recipient/w8w9request', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
