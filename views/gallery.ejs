@@ -3,33 +3,48 @@
 <head>
   <meta charset="UTF-8">
   <title>Gallery - All Contest Uploads</title>
-  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="styles.css">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
 <body class="gallery-background">
   <div class="container">
     <h1>Gallery of Contest Uploads</h1>
     <div class="gallery-grid">
-      <% if (uploads.length === 0) { %>
-        <div class="no-image">No uploads found.</div>
-      <% } else { %>
-        <% uploads.forEach(function(upload) { %>
-          <div class="gallery-card">
-            <span class="gallery-tag"><%= upload.contestName || 'Unknown' %></span>
-            <% if (upload.presignedUrl && upload.isImageFile) { %>
-              <img class="gallery-img" src="<%= upload.presignedUrl %>" alt="Upload by <%= upload.name || 'Anonymous' %>">
-            <% } else { %>
-              <div class="no-image">No Image</div>
-            <% } %>
-            <div class="gallery-info">
-              <div><strong>Name:</strong> <%= upload.name || 'Anonymous' %></div>
-              <div><strong>Contest:</strong> <%= upload.contestName || 'Unknown' %></div>
-              <div><strong>Host:</strong> <%= upload.host || 'Contests Unlimited' %></div>
-              <div class="date"><strong>Date:</strong> <%= upload.timestamp ? (new Date(upload.timestamp).toLocaleDateString()) : '' %></div>
+      <% uploads.forEach(function(upload) { %>
+        <div class="gallery-card">
+          <span class="gallery-tag"><%= upload.contestName || 'Unknown' %></span>
+          <% 
+            // If it's a custom caption contest and a caption was submitted, 
+            // show the contest image and the caption text 
+            if (
+              upload.contestName && 
+              upload.contestName.startsWith('caption-contest-') && 
+              upload.contestName !== 'caption-contest-default' &&
+              upload.contestImageUrl && upload.captionText
+            ) { 
+          %>
+            <img class="gallery-img" src="<%= upload.contestImageUrl %>" alt="Caption Contest Image">
+            <div class="caption-block">
+              <strong>Caption:</strong> <span><%= upload.captionText %></span>
             </div>
+          <% 
+            // Show the uploaded image if present and not a caption contest with caption
+            } else if (upload.presignedUrl && upload.isImageFile) { 
+          %>
+            <img class="gallery-img" src="<%= upload.presignedUrl %>" alt="Upload by <%= upload.name %>">
+          <% 
+            } else { 
+          %>
+            <div class="no-image">No Image</div>
+          <% } %>
+          <div class="gallery-info">
+            <div><strong>Name:</strong> <%= upload.name || 'Anonymous' %></div>
+            <div><strong>Contest:</strong> <%= upload.contestName || 'Unknown' %></div>
+            <div><strong>Host:</strong> <%= upload.host || 'Contests Unlimited' %></div>
+            <div class="date"><strong>Date:</strong> <%= new Date(upload.timestamp).toLocaleDateString() %></div>
           </div>
-        <% }); %>
-      <% } %>
+        </div>
+      <% }); %>
     </div>
 
     <!-- Pagination Controls -->
