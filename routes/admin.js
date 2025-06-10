@@ -1201,6 +1201,17 @@ router.get('/dashboard-financials', async (req, res) => {
       return prizes;
     }
 
+    // ---- NEW: LOAD/SAVE W9 STATUS ----
+    const s3W9Key = 'w9-status.json';
+    let w9Status = {};
+    try {
+      const w9Obj = await s3.getObject({ Bucket: BUCKET_NAME, Key: s3W9Key }).promise();
+      w9Status = JSON.parse(w9Obj.Body.toString() || '{}');
+    } catch (e) {
+      w9Status = {};
+    }
+    // -----------------------------------
+
     // --- MAIN LOGIC, matches index.js ---
     const now = Date.now();
     let expired = [];
@@ -1436,7 +1447,7 @@ router.get('/dashboard-financials', async (req, res) => {
       }
     }
 
-    // Render a simple dashboard (with YTD section + W9 notice)
+    // ----------- HTML RENDER WITH BUTTON LOGIC -----------
     res.send(`
       <html>
       <head>
@@ -1448,6 +1459,7 @@ router.get('/dashboard-financials', async (req, res) => {
           th, td { border: 1px solid #ccc; padding: 8px; }
           th { background: #e6faf1; }
           .w9notice { color: #d00; font-weight: bold; }
+          .w9complete { color: #080; font-weight: bold; }
         </style>
       </head>
       <body>
@@ -1473,25 +1485,45 @@ router.get('/dashboard-financials', async (req, res) => {
         </ul>
         <h2>YTD Totals (This Year)</h2>
         <div style="margin-bottom:1em;">
-          <span class="w9notice">NOTICE: You need to send a W-9 request via Tax1099 to anyone whose YTD payout is over $600.</span>
+          <span class="w9notice">NOTICE: You need to send a W-9 request via Tax1099 to anyone whose YTD payout is over $600. When you confirm they have submitted, mark them complete below.</span>
         </div>
         <ul>
           <li><b>Creators:</b>
             <ul>
-              ${Object.entries(ytdCreatorsDetails).map(([creator, details]) =>
-                `<li>${creator}: $${details.payout.toFixed(2)}
-                  ${details.payout > 600 ? `<span class="w9notice">Needs W-9</span>` : ''}
-                </li>`
-              ).join('')}
+              ${Object.entries(ytdCreatorsDetails).map(([creator, details]) => {
+                const key = `creator:${creator}`;
+                if (details.payout > 600) {
+                  if (w9Status[key] === 'complete') {
+                    return `<li>${creator}: $${details.payout.toFixed(2)} <span class="w9complete">W-9 Complete</span></li>`;
+                  } else {
+                    return `<li>${creator}: $${details.payout.toFixed(2)}
+                      <span class="w9notice">Needs W-9</span>
+                      <button onclick="markW9Complete('${key}')">Mark W-9 Complete</button>
+                    </li>`;
+                  }
+                } else {
+                  return `<li>${creator}: $${details.payout.toFixed(2)}</li>`;
+                }
+              }).join('')}
             </ul>
           </li>
           <li><b>Winners:</b>
             <ul>
-              ${Object.entries(ytdWinnersDetails).map(([winner, details]) =>
-                `<li>${winner}: $${details.payout.toFixed(2)}
-                  ${details.payout > 600 ? `<span class="w9notice">Needs W-9</span>` : ''}
-                </li>`
-              ).join('')}
+              ${Object.entries(ytdWinnersDetails).map(([winner, details]) => {
+                const key = `winner:${winner}`;
+                if (details.payout > 600) {
+                  if (w9Status[key] === 'complete') {
+                    return `<li>${winner}: $${details.payout.toFixed(2)} <span class="w9complete">W-9 Complete</span></li>`;
+                  } else {
+                    return `<li>${winner}: $${details.payout.toFixed(2)}
+                      <span class="w9notice">Needs W-9</span>
+                      <button onclick="markW9Complete('${key}')">Mark W-9 Complete</button>
+                    </li>`;
+                  }
+                } else {
+                  return `<li>${winner}: $${details.payout.toFixed(2)}</li>`;
+                }
+              }).join('')}
             </ul>
           </li>
           <li><b>Platform:</b> $${ytdPlatform.toFixed(2)}</li>
@@ -1521,9 +1553,27 @@ router.get('/dashboard-financials', async (req, res) => {
             <td>${c.endDate ? new Date(c.endDate).toLocaleString() : ''}</td>
           </tr>`).join('')}
         </table>
+        <script>
+        async function markW9Complete(key) {
+          if (!key) return;
+          const confirmed = confirm('Are you sure you want to mark this W-9 as complete?');
+          if (!confirmed) return;
+          const res = await fetch('/api/admin/mark-w9-complete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key })
+          });
+          if (res.ok) {
+            window.location.reload();
+          } else {
+            alert('Failed to mark W-9 complete');
+          }
+        }
+        </script>
       </body>
       </html>
     `);
+    // ----------- END HTML RENDER -----------
   } catch (error) {
     console.error(error);
     res.status(500).send("Failed to load admin dashboard");
@@ -1558,6 +1608,35 @@ router.post('/set-winner', express.json(), async (req, res) => {
   } catch (err) {
     console.error('Failed to set winner:', err);
     res.status(500).json({ error: 'Failed to set winner' });
+  }
+});
+
+// --- Mark W9 Complete endpoint ---
+router.post('/mark-w9-complete', express.json(), async (req, res) => {
+  const { key } = req.body;
+  if (!key) return res.status(400).json({ error: 'Missing key' });
+
+  const s3W9Key = 'w9-status.json';
+  let w9Status = {};
+  try {
+    // Load existing status
+    try {
+      const w9Obj = await s3.getObject({ Bucket: BUCKET_NAME, Key: s3W9Key }).promise();
+      w9Status = JSON.parse(w9Obj.Body.toString() || '{}');
+    } catch (e) {
+      w9Status = {};
+    }
+    w9Status[key] = 'complete';
+    await s3.putObject({
+      Bucket: BUCKET_NAME,
+      Key: s3W9Key,
+      Body: JSON.stringify(w9Status, null, 2),
+      ContentType: 'application/json'
+    }).promise();
+    res.json({ success: true });
+  } catch (e) {
+    console.error('Failed to mark W9 complete:', e);
+    res.status(500).json({ error: 'Failed to mark W9 complete' });
   }
 });
 
