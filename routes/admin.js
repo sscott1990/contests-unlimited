@@ -1472,6 +1472,12 @@ router.get('/dashboard-financials', async (req, res) => {
           <a href="/api/admin/creators">Creators</a> |
           <a href="/api/admin/logout">Logout</a>
         </nav>
+
+        <!-- YTD Snapshot Button -->
+        <form method="POST" action="/api/admin/snapshot-ytds" style="margin-bottom:1em;">
+          <button type="submit">Snapshot YTDs</button>
+        </form>
+
         <h2>Totals</h2>
         <ul>
           <li><b>Total Revenue:</b> $${totalRevenue.toFixed(2)}</li>
@@ -1637,6 +1643,92 @@ router.post('/mark-w9-complete', express.json(), async (req, res) => {
   } catch (e) {
     console.error('Failed to mark W9 complete:', e);
     res.status(500).json({ error: 'Failed to mark W9 complete' });
+  }
+});
+
+// --- Snapshot YTDs endpoint ---
+router.post('/snapshot-ytds', async (req, res) => {
+  try {
+    const [uploads, creators] = await Promise.all([
+      loadUploads(),
+      loadCreators()
+    ]);
+    // YTD calculation (same as dashboard)
+    const nowDate = new Date();
+    const startOfYear = new Date(nowDate.getFullYear(), 0, 1).getTime();
+    const uploadsYTD = uploads.filter(u => {
+      const ts = new Date(u.timestamp || u.createdAt || u.updatedAt).getTime();
+      return ts >= startOfYear;
+    });
+
+    const ytdByContest = {};
+    uploadsYTD.forEach(u => {
+      if (!ytdByContest[u.contestName]) ytdByContest[u.contestName] = [];
+      ytdByContest[u.contestName].push(u);
+    });
+
+    let ytdCreatorsDetails = {};
+    let ytdWinnersDetails = {};
+
+    for (const contestName in ytdByContest) {
+      const contestUploads = ytdByContest[contestName];
+      const contestInfo = creators.find(c => c.slug === contestName) || {};
+      const creator = contestInfo.creator || "Contests Unlimited";
+      const creatorEmail = contestInfo.creatorEmail || contestInfo.email || "";
+      const creatorName = contestInfo.creator || "";
+      const entryFee = 100;
+      const totalEntries = contestUploads.length;
+      let creatorEarnings = 0, winnerPayout = 0;
+      let minEntries = contestInfo.minEntries || 50;
+      if (totalEntries <= minEntries) {
+        creatorEarnings = totalEntries * entryFee * 0.25;
+      } else {
+        creatorEarnings = minEntries * entryFee * 0.25 + (totalEntries - minEntries) * entryFee * 0.30;
+      }
+      winnerPayout = totalEntries * entryFee * 0.6;
+
+      ytdCreatorsDetails[creator] = ytdCreatorsDetails[creator] || { name: creatorName, email: creatorEmail, payout: 0 };
+      ytdCreatorsDetails[creator].payout += creatorEarnings;
+
+      const winnerUpload = contestUploads.find(u => u.isWinner);
+      if (winnerUpload) {
+        const winner = winnerUpload.name || winnerUpload.customerEmail || winnerUpload.sessionId;
+        const winnerEmail = winnerUpload.email || winnerUpload.customerEmail || "";
+        ytdWinnersDetails[winner] = ytdWinnersDetails[winner] || { name: winner, email: winnerEmail, payout: 0 };
+        ytdWinnersDetails[winner].payout += winnerPayout;
+      }
+    }
+
+    // Save a timestamped snapshot to S3
+    const snapshot = {
+      timestamp: new Date().toISOString(),
+      year: nowDate.getFullYear(),
+      creators: ytdCreatorsDetails,
+      winners: ytdWinnersDetails
+    };
+
+    // Load existing snapshots
+    const s3Key = 'ytd-snapshots.json';
+    let snapshots = [];
+    try {
+      const obj = await s3.getObject({ Bucket: BUCKET_NAME, Key: s3Key }).promise();
+      snapshots = JSON.parse(obj.Body.toString() || '[]');
+    } catch (e) {
+      snapshots = [];
+    }
+    snapshots.push(snapshot);
+
+    await s3.putObject({
+      Bucket: BUCKET_NAME,
+      Key: s3Key,
+      Body: JSON.stringify(snapshots, null, 2),
+      ContentType: 'application/json'
+    }).promise();
+
+    res.redirect('/api/admin/dashboard-financials');
+  } catch (e) {
+    console.error('Failed to snapshot YTDs:', e);
+    res.status(500).send('Failed to snapshot YTDs');
   }
 });
 
