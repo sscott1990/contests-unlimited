@@ -89,7 +89,7 @@
     const isTrivia = selectedSlug && selectedSlug.startsWith("trivia-contest-");
     const isCaption = selectedSlug && selectedSlug.startsWith("caption-contest-");
 
-    // PATCH: Hide file input for both trivia and caption contests
+    // Hide file input for trivia or caption contests
     if (isTrivia || isCaption) {
       fileInput.disabled = true;
       fileInput.style.display = 'none';
@@ -117,81 +117,154 @@
     }
 
     // Caption Contest custom image logic
-    if (isCaption && selectedSlug !== "caption-contest-default") {
-      // Fetch contest info to get the fileUrl
-      try {
-        const res = await fetch('/api/contest/' + encodeURIComponent(selectedSlug));
-        if (res.ok) {
-          const data = await res.json();
-          captionImageContainer.innerHTML = '';
-          if (data.fileUrl) {
-            const img = document.createElement('img');
-            img.src = data.fileUrl;
-            img.alt = 'Caption Contest Image';
-            img.style.maxWidth = '100%';
-            img.style.border = '2px solid #ccc';
-            img.style.borderRadius = '10px';
-            img.style.marginTop = '20px';
+    if (isCaption) {
+      if (selectedSlug === "caption-contest-default") {
+        // Load the default caption contest image from caption-contest.json
+        try {
+          const res = await fetch('/caption-contest.json');
+          if (res.ok) {
+            const data = await res.json();
+            captionImageContainer.innerHTML = '';
+            if (data.image) {
+              const img = document.createElement('img');
+              img.src = data.image;
+              img.alt = 'Caption This Image';
+              img.style.maxWidth = '100%';
+              img.style.border = '2px solid #ccc';
+              img.style.borderRadius = '10px';
+              img.style.marginTop = '20px';
 
-            captionImageContainer.appendChild(img);
+              captionImageContainer.appendChild(img);
 
-            // Add Caption Input
-            const captionForm = document.createElement('div');
-            captionForm.innerHTML = `
-              <label for="captionEntry" style="display:block;margin:14px 0 6px 0;"><b>Your Caption:</b></label>
-              <input type="text" id="captionEntry" name="captionEntry" placeholder="Write your funny caption here..." style="width:100%;padding:8px;" required>
-            `;
-            captionImageContainer.appendChild(captionForm);
+              // Add Caption Input
+              const captionForm = document.createElement('div');
+              captionForm.innerHTML = `
+                <label for="captionEntry" style="display:block;margin:14px 0 6px 0;"><b>Your Caption:</b></label>
+                <input type="text" id="captionEntry" name="captionEntry" placeholder="Write your funny caption here..." style="width:100%;padding:8px;" required>
+              `;
+              captionImageContainer.appendChild(captionForm);
 
-            // Ensure captionEntry is submitted as "file" (simulate a file upload with caption text)
-            document.getElementById('uploadForm').onsubmit = function(e) {
-              if (
-                !(
+              // Ensure captionEntry is submitted as "file" (simulate a file upload with caption text)
+              document.getElementById('uploadForm').onsubmit = function(e) {
+                if (
+                  contestSelect.value &&
+                  contestSelect.value === "caption-contest-default"
+                ) {
+                  const captionText = document.getElementById('captionEntry').value.trim();
+                  if (!captionText) {
+                    alert("Please enter your caption!");
+                    e.preventDefault();
+                    return false;
+                  }
+
+                  // Create a fake file from the caption and submit via FormData
+                  e.preventDefault();
+                  const formData = new FormData(document.getElementById('uploadForm'));
+                  const captionBlob = new Blob([captionText], { type: "text/plain" });
+                  formData.set('file', captionBlob, 'caption.txt');
+                  formData.set('contestName', contestSelect.value);
+
+                  fetch(document.getElementById('uploadForm').action, {
+                    method: 'POST',
+                    body: formData
+                  }).then(resp => {
+                    if (resp.redirected) {
+                      window.location.href = resp.url;
+                    } else if (resp.ok) {
+                      window.location.href = "/success-submitted.html";
+                    } else {
+                      resp.text().then(msg => alert(msg));
+                    }
+                  }).catch(err => {
+                    alert("Submission failed: " + err.message);
+                  });
+                  return false;
+                }
+                return true;
+              };
+            } else {
+              captionImageContainer.innerHTML = '<p style="color:red;">No image found for this caption contest.</p>';
+            }
+          } else {
+            captionImageContainer.innerHTML = '<p style="color:red;">Unable to load caption contest image.</p>';
+          }
+        } catch (err) {
+          captionImageContainer.innerHTML = '<p style="color:red;">Failed to fetch caption contest image.</p>';
+        }
+      } else {
+        // User-created caption contest (custom) logic
+        try {
+          const res = await fetch('/api/contest/' + encodeURIComponent(selectedSlug));
+          if (res.ok) {
+            const data = await res.json();
+            captionImageContainer.innerHTML = '';
+            if (data.fileUrl) {
+              const img = document.createElement('img');
+              img.src = data.fileUrl;
+              img.alt = 'Caption Contest Image';
+              img.style.maxWidth = '100%';
+              img.style.border = '2px solid #ccc';
+              img.style.borderRadius = '10px';
+              img.style.marginTop = '20px';
+
+              captionImageContainer.appendChild(img);
+
+              // Add Caption Input
+              const captionForm = document.createElement('div');
+              captionForm.innerHTML = `
+                <label for="captionEntry" style="display:block;margin:14px 0 6px 0;"><b>Your Caption:</b></label>
+                <input type="text" id="captionEntry" name="captionEntry" placeholder="Write your funny caption here..." style="width:100%;padding:8px;" required>
+              `;
+              captionImageContainer.appendChild(captionForm);
+
+              // Ensure captionEntry is submitted as "file" (simulate a file upload with caption text)
+              document.getElementById('uploadForm').onsubmit = function(e) {
+                if (
                   contestSelect.value &&
                   contestSelect.value.startsWith('caption-contest-') &&
                   contestSelect.value !== "caption-contest-default"
-                )
-              ) return true;
+                ) {
+                  const captionText = document.getElementById('captionEntry').value.trim();
+                  if (!captionText) {
+                    alert("Please enter your caption!");
+                    e.preventDefault();
+                    return false;
+                  }
 
-              const captionText = document.getElementById('captionEntry').value.trim();
-              if (!captionText) {
-                alert("Please enter your caption!");
-                e.preventDefault();
-                return false;
-              }
+                  // Create a fake file from the caption and submit via FormData
+                  e.preventDefault();
+                  const formData = new FormData(document.getElementById('uploadForm'));
+                  const captionBlob = new Blob([captionText], { type: "text/plain" });
+                  formData.set('file', captionBlob, 'caption.txt');
+                  formData.set('contestName', contestSelect.value);
 
-              // Create a fake file from the caption and submit via FormData
-              e.preventDefault();
-              const formData = new FormData(document.getElementById('uploadForm'));
-              const captionBlob = new Blob([captionText], { type: "text/plain" });
-              formData.set('file', captionBlob, 'caption.txt');
-              formData.set('contestName', contestSelect.value);
-
-              fetch(document.getElementById('uploadForm').action, {
-                method: 'POST',
-                body: formData
-              }).then(resp => {
-                if (resp.redirected) {
-                  window.location.href = resp.url;
-                } else if (resp.ok) {
-                  window.location.href = "/success-submitted.html";
-                } else {
-                  resp.text().then(msg => alert(msg));
+                  fetch(document.getElementById('uploadForm').action, {
+                    method: 'POST',
+                    body: formData
+                  }).then(resp => {
+                    if (resp.redirected) {
+                      window.location.href = resp.url;
+                    } else if (resp.ok) {
+                      window.location.href = "/success-submitted.html";
+                    } else {
+                      resp.text().then(msg => alert(msg));
+                    }
+                  }).catch(err => {
+                    alert("Submission failed: " + err.message);
+                  });
+                  return false;
                 }
-              }).catch(err => {
-                alert("Submission failed: " + err.message);
-              });
-
-              return false;
-            };
+                return true;
+              };
+            } else {
+              captionImageContainer.innerHTML = '<p style="color:red;">No image found for this caption contest.</p>';
+            }
           } else {
-            captionImageContainer.innerHTML = '<p style="color:red;">No image found for this caption contest.</p>';
+            captionImageContainer.innerHTML = '<p style="color:red;">Unable to load caption contest image.</p>';
           }
-        } else {
-          captionImageContainer.innerHTML = '<p style="color:red;">Unable to load caption contest image.</p>';
+        } catch (err) {
+          captionImageContainer.innerHTML = '<p style="color:red;">Failed to fetch caption contest image.</p>';
         }
-      } catch (err) {
-        captionImageContainer.innerHTML = '<p style="color:red;">Failed to fetch caption contest image.</p>';
       }
     } else {
       captionImageContainer.innerHTML = '';
@@ -295,7 +368,7 @@
     }
   });
 
-  // PATCH: Hide expired contests in dropdown
+  // Hide expired contests in dropdown
   async function loadApprovedContests() {
     try {
       const res = await fetch('/api/contests/approved');
