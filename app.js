@@ -300,7 +300,7 @@ app.post('/api/payment/webhook', rawBodyParser, async (req, res) => {
 // === 🚩 New route for handling uploads ===
 app.post('/api/payment/upload', upload.single('file'), async (req, res) => {
   try {
-    let { name, contestName, session_id, triviaAnswers } = req.body;
+    let { name, email, contestName, session_id, triviaAnswers } = req.body;
     if (Array.isArray(contestName)) contestName = contestName[0];
 
     let { timeTaken } = req.body;
@@ -362,6 +362,7 @@ app.post('/api/payment/upload', upload.single('file'), async (req, res) => {
     uploads.push({
       sessionId: session_id,
       name,
+      email,
       contestName,
       fileUrl,
       triviaAnswers: triviaAnswers ? JSON.parse(triviaAnswers) : null,
