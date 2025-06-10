@@ -1583,7 +1583,6 @@ router.post('/set-winner', express.json(), async (req, res) => {
   }
 });
 
-// --- Tax1099 W9 iFrame endpoint (updated for new API and schema) ---
 router.post('/tax1099-w9-link', async (req, res) => {
   const { recipientEmail, recipientName } = req.body;
 
@@ -1607,8 +1606,8 @@ router.post('/tax1099-w9-link', async (req, res) => {
         payerTin: TAX1099_PAYER_TIN,
         clientPayerId: TAX1099_CLIENT_PAYER_ID,
         formType: "FormW9",
-        isEmail: false,
-        isLink: true,
+        isEmail: true, // Tax1099 will email the recipient
+        isLink: false, // No direct link returned to you
         isNewView: true,
         callbackUrl: "",
         callbackUID: "",
@@ -1638,14 +1637,14 @@ router.post('/tax1099-w9-link', async (req, res) => {
       })
     });
     const data = await result.json();
-    if (data && data.link) {
-      res.json({ link: data.link });
+    if (data && data.status === "Success") {
+      res.json({ success: true, message: "W9 invite email sent by Tax1099." });
     } else {
-      res.status(400).json({ error: "No link received", full: data });
+      res.status(400).json({ error: "No confirmation received from Tax1099", full: data });
     }
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Failed to get W9 iFrame link" });
+    res.status(500).json({ error: "Failed to request W9 invite from Tax1099." });
   }
 });
 
