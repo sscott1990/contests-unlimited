@@ -13,9 +13,28 @@
       <% uploads.forEach(function(upload) { %>
         <div class="gallery-card">
           <span class="gallery-tag"><%= upload.contestName || 'Unknown' %></span>
-          <% if (upload.presignedUrl && upload.isImageFile) { %>
+          <% 
+            // Show the image if present
+            if (upload.presignedUrl && upload.isImageFile) { 
+          %>
             <img class="gallery-img" src="<%= upload.presignedUrl %>" alt="Upload by <%= upload.name %>">
-          <% } else { %>
+          <% 
+            // If it's a custom caption contest and a caption was submitted, 
+            // show the contest image and the caption text 
+            } else if (
+              upload.contestName && 
+              upload.contestName.startsWith('caption-contest-') && 
+              upload.contestName !== 'caption-contest-default' &&
+              upload.contestImageUrl && upload.captionText
+            ) { 
+          %>
+            <img class="gallery-img" src="<%= upload.contestImageUrl %>" alt="Caption Contest Image">
+            <div class="caption-block">
+              <strong>Caption:</strong> <span><%= upload.captionText %></span>
+            </div>
+          <% 
+            } else { 
+          %>
             <div class="no-image">No Image</div>
           <% } %>
           <div class="gallery-info">

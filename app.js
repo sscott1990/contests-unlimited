@@ -300,8 +300,7 @@ app.post('/api/payment/webhook', rawBodyParser, async (req, res) => {
 // === 🚩 New route for handling uploads ===
 app.post('/api/payment/upload', upload.single('file'), async (req, res) => {
   try {
-    let { name, contestName, session_id, triviaAnswers } = req.body;  // PATCH: Use let, not const, for contestName
-    // PATCH: Force contestName to be a string
+    let { name, contestName, session_id, triviaAnswers } = req.body;
     if (Array.isArray(contestName)) contestName = contestName[0];
 
     let { timeTaken } = req.body;
@@ -315,7 +314,27 @@ app.post('/api/payment/upload', upload.single('file'), async (req, res) => {
     if (isNaN(timeTaken)) timeTaken = null;
 
     let fileUrl = null;
-    if (file) {
+    let captionText = null;
+    let contestImageUrl = null;
+
+    // If it's a custom caption contest and a text file, save caption text and contest image
+    if (
+      contestName &&
+      contestName.startsWith('caption-contest-') &&
+      contestName !== 'caption-contest-default' &&
+      file &&
+      file.mimetype === 'text/plain'
+    ) {
+      captionText = file.buffer.toString('utf-8');
+      // Get contest image from the creators list
+      const creators = await getCreators();
+      const contest = creators.find(c => c.slug === contestName);
+      if (contest && contest.fileUrl) {
+        contestImageUrl = contest.fileUrl;
+      }
+      // Don't save fileUrl for caption text uploads (no need)
+      fileUrl = null;
+    } else if (file) {
       const s3Key = `uploads/${session_id}/${Date.now()}_${file.originalname}`;
       await s3.putObject({
         Bucket: ENTRIES_BUCKET,
@@ -336,11 +355,13 @@ app.post('/api/payment/upload', upload.single('file'), async (req, res) => {
     uploads.push({
       sessionId: session_id,
       name,
-      contestName,  // always a string now!
+      contestName,
       fileUrl,
       triviaAnswers: triviaAnswers ? JSON.parse(triviaAnswers) : null,
       timeTaken,
       timestamp: new Date().toISOString(),
+      captionText,
+      contestImageUrl,
     });
 
     await saveUploads(uploads);
