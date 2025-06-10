@@ -4,6 +4,7 @@ const router = express.Router();
 const { loadJSONFromS3 } = require('../utils/s3Utils');
 const slugify = require('slugify');
 const fetch = require('node-fetch'); // For text file preview
+const cron = require('node-cron');
 
 const s3 = new AWS.S3({
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
@@ -1737,6 +1738,94 @@ router.post('/snapshot-ytds', async (req, res) => {
   }
 });
 
+// --- Automatic Snapshot YTDs at New Year's Eve 11:59:59 PM EST ---
+cron.schedule('59 59 23 31 12 *', async () => {
+  try {
+    const [uploads, creators] = await Promise.all([
+      loadUploads(),
+      loadCreators()
+    ]);
+    // YTD calculation (same as dashboard)
+    const nowDate = new Date();
+    const startOfYear = new Date(nowDate.getFullYear(), 0, 1).getTime();
+    const uploadsYTD = uploads.filter(u => {
+      const ts = new Date(u.timestamp || u.createdAt || u.updatedAt).getTime();
+      return ts >= startOfYear;
+    });
+
+    const ytdByContest = {};
+    uploadsYTD.forEach(u => {
+      if (!ytdByContest[u.contestName]) ytdByContest[u.contestName] = [];
+      ytdByContest[u.contestName].push(u);
+    });
+
+    let ytdCreatorsDetails = {};
+    let ytdWinnersDetails = {};
+
+    for (const contestName in ytdByContest) {
+      const contestUploads = ytdByContest[contestName];
+      const contestInfo = creators.find(c => c.slug === contestName) || {};
+      const creator = contestInfo.creator || "Contests Unlimited";
+      const creatorEmail = contestInfo.creatorEmail || contestInfo.email || "";
+      const creatorName = contestInfo.creator || "";
+      const entryFee = 100;
+      const totalEntries = contestUploads.length;
+      let creatorEarnings = 0, winnerPayout = 0;
+      let minEntries = contestInfo.minEntries || 50;
+      if (totalEntries <= minEntries) {
+        creatorEarnings = totalEntries * entryFee * 0.25;
+      } else {
+        creatorEarnings = minEntries * entryFee * 0.25 + (totalEntries - minEntries) * entryFee * 0.30;
+      }
+      winnerPayout = totalEntries * entryFee * 0.6;
+
+      ytdCreatorsDetails[creator] = ytdCreatorsDetails[creator] || { name: creatorName, email: creatorEmail, payout: 0 };
+      ytdCreatorsDetails[creator].payout += creatorEarnings;
+
+      const winnerUpload = contestUploads.find(u => u.isWinner);
+      if (winnerUpload) {
+        const winner = winnerUpload.name || winnerUpload.customerEmail || winnerUpload.sessionId;
+        const winnerEmail = winnerUpload.email || winnerUpload.customerEmail || "";
+        ytdWinnersDetails[winner] = ytdWinnersDetails[winner] || { name: winner, email: winnerEmail, payout: 0 };
+        ytdWinnersDetails[winner].payout += winnerPayout;
+      }
+    }
+
+    // Save a timestamped snapshot to S3
+    const snapshot = {
+      timestamp: new Date().toISOString(),
+      year: nowDate.getFullYear(),
+      creators: ytdCreatorsDetails,
+      winners: ytdWinnersDetails
+    };
+
+    // Load existing snapshots
+    const s3Key = 'ytd-snapshots.json';
+    let snapshots = [];
+    try {
+      const obj = await s3.getObject({ Bucket: BUCKET_NAME, Key: s3Key }).promise();
+      snapshots = JSON.parse(obj.Body.toString() || '[]');
+    } catch (e) {
+      snapshots = [];
+    }
+    snapshots.push(snapshot);
+
+    await s3.putObject({
+      Bucket: BUCKET_NAME,
+      Key: s3Key,
+      Body: JSON.stringify(snapshots, null, 2),
+      ContentType: 'application/json'
+    }).promise();
+
+    console.log(`[YTD SNAPSHOT]: Successfully snapshotted YTDs at ${snapshot.timestamp}`);
+  } catch (e) {
+    console.error('[YTD SNAPSHOT]: Failed to snapshot YTDs:', e);
+  }
+}, {
+  timezone: "America/New_York"
+});
+
+// --- YTD Snapshots view page ---
 router.get('/ytd-snapshots', async (req, res) => {
   try {
     const s3Key = 'ytd-snapshots.json';
