@@ -15,6 +15,17 @@
     .question {
       margin-bottom: 15px;
     }
+    /* Add a class for smaller caption images */
+    .caption-img {
+      max-width: 25%;
+      height: auto;
+      border: 2px solid #ccc;
+      border-radius: 10px;
+      margin-top: 20px;
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
+    }
   </style>
 </head>
 <body>
@@ -29,7 +40,7 @@
 
   <form id="uploadForm" enctype="multipart/form-data" method="POST" action="/api/payment/upload">
     <input type="text" name="name" placeholder="Your Name" required>
-    <input type="email" name="email" placeholder="Your Email" required>
+    <input type="email" name="email" placeholder="Your Email" required id="emailInput">
     <select name="contestName" id="contestSelect" required>
       <option value="" disabled selected>Select Contest</option>
       <option value="art-contest-default">Art Contest</option>
@@ -64,6 +75,7 @@
   const timeTakenInput = document.getElementById('timeTaken');
   const sessionIdInput = document.getElementById('sessionIdInput');
   const captionImageContainer = document.getElementById('captionImageContainer');
+  const emailInput = document.getElementById('emailInput');
 
   let timer, startTime, triviaQuestions = [];
   let timerStarted = false;
@@ -130,10 +142,7 @@
               const img = document.createElement('img');
               img.src = data.image;
               img.alt = 'Caption This Image';
-              img.style.maxWidth = '100%';
-              img.style.border = '2px solid #ccc';
-              img.style.borderRadius = '10px';
-              img.style.marginTop = '20px';
+              img.className = 'caption-img';
 
               captionImageContainer.appendChild(img);
 
@@ -202,10 +211,7 @@
               const img = document.createElement('img');
               img.src = data.fileUrl;
               img.alt = 'Caption Contest Image';
-              img.style.maxWidth = '100%';
-              img.style.border = '2px solid #ccc';
-              img.style.borderRadius = '10px';
-              img.style.marginTop = '20px';
+              img.className = 'caption-img';
 
               captionImageContainer.appendChild(img);
 

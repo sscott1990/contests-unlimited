@@ -52,6 +52,21 @@ form#uploadForm input[type="file"]:focus {
   background-color: #ffffff;
 }
 
+/* --- Add this for email input: --- */
+form#uploadForm input[type="email"] {
+  padding: 12px 14px;
+  font-size: 1rem;
+  border: 2px solid #a29bfe;
+  border-radius: 6px;
+  background-color: #f7f1e3;
+  outline-offset: 2px;
+  transition: border-color 0.3s ease, background-color 0.3s ease;
+}
+form#uploadForm input[type="email"]:focus {
+  border-color: #6c5ce7;
+  background-color: #ffffff;
+}
+
 /* Submit button and general buttons */
 form#uploadForm button,
 button {
