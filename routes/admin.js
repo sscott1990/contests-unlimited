@@ -1421,7 +1421,7 @@ router.get('/dashboard-financials', async (req, res) => {
       ytdByCreator[creator] = (ytdByCreator[creator] || 0) + creatorEarnings;
       ytdPlatform += platformEarnings;
 
-      // Save details for W9 button use
+      // Save details for W9 notice use
       ytdCreatorsDetails[creator] = ytdCreatorsDetails[creator] || { name: creatorName, email: creatorEmail, payout: 0 };
       ytdCreatorsDetails[creator].payout += creatorEarnings;
 
@@ -1436,7 +1436,7 @@ router.get('/dashboard-financials', async (req, res) => {
       }
     }
 
-    // Render a simple dashboard (with YTD section + W9 buttons)
+    // Render a simple dashboard (with YTD section + W9 notice)
     res.send(`
       <html>
       <head>
@@ -1447,6 +1447,7 @@ router.get('/dashboard-financials', async (req, res) => {
           table { border-collapse: collapse; width: 100%; margin-bottom: 2em; }
           th, td { border: 1px solid #ccc; padding: 8px; }
           th { background: #e6faf1; }
+          .w9notice { color: #d00; font-weight: bold; }
         </style>
       </head>
       <body>
@@ -1471,13 +1472,15 @@ router.get('/dashboard-financials', async (req, res) => {
           <li><b>Outstanding to Creators:</b> $${outstandingToCreators.toFixed(2)}</li>
         </ul>
         <h2>YTD Totals (This Year)</h2>
+        <div style="margin-bottom:1em;">
+          <span class="w9notice">NOTICE: You need to send a W-9 request via Tax1099 to anyone whose YTD payout is over $600.</span>
+        </div>
         <ul>
           <li><b>Creators:</b>
             <ul>
               ${Object.entries(ytdCreatorsDetails).map(([creator, details]) =>
                 `<li>${creator}: $${details.payout.toFixed(2)}
-                  ${details.payout > 600 && details.email ? 
-                    `<button onclick="showW9Iframe('${details.email}', '${details.name}')">W9</button>` : ''}
+                  ${details.payout > 600 ? `<span class="w9notice">Needs W-9</span>` : ''}
                 </li>`
               ).join('')}
             </ul>
@@ -1486,8 +1489,7 @@ router.get('/dashboard-financials', async (req, res) => {
             <ul>
               ${Object.entries(ytdWinnersDetails).map(([winner, details]) =>
                 `<li>${winner}: $${details.payout.toFixed(2)}
-                  ${details.payout > 600 && details.email ? 
-                    `<button onclick="showW9Iframe('${details.email}', '${details.name}')">W9</button>` : ''}
+                  ${details.payout > 600 ? `<span class="w9notice">Needs W-9</span>` : ''}
                 </li>`
               ).join('')}
             </ul>
@@ -1519,30 +1521,6 @@ router.get('/dashboard-financials', async (req, res) => {
             <td>${c.endDate ? new Date(c.endDate).toLocaleString() : ''}</td>
           </tr>`).join('')}
         </table>
-        <!-- W9 IFrame Modal -->
-        <div id="w9-modal" style="display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); z-index:9999;">
-          <div style="background:#fff; margin:5em auto; padding:2em; width:800px; position:relative;">
-            <button style="position:absolute;top:10px;right:10px;" onclick="document.getElementById('w9-modal').style.display='none'">Close</button>
-            <iframe id="w9-iframe" height="600" width="750"></iframe>
-          </div>
-        </div>
-        <script>
-        async function showW9Iframe(email, name) {
-          // Call backend to get iFrame link
-          const res = await fetch('/api/admin/tax1099-w9-link', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ recipientEmail: email, recipientName: name })
-          });
-          const data = await res.json();
-          if (data.link) {
-            document.getElementById('w9-iframe').src = data.link;
-            document.getElementById('w9-modal').style.display = 'block';
-          } else {
-            alert('Failed to get W9 link: ' + (data.error || 'Unknown error'));
-          }
-        }
-        </script>
       </body>
       </html>
     `);
@@ -1580,88 +1558,6 @@ router.post('/set-winner', express.json(), async (req, res) => {
   } catch (err) {
     console.error('Failed to set winner:', err);
     res.status(500).json({ error: 'Failed to set winner' });
-  }
-});
-
-router.post('/tax1099-w9-link', async (req, res) => {
-  const { recipientEmail, recipientName } = req.body;
-
-  if (!recipientEmail || !recipientName) {
-    return res.status(400).json({ error: 'Missing recipientEmail or recipientName' });
-  }
-
-  const TAX1099_API_KEY = process.env.TAX1099_API_KEY;
-  const TAX1099_PAYER_TIN = process.env.TAX1099_PAYER_TIN;
-  console.log("Tax1099 API KEY:", TAX1099_API_KEY ? "[set]" : "[missing]");
-  console.log("Tax1099 PAYER TIN:", TAX1099_PAYER_TIN ? "[set]" : "[missing]");
-
-  try {
-    const fetch = (await import('node-fetch')).default;
-    const result = await fetch('https://sandboxapirecipient.1099cloud.com/api/v1/recipient/w8w9request', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'AppKey': TAX1099_API_KEY
-      },
-      body: JSON.stringify({
-        payerTin: TAX1099_PAYER_TIN,
-        formType: "FormW9",
-        isEmail: true,
-        isLink: false,
-        isNewView: true,
-        callbackUrl: "",
-        callbackUID: "",
-        recipientList: [
-          {
-            recipientId: 0,
-            recipientTin: "",
-            tinType: "",
-            firstName: recipientName,
-            middleName: "",
-            lastNameOrBusinessName: "",
-            suffix: "",
-            address: "",
-            address2: "",
-            city: "",
-            state: "",
-            zipCode: "",
-            country: "",
-            email: recipientEmail,
-            phone: "",
-            formW9Info: {}
-          }
-        ],
-        styles: {},
-        cardReferenceId: ""
-      })
-    });
-
-    const status = result.status;
-    const text = await result.text();
-
-    // Log what you get from Tax1099
-    console.log("Tax1099 API status:", status);
-    console.log("Tax1099 API raw response:", text);
-
-    let data = null;
-    try {
-      data = JSON.parse(text);
-    } catch (e) {
-      // not valid JSON
-    }
-
-    if (data && data.status === "Success") {
-      res.json({ success: true, message: "W9 invite email sent by Tax1099." });
-    } else {
-      res.status(500).json({
-        error: "No confirmation received from Tax1099",
-        status,
-        body: text || "(no response body)"
-      });
-    }
-  } catch (err) {
-    console.error("API error:", err);
-    res.status(500).json({ error: "Failed to request W9 invite from Tax1099.", details: err.message });
   }
 });
 
