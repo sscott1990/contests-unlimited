@@ -1592,7 +1592,6 @@ router.post('/tax1099-w9-link', async (req, res) => {
 
   const TAX1099_API_KEY = process.env.TAX1099_API_KEY;
   const TAX1099_PAYER_TIN = process.env.TAX1099_PAYER_TIN;
-  const TAX1099_CLIENT_PAYER_ID = process.env.TAX1099_CLIENT_PAYER_ID;
 
   try {
     const fetch = (await import('node-fetch')).default;
@@ -1604,17 +1603,15 @@ router.post('/tax1099-w9-link', async (req, res) => {
       },
       body: JSON.stringify({
         payerTin: TAX1099_PAYER_TIN,
-        clientPayerId: TAX1099_CLIENT_PAYER_ID,
         formType: "FormW9",
-        isEmail: true, // Tax1099 will email the recipient
-        isLink: false, // No direct link returned to you
+        isEmail: true,
+        isLink: false,
         isNewView: true,
         callbackUrl: "",
         callbackUID: "",
         recipientList: [
           {
             recipientId: 0,
-            clientRecipientId: recipientEmail,
             recipientTin: "",
             tinType: "",
             firstName: recipientName,
@@ -1636,15 +1633,33 @@ router.post('/tax1099-w9-link', async (req, res) => {
         cardReferenceId: ""
       })
     });
-    const data = await result.json();
+
+    const status = result.status;
+    const text = await result.text();
+
+    // Log what you get from Tax1099
+    console.log("Tax1099 API status:", status);
+    console.log("Tax1099 API raw response:", text);
+
+    let data = null;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      // not valid JSON
+    }
+
     if (data && data.status === "Success") {
       res.json({ success: true, message: "W9 invite email sent by Tax1099." });
     } else {
-      res.status(400).json({ error: "No confirmation received from Tax1099", full: data });
+      res.status(500).json({
+        error: "No confirmation received from Tax1099",
+        status,
+        body: text || "(no response body)"
+      });
     }
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to request W9 invite from Tax1099." });
+    console.error("API error:", err);
+    res.status(500).json({ error: "Failed to request W9 invite from Tax1099.", details: err.message });
   }
 });
 
