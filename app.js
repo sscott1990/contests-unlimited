@@ -199,6 +199,38 @@ async function getPresignedUrlFromFileUrl(fileUrl) {
   }
 }
 
+// === ADD THIS: API for default caption contest, with signed image URL ===
+app.get('/api/caption-contest', async (req, res) => {
+  try {
+    // Fetch the JSON metadata from S3
+    const data = await s3.getObject({
+      Bucket: ENTRIES_BUCKET,
+      Key: 'caption-contest.json'
+    }).promise();
+    const json = JSON.parse(data.Body.toString('utf-8'));
+
+    // If the image is an S3 key (not a full URL), generate a signed URL
+    let imageUrl = json.image;
+    if (imageUrl && !/^https?:\/\//.test(imageUrl)) {
+      // Remove leading slash if present
+      const key = imageUrl.replace(/^\//, '');
+      imageUrl = await s3.getSignedUrlPromise('getObject', {
+        Bucket: ENTRIES_BUCKET,
+        Key: key,
+        Expires: 900 // 15 minutes
+      });
+    }
+
+    res.json({
+      ...json,
+      image: imageUrl
+    });
+  } catch (err) {
+    if (err.code === 'NoSuchKey') return res.status(404).json({ error: 'Not found' });
+    res.status(500).json({ error: 'Failed to fetch caption contest' });
+  }
+});
+
 // === ✅ EPD Webhook Receiver ===
 app.post('/api/payment/webhook', rawBodyParser, async (req, res) => {
   try {

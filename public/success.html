@@ -118,13 +118,14 @@
 
     // Caption Contest custom image logic
     if (isCaption) {
+      captionImageContainer.innerHTML = '';
+      document.getElementById('uploadForm').onsubmit = null;
       if (selectedSlug === "caption-contest-default") {
-        // Load the default caption contest image from caption-contest.json
+        // Load the default caption contest image from API (with signed S3 URL)
         try {
-          const res = await fetch('/caption-contest.json');
+          const res = await fetch('/api/caption-contest');
           if (res.ok) {
             const data = await res.json();
-            captionImageContainer.innerHTML = '';
             if (data.image) {
               const img = document.createElement('img');
               img.src = data.image;
@@ -197,7 +198,6 @@
           const res = await fetch('/api/contest/' + encodeURIComponent(selectedSlug));
           if (res.ok) {
             const data = await res.json();
-            captionImageContainer.innerHTML = '';
             if (data.fileUrl) {
               const img = document.createElement('img');
               img.src = data.fileUrl;
@@ -273,6 +273,8 @@
 
     updatePrizePoolDisplay();
   });
+
+  // ...rest of the script unchanged...
 
   async function loadTriviaQuestions() {
     try {
