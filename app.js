@@ -213,14 +213,41 @@ app.post('/api/payment/webhook', rawBodyParser, async (req, res) => {
       webhookData.event_body.transaction_id
     ) {
       const sessionId = webhookData.event_body.transaction_id;
+      const billingAddress = webhookData.event_body.billing_address || {};
+      const userState = (billingAddress.state || '').toUpperCase();
+      const RESTRICTED_STATES = ['NY', 'WA', 'NJ', 'PR', 'GU', 'AS', 'VI', 'MP', 'RI', 'FL', 'AZ'];
 
+      // 🚩 Block or disqualify restricted state entries
+      if (RESTRICTED_STATES.includes(userState)) {
+        console.warn(`Blocked/disqualified entry from restricted state: ${userState} (sessionId: ${sessionId})`);
+        // Option 1: Don't save the entry at all (just return OK for webhook)
+        // return res.status(200).send('Entry from restricted state blocked');
+
+        // Option 2: Save but mark as disqualified for audit trail
+        const paymentRecord = {
+          sessionId,
+          amount: webhookData.event_body.action.amount,
+          status: 'disqualified',
+          restrictedReason: `Entry from restricted state: ${userState}`,
+          timestamp: new Date().toISOString(),
+          customerEmail: billingAddress?.email || null,
+          billingAddress: billingAddress,
+          shippingAddress: webhookData.event_body.shipping_address || {},
+        };
+        const entries = await getEntries();
+        entries.push(paymentRecord);
+        await saveEntries(entries);
+        return res.status(200).send('Entry from restricted state recorded as disqualified');
+      }
+
+      // Normal entry creation for allowed states
       const paymentRecord = {
         sessionId,
         amount: webhookData.event_body.action.amount,
         status: webhookData.event_body.action.success === "1" ? 'success' : 'failed',
         timestamp: new Date().toISOString(),
-        customerEmail: webhookData.event_body.billing_address?.email || null,
-        billingAddress: webhookData.event_body.billing_address || {},
+        customerEmail: billingAddress?.email || null,
+        billingAddress: billingAddress,
         shippingAddress: webhookData.event_body.shipping_address || {},
       };
 
