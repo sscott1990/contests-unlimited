@@ -15,7 +15,6 @@
     .question {
       margin-bottom: 15px;
     }
-    /* Add a class for smaller caption images */
     .caption-img {
       max-width: 25%;
       height: auto;
@@ -26,6 +25,53 @@
       margin-left: auto;
       margin-right: auto;
     }
+    /* Style for caption input to match other form elements, 50% width */
+    #captionInputRow {
+      width: 180px;
+      max-width: 50vw;
+      margin: 0 auto 10px auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    #captionInputRow label {
+      margin-bottom: 6px;
+      font-weight: bold;
+      color: #22244c;
+      width: 100%;
+      text-align: left;
+    }
+    #captionEntry {
+      padding: 12px 14px;
+      font-size: 1rem;
+      border: 2px solid #a29bfe;
+      border-radius: 6px;
+      background-color: #f7f1e3;
+      outline-offset: 2px;
+      transition: border-color 0.3s ease, background-color 0.3s ease;
+      width: 100%;
+      min-width: 100px;
+      max-width: 100%;
+      box-sizing: border-box;
+    }
+    #captionEntry:focus {
+      border-color: #6c5ce7;
+      background-color: #ffffff;
+    }
+    @media (min-width: 400px) {
+      #captionInputRow {
+        width: 50%;
+        min-width: 180px;
+        max-width: 320px;
+      }
+    }
+    @media (max-width: 450px) {
+      #captionInputRow {
+        width: 98vw;
+        min-width: 100px;
+        max-width: 98vw;
+      }
+    }
   </style>
 </head>
 <body>
@@ -35,7 +81,9 @@
     Loading prize pool...
   </p>
 
-  <!-- Image will show here if caption contest -->
+  <!-- Caption input row will be injected here if needed -->
+  <div id="captionInputAbove"></div>
+  <!-- Image for caption contest -->
   <div id="captionImageContainer"></div>
 
   <form id="uploadForm" enctype="multipart/form-data" method="POST" action="/api/payment/upload">
@@ -48,7 +96,6 @@
       <option value="trivia-contest-default">Trivia Contest</option>
       <option value="caption-contest-default">Caption Contest</option>
     </select>
-
     <input type="file" name="file" id="fileInput" accept="image/*" required>
     <input type="hidden" name="session_id" id="sessionIdInput">
 
@@ -75,6 +122,7 @@
   const timeTakenInput = document.getElementById('timeTaken');
   const sessionIdInput = document.getElementById('sessionIdInput');
   const captionImageContainer = document.getElementById('captionImageContainer');
+  const captionInputAbove = document.getElementById('captionInputAbove');
   const emailInput = document.getElementById('emailInput');
 
   let timer, startTime, triviaQuestions = [];
@@ -112,6 +160,11 @@
       fileInput.required = true;
     }
 
+    // Reset caption input and image
+    captionInputAbove.innerHTML = '';
+    captionImageContainer.innerHTML = '';
+    document.getElementById('uploadForm').onsubmit = null;
+
     // Trivia Contest logic
     if (isTrivia) {
       triviaSection.style.display = 'block';
@@ -130,8 +183,6 @@
 
     // Caption Contest custom image logic
     if (isCaption) {
-      captionImageContainer.innerHTML = '';
-      document.getElementById('uploadForm').onsubmit = null;
       if (selectedSlug === "caption-contest-default") {
         // Load the default caption contest image from API (with signed S3 URL)
         try {
@@ -139,20 +190,19 @@
           if (res.ok) {
             const data = await res.json();
             if (data.image) {
+              // Insert caption input above image
+              captionInputAbove.innerHTML = `
+                <div id="captionInputRow">
+                  <label for="captionEntry">Your Caption:</label>
+                  <input type="text" id="captionEntry" name="captionEntry" placeholder="Write your funny caption here..." required>
+                </div>
+              `;
+              // Insert image below
               const img = document.createElement('img');
               img.src = data.image;
               img.alt = 'Caption This Image';
               img.className = 'caption-img';
-
               captionImageContainer.appendChild(img);
-
-              // Add Caption Input
-              const captionForm = document.createElement('div');
-              captionForm.innerHTML = `
-                <label for="captionEntry" style="display:block;margin:14px 0 6px 0;"><b>Your Caption:</b></label>
-                <input type="text" id="captionEntry" name="captionEntry" placeholder="Write your funny caption here..." style="width:100%;padding:8px;" required>
-              `;
-              captionImageContainer.appendChild(captionForm);
 
               // Ensure captionEntry is submitted as "file" (simulate a file upload with caption text)
               document.getElementById('uploadForm').onsubmit = function(e) {
@@ -166,7 +216,6 @@
                     e.preventDefault();
                     return false;
                   }
-
                   // Create a fake file from the caption and submit via FormData
                   e.preventDefault();
                   const formData = new FormData(document.getElementById('uploadForm'));
@@ -207,21 +256,19 @@
           const res = await fetch('/api/contest/' + encodeURIComponent(selectedSlug));
           if (res.ok) {
             const data = await res.json();
+            // Insert caption input above image
+            captionInputAbove.innerHTML = `
+              <div id="captionInputRow">
+                <label for="captionEntry">Your Caption:</label>
+                <input type="text" id="captionEntry" name="captionEntry" placeholder="Write your funny caption here..." required>
+              </div>
+            `;
             if (data.fileUrl) {
               const img = document.createElement('img');
               img.src = data.fileUrl;
               img.alt = 'Caption Contest Image';
               img.className = 'caption-img';
-
               captionImageContainer.appendChild(img);
-
-              // Add Caption Input
-              const captionForm = document.createElement('div');
-              captionForm.innerHTML = `
-                <label for="captionEntry" style="display:block;margin:14px 0 6px 0;"><b>Your Caption:</b></label>
-                <input type="text" id="captionEntry" name="captionEntry" placeholder="Write your funny caption here..." style="width:100%;padding:8px;" required>
-              `;
-              captionImageContainer.appendChild(captionForm);
 
               // Ensure captionEntry is submitted as "file" (simulate a file upload with caption text)
               document.getElementById('uploadForm').onsubmit = function(e) {
@@ -236,7 +283,6 @@
                     e.preventDefault();
                     return false;
                   }
-
                   // Create a fake file from the caption and submit via FormData
                   e.preventDefault();
                   const formData = new FormData(document.getElementById('uploadForm'));
@@ -272,9 +318,6 @@
           captionImageContainer.innerHTML = '<p style="color:red;">Failed to fetch caption contest image.</p>';
         }
       }
-    } else {
-      captionImageContainer.innerHTML = '';
-      document.getElementById('uploadForm').onsubmit = null;
     }
 
     updatePrizePoolDisplay();
