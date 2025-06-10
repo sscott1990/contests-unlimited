@@ -317,7 +317,7 @@ app.post('/api/payment/upload', upload.single('file'), async (req, res) => {
     let captionText = null;
     let contestImageUrl = null;
 
-    // If it's a custom caption contest and a text file, save caption text and contest image
+    // Save caption as a .txt file in S3 for caption contests (robust)
     if (
       contestName &&
       contestName.startsWith('caption-contest-') &&
@@ -325,6 +325,15 @@ app.post('/api/payment/upload', upload.single('file'), async (req, res) => {
       file &&
       file.mimetype === 'text/plain'
     ) {
+      // Upload the caption as a .txt file to S3
+      const s3Key = `uploads/${session_id}/${Date.now()}_caption.txt`;
+      await s3.putObject({
+        Bucket: ENTRIES_BUCKET,
+        Key: s3Key,
+        Body: file.buffer,
+        ContentType: 'text/plain',
+      }).promise();
+      fileUrl = `https://${ENTRIES_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${s3Key}`;
       captionText = file.buffer.toString('utf-8');
       // Get contest image from the creators list
       const creators = await getCreators();
@@ -332,8 +341,6 @@ app.post('/api/payment/upload', upload.single('file'), async (req, res) => {
       if (contest && contest.fileUrl) {
         contestImageUrl = contest.fileUrl;
       }
-      // Don't save fileUrl for caption text uploads (no need)
-      fileUrl = null;
     } else if (file) {
       const s3Key = `uploads/${session_id}/${Date.now()}_${file.originalname}`;
       await s3.putObject({
