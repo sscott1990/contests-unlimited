@@ -417,7 +417,7 @@ router.get('/', (req, res) => {
               </button>
             </p>
 
-            <h2>Current Jackpot Info</h2>
+            <h2>Current Prize Info</h2>
             <div class="contest-info-scroll">
               <ul>${prizeList || '<li>No entries yet</li>'}</ul>
             </div>
