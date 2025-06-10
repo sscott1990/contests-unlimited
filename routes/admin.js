@@ -216,6 +216,7 @@ router.get('/entries-view', async (req, res) => {
         <h1>Admin Panel</h1>
         <nav>
           <a href="/api/admin/dashboard-financials">Dashboard</a> |
+          <a href="/api/admin/ytd-snapshots">YTD Snapshots</a> |
           <a href="/api/admin/uploads">Uploads</a> |
           <a href="/api/admin/entries-view">Entries</a> |
           <a href="/api/admin/trivia">Trivia Results</a> |
@@ -475,6 +476,7 @@ router.get('/uploads', async (req, res) => {
         <h1>Admin Panel</h1>
         <nav>
           <a href="/api/admin/dashboard-financials">Dashboard</a> |
+          <a href="/api/admin/ytd-snapshots">YTD Snapshots</a> |
           <a href="/api/admin/uploads">Uploads</a> |
           <a href="/api/admin/entries-view">Entries</a> |
           <a href="/api/admin/trivia">Trivia Results</a> |
@@ -678,6 +680,7 @@ router.get('/trivia', async (req, res) => {
         <h1>Trivia Contest Submissions</h1>
         <nav>
           <a href="/api/admin/dashboard-financials">Dashboard</a> |
+          <a href="/api/admin/ytd-snapshots">YTD Snapshots</a> |
           <a href="/api/admin/uploads">Uploads</a> |
           <a href="/api/admin/entries-view">Entries</a> |
           <a href="/api/admin/trivia">Trivia Results</a> |
@@ -823,6 +826,7 @@ router.get('/creators', async (req, res) => {
         <h1>Contest Creators</h1>
         <nav>
           <a href="/api/admin/dashboard-financials">Dashboard</a> |
+          <a href="/api/admin/ytd-snapshots">YTD Snapshots</a> |
           <a href="/api/admin/uploads">Uploads</a> |
           <a href="/api/admin/entries-view">Entries</a> |
           <a href="/api/admin/trivia">Trivia Results</a> |
@@ -1466,6 +1470,7 @@ router.get('/dashboard-financials', async (req, res) => {
         <h1>Admin Financial Dashboard</h1>
         <nav>
           <a href="/api/admin/dashboard-financials">Dashboard</a> |
+          <a href="/api/admin/ytd-snapshots">YTD Snapshots</a> |
           <a href="/api/admin/uploads">Uploads</a> |
           <a href="/api/admin/entries-view">Entries</a> |
           <a href="/api/admin/trivia">Trivia Results</a> |
@@ -1729,6 +1734,84 @@ router.post('/snapshot-ytds', async (req, res) => {
   } catch (e) {
     console.error('Failed to snapshot YTDs:', e);
     res.status(500).send('Failed to snapshot YTDs');
+  }
+});
+
+router.get('/ytd-snapshots', async (req, res) => {
+  try {
+    const s3Key = 'ytd-snapshots.json';
+    let snapshots = [];
+    try {
+      const obj = await s3.getObject({ Bucket: BUCKET_NAME, Key: s3Key }).promise();
+      snapshots = JSON.parse(obj.Body.toString() || '[]');
+    } catch (e) {
+      snapshots = [];
+    }
+
+    res.send(`
+      <html>
+      <head>
+        <title>YTD Snapshots</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 2em; }
+          h2 { color: #007849; }
+          table { border-collapse: collapse; margin-bottom: 2em; }
+          th, td { border: 1px solid #ccc; padding: 8px; }
+          th { background: #e6faf1; }
+        </style>
+      </head>
+      <body>
+        <h1>YTD Snapshots</h1>
+        <nav>
+          <a href="/api/admin/dashboard-financials">Dashboard</a> |
+          <a href="/api/admin/ytd-snapshots">YTD Snapshots</a> |
+          <a href="/api/admin/uploads">Uploads</a> |
+          <a href="/api/admin/entries-view">Entries</a> |
+          <a href="/api/admin/trivia">Trivia Results</a> |
+          <a href="/api/admin/creators">Creators</a> |
+          <a href="/api/admin/logout">Logout</a>
+        </nav>
+        ${snapshots.length === 0 ? `<p>No YTD snapshots found.</p>` : snapshots.reverse().map(snapshot => `
+          <div>
+            <h2>Snapshot: ${new Date(snapshot.timestamp).toLocaleString()} (Year: ${snapshot.year})</h2>
+            <h3>Creators</h3>
+            <table>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Payout</th>
+              </tr>
+              ${Object.values(snapshot.creators).map(c =>
+                `<tr>
+                  <td>${c.name || ''}</td>
+                  <td>${c.email || ''}</td>
+                  <td>$${c.payout.toFixed(2)}</td>
+                </tr>`
+              ).join('')}
+            </table>
+            <h3>Winners</h3>
+            <table>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Payout</th>
+              </tr>
+              ${Object.values(snapshot.winners).map(w =>
+                `<tr>
+                  <td>${w.name || ''}</td>
+                  <td>${w.email || ''}</td>
+                  <td>$${w.payout.toFixed(2)}</td>
+                </tr>`
+              ).join('')}
+            </table>
+          </div>
+        `).join('<hr style="margin:2em 0;">')}
+      </body>
+      </html>
+    `);
+  } catch (e) {
+    console.error('Failed to load YTD snapshots:', e);
+    res.status(500).send('Failed to load YTD snapshots');
   }
 });
 
