@@ -686,9 +686,93 @@ app.get('/gallery', async (req, res) => {
     const start = (page - 1) * perPage;
     const paginatedUploads = uploads.slice(start, start + perPage);
 
-    // Lookup host for each upload
-    const uploadsWithHost = await Promise.all(
-      paginatedUploads.map(async upload => {
+    // Helper to get presigned url
+    async function getPresignedUrl(key) {
+      return await s3.getSignedUrlPromise('getObject', {
+        Bucket: ENTRIES_BUCKET,
+        Key: key,
+        Expires: 900,
+      });
+    }
+
+    // Helper to fetch text file contents from presigned url
+    async function getTextFileContents(url) {
+      try {
+        const response = await fetch(url);
+        if (!response.ok) return null;
+        return await response.text();
+      } catch {
+        return null;
+      }
+    }
+
+    // Helper: is this a text file?
+    function isTextFile(filename) {
+      return filename && /\.(txt|md|csv|json)$/i.test(filename);
+    }
+
+    // Helper: is this an image file?
+    function isImageFile(filename) {
+      return filename && /\.(jpe?g|png|gif|webp)$/i.test(filename);
+    }
+
+    // Map uploads to include presigned/image/caption like admin.js
+    const uploadsWithDetails = await Promise.all(
+      paginatedUploads.map(async (upload) => {
+        let presignedUrl = null;
+        let filename = null;
+        let fileContent = null;
+        let contestImageUrl = null;
+        let captionText = null;
+        let isImageFileFlag = false;
+
+        // Try to get filename and presignedUrl
+        if (upload.fileUrl) {
+          try {
+            const url = new URL(upload.fileUrl);
+            const key = url.pathname.startsWith('/') ? url.pathname.slice(1) : url.pathname;
+            filename = url.pathname.split('/').pop();
+            presignedUrl = await getPresignedUrl(key);
+            isImageFileFlag = isImageFile(filename);
+            // If it's a text file, fetch its contents (caption)
+            if (isTextFile(filename)) {
+              fileContent = await getTextFileContents(presignedUrl);
+            }
+          } catch (e) {
+            presignedUrl = upload.fileUrl;
+          }
+        }
+
+        // Find contest info
+        const creatorContest = creators.find(c =>
+          (c.slug && upload.contestName === c.slug) ||
+          (c.contestTitle && upload.contestName === c.contestTitle)
+        );
+
+        // For custom caption contests, fetch contest image + caption
+        if (
+          creatorContest &&
+          creatorContest.fileUrl &&
+          upload.contestName &&
+          upload.contestName.startsWith('caption-contest-') &&
+          upload.contestName !== 'caption-contest-default'
+        ) {
+          // Get contest image presigned URL
+          try {
+            const url = new URL(creatorContest.fileUrl);
+            const key = url.pathname.startsWith('/') ? url.pathname.slice(1) : url.pathname;
+            contestImageUrl = await getPresignedUrl(key);
+          } catch (e) {
+            contestImageUrl = creatorContest.fileUrl;
+          }
+          // The caption is the caption file content if present
+          if (fileContent) captionText = fileContent;
+        } else if (isImageFileFlag) {
+          // For regular image uploads
+          contestImageUrl = presignedUrl;
+        }
+
+        // Host logic
         let host = "Contests Unlimited";
         if (creators && creators.length) {
           const found = creators.find(c =>
@@ -698,38 +782,22 @@ app.get('/gallery', async (req, res) => {
           if (found && found.creator) host = found.creator;
         }
 
-        // Get presigned url if possible
-        let presignedUrl = null;
-        let isImageFile = false;
-        let filename = null;
-        if (upload.fileUrl) {
-          try {
-            const url = new URL(upload.fileUrl);
-            const key = url.pathname.startsWith('/') ? url.pathname.slice(1) : url.pathname;
-            filename = url.pathname.split('/').pop();
-            presignedUrl = await s3.getSignedUrlPromise('getObject', {
-              Bucket: ENTRIES_BUCKET,
-              Key: key,
-              Expires: 900,
-            });
-            // Basic image check for .jpg/.jpeg/.png/.gif/.webp
-            isImageFile = /\.(jpe?g|png|gif|webp)$/i.test(filename || "");
-          } catch (e) {
-            presignedUrl = upload.fileUrl;
-          }
-        }
         return {
           ...upload,
-          host,
           presignedUrl,
-          isImageFile
+          filename,
+          fileContent,
+          contestImageUrl,
+          captionText,
+          isImageFile: isImageFileFlag,
+          host,
         };
       })
     );
 
     // Render gallery EJS template (views/gallery.ejs)
     res.render('gallery', {
-      uploads: uploadsWithHost,
+      uploads: uploadsWithDetails,
       page,
       totalPages
     });
