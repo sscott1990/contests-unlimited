@@ -3,76 +3,68 @@
 <head>
   <title>Payment Success</title>
   <link rel="stylesheet" href="/styles.css">
-  <style>
-    #triviaSection {
-      display: none;
-      margin-top: 20px;
-      padding: 15px;
-      border: 2px solid #007849;
-      border-radius: 10px;
-      background-color: #f9f9f9;
-    }
-    .question {
-      margin-bottom: 15px;
-    }
-    .caption-img {
-      max-width: 25%;
-      height: auto;
-      border: 2px solid #ccc;
-      border-radius: 10px;
-      margin-top: 20px;
-      display: block;
-      margin-left: auto;
-      margin-right: auto;
-    }
-    /* Style for caption input to match other form elements, 50% width */
+ <style>
+  #triviaSection {
+    display: none;
+    margin-top: 20px;
+    padding: 15px;
+    border: 2px solid #007849;
+    border-radius: 10px;
+    background-color: #f9f9f9;
+  }
+  .question {
+    margin-bottom: 15px;
+  }
+  .caption-img {
+    max-width: 25%;
+    height: auto;
+    border: 2px solid #ccc;
+    border-radius: 10px;
+    margin-top: 20px;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  /* Style for caption input to match other form elements, just under the image and a little longer than the image */
+  #captionInputRow {
+    margin: 16px auto 10px auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 32%;            /* Slightly longer than the image (image is 25%) */
+    min-width: 220px;      /* Wider minimum for mobile */
+    max-width: 400px;
+  }
+  #captionInputRow label {
+    margin-bottom: 6px;
+    font-weight: bold;
+    color: #22244c;
+    width: 100%;
+    text-align: left;
+  }
+  #captionEntry {
+    padding: 12px 14px;
+    font-size: 1rem;
+    border: 2px solid #a29bfe;
+    border-radius: 6px;
+    background-color: #f7f1e3;
+    outline-offset: 2px;
+    transition: border-color 0.3s ease, background-color 0.3s ease;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  #captionEntry:focus {
+    border-color: #6c5ce7;
+    background-color: #ffffff;
+  }
+  @media (max-width: 700px) {
     #captionInputRow {
-      width: 180px;
-      max-width: 50vw;
-      margin: 0 auto 10px auto;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+      width: 85vw;
+      min-width: 0;
+      max-width: 98vw;
     }
-    #captionInputRow label {
-      margin-bottom: 6px;
-      font-weight: bold;
-      color: #22244c;
-      width: 100%;
-      text-align: left;
-    }
-    #captionEntry {
-      padding: 12px 14px;
-      font-size: 1rem;
-      border: 2px solid #a29bfe;
-      border-radius: 6px;
-      background-color: #f7f1e3;
-      outline-offset: 2px;
-      transition: border-color 0.3s ease, background-color 0.3s ease;
-      width: 100%;
-      min-width: 100px;
-      max-width: 100%;
-      box-sizing: border-box;
-    }
-    #captionEntry:focus {
-      border-color: #6c5ce7;
-      background-color: #ffffff;
-    }
-    @media (min-width: 400px) {
-      #captionInputRow {
-        width: 50%;
-        min-width: 180px;
-        max-width: 320px;
-      }
-    }
-    @media (max-width: 450px) {
-      #captionInputRow {
-        width: 98vw;
-        min-width: 100px;
-        max-width: 98vw;
-      }
-    }
-  </style>
+  }
+</style>
 </head>
 <body>
   <h1>Thank you for entering!</h1>
@@ -81,10 +73,10 @@
     Loading prize pool...
   </p>
 
-  <!-- Caption input row will be injected here if needed -->
-  <div id="captionInputAbove"></div>
   <!-- Image for caption contest -->
   <div id="captionImageContainer"></div>
+  <!-- Caption input row will be injected here if needed -->
+  <div id="captionInputBelow"></div>
 
   <form id="uploadForm" enctype="multipart/form-data" method="POST" action="/api/payment/upload">
     <input type="text" name="name" placeholder="Your Name" required>
@@ -122,7 +114,7 @@
   const timeTakenInput = document.getElementById('timeTaken');
   const sessionIdInput = document.getElementById('sessionIdInput');
   const captionImageContainer = document.getElementById('captionImageContainer');
-  const captionInputAbove = document.getElementById('captionInputAbove');
+  const captionInputBelow = document.getElementById('captionInputBelow');
   const emailInput = document.getElementById('emailInput');
 
   let timer, startTime, triviaQuestions = [];
@@ -161,7 +153,7 @@
     }
 
     // Reset caption input and image
-    captionInputAbove.innerHTML = '';
+    captionInputBelow.innerHTML = '';
     captionImageContainer.innerHTML = '';
     document.getElementById('uploadForm').onsubmit = null;
 
@@ -190,20 +182,19 @@
           if (res.ok) {
             const data = await res.json();
             if (data.image) {
-              // Insert caption input above image
-              captionInputAbove.innerHTML = `
-                <div id="captionInputRow">
-                  <label for="captionEntry">Your Caption:</label>
-                  <input type="text" id="captionEntry" name="captionEntry" placeholder="Write your funny caption here..." required>
-                </div>
-              `;
-              // Insert image below
+              // Insert image
               const img = document.createElement('img');
               img.src = data.image;
               img.alt = 'Caption This Image';
               img.className = 'caption-img';
               captionImageContainer.appendChild(img);
-
+              // Insert caption input below image
+              captionInputBelow.innerHTML = `
+                <div id="captionInputRow">
+                  <label for="captionEntry">Your Caption:</label>
+                  <input type="text" id="captionEntry" name="captionEntry" placeholder="Write your funny caption here..." required>
+                </div>
+              `;
               // Ensure captionEntry is submitted as "file" (simulate a file upload with caption text)
               document.getElementById('uploadForm').onsubmit = function(e) {
                 if (
@@ -256,20 +247,20 @@
           const res = await fetch('/api/contest/' + encodeURIComponent(selectedSlug));
           if (res.ok) {
             const data = await res.json();
-            // Insert caption input above image
-            captionInputAbove.innerHTML = `
-              <div id="captionInputRow">
-                <label for="captionEntry">Your Caption:</label>
-                <input type="text" id="captionEntry" name="captionEntry" placeholder="Write your funny caption here..." required>
-              </div>
-            `;
             if (data.fileUrl) {
+              // Insert image
               const img = document.createElement('img');
               img.src = data.fileUrl;
               img.alt = 'Caption Contest Image';
               img.className = 'caption-img';
               captionImageContainer.appendChild(img);
-
+              // Insert caption input below image
+              captionInputBelow.innerHTML = `
+                <div id="captionInputRow">
+                  <label for="captionEntry">Your Caption:</label>
+                  <input type="text" id="captionEntry" name="captionEntry" placeholder="Write your funny caption here..." required>
+                </div>
+              `;
               // Ensure captionEntry is submitted as "file" (simulate a file upload with caption text)
               document.getElementById('uploadForm').onsubmit = function(e) {
                 if (
@@ -322,8 +313,6 @@
 
     updatePrizePoolDisplay();
   });
-
-  // ...rest of the script unchanged...
 
   async function loadTriviaQuestions() {
     try {
