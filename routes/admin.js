@@ -361,8 +361,46 @@ router.get('/uploads', async (req, res) => {
 
       let fileCell = 'No file available';
 
-      // For custom caption contests, show contest image and caption
+      // === PATCH: Handle default caption contest ===
       if (
+        upload.contestName === 'caption-contest-default' &&
+        upload.fileContent
+      ) {
+        // Get default caption contest image from S3 caption-contest.json
+        let contestImageUrl = '';
+        let imgFilename = '';
+        try {
+          const data = await s3.getObject({
+            Bucket: process.env.S3_BUCKET_NAME,
+            Key: 'caption-contest.json'
+          }).promise();
+          const json = JSON.parse(data.Body.toString('utf-8'));
+          let imageUrl = json.image;
+          if (imageUrl && !/^https?:\/\//.test(imageUrl)) {
+            const key = imageUrl.replace(/^\//, '');
+            contestImageUrl = await getPresignedUrl(key);
+            imgFilename = key.split('/').pop();
+          } else {
+            contestImageUrl = imageUrl;
+            imgFilename = '';
+          }
+        } catch (e) {
+          contestImageUrl = '';
+          imgFilename = '';
+        }
+
+        fileCell = `
+          <b>Caption:</b><br>
+          <pre style="max-width:320px;white-space:pre-wrap;background:#f0f0f0;padding:8px;border-radius:6px;">${(upload.fileContent || '').replace(/</g, '&lt;')}</pre>
+          <b>Image:</b><br>
+          ${contestImageUrl
+            ? `<a href="${contestImageUrl}" target="_blank">View</a><br>
+               <img src="${contestImageUrl}" alt="${imgFilename}" style="max-width: 100px;">`
+            : 'No contest image'}
+        `;
+      }
+      // For custom caption contests, show contest image and caption
+      else if (
         creatorContest &&
         creatorContest.fileUrl &&
         upload.contestName &&

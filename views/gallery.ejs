@@ -14,9 +14,21 @@
         <div class="gallery-card">
           <span class="gallery-tag"><%= upload.contestName || 'Unknown' %></span>
           <% 
+            // --- PATCH: Default Caption Contest ---
+            if (
+              upload.contestName === 'caption-contest-default' &&
+              upload.contestImageUrl && upload.captionText
+            ) { 
+          %>
+            <img class="gallery-img" src="<%= upload.contestImageUrl %>" alt="Caption Contest Image">
+            <div class="caption-block">
+              <strong>Caption:</strong> <span><%= upload.captionText %></span>
+            </div>
+          <% 
+            // --- END PATCH ---
             // If it's a custom caption contest and a caption was submitted, 
             // show the contest image and the caption text 
-            if (
+            } else if (
               upload.contestName && 
               upload.contestName.startsWith('caption-contest-') && 
               upload.contestName !== 'caption-contest-default' &&

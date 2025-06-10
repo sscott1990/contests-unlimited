@@ -724,7 +724,7 @@ app.get('/gallery', async (req, res) => {
       return filename && /\.(jpe?g|png|gif|webp)$/i.test(filename);
     }
 
-    // Map uploads to include presigned/image/caption like admin.js
+      // Map uploads to include presigned/image/caption like admin.js
     const uploadsWithDetails = await Promise.all(
       paginatedUploads.map(async (upload) => {
         let presignedUrl = null;
@@ -757,8 +757,32 @@ app.get('/gallery', async (req, res) => {
           (c.contestTitle && upload.contestName === c.contestTitle)
         );
 
-        // For custom caption contests, fetch contest image + caption
+        // --- PATCH: Default Caption Contest support ---
         if (
+          upload.contestName === 'caption-contest-default' &&
+          upload.fileUrl && isTextFile(filename)
+        ) {
+          // Fetch default image from S3 caption-contest.json
+          try {
+            const data = await s3.getObject({
+              Bucket: ENTRIES_BUCKET,
+              Key: 'caption-contest.json'
+            }).promise();
+            const json = JSON.parse(data.Body.toString('utf-8'));
+            let imageUrl = json.image;
+            if (imageUrl && !/^https?:\/\//.test(imageUrl)) {
+              const key = imageUrl.replace(/^\//, '');
+              contestImageUrl = await getPresignedUrl(key);
+            } else {
+              contestImageUrl = imageUrl;
+            }
+          } catch (e) {
+            contestImageUrl = null;
+          }
+          captionText = fileContent;
+        }
+        // For custom caption contests, fetch contest image + caption
+        else if (
           creatorContest &&
           creatorContest.fileUrl &&
           upload.contestName &&
