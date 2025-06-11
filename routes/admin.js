@@ -772,6 +772,7 @@ router.get('/creators', async (req, res) => {
         (c.creator || '').toLowerCase().includes(search) ||
         (c.email || '').toLowerCase().includes(search) ||
         (c.contestTitle || '').toLowerCase().includes(search) ||
+        (c.theme || '').toLowerCase().includes(search) ||
         (c.description || '').toLowerCase().includes(search) ||
         (c.slug || '').toLowerCase().includes(search) ||
         (c.address || '').toLowerCase().includes(search) || // allow search by address too
@@ -813,6 +814,7 @@ router.get('/creators', async (req, res) => {
             <td>${creator.creator || ''}${restrictedFlag}</td>
             <td>${creator.email || ''}</td>
             <td>${creator.contestTitle || ''}</td>
+            <td>${creator.theme || ''}</td>
             <td>${creator.description || ''}</td>
             <td>${new Date(creator.timestamp).toLocaleString()}</td>
             <td>${creator.status || 'Pending'}</td>
@@ -882,6 +884,7 @@ router.get('/creators', async (req, res) => {
               <th>Name</th>
               <th>Email</th>
               <th>Contest Name</th>
+              <th>Theme</th>
               <th>Description</th>
               <th>Submitted</th>
               <th>Status</th>
