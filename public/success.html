@@ -78,6 +78,8 @@
   <!-- Caption input row will be injected here if needed -->
   <div id="captionInputBelow"></div>
 
+  <div id="themeDisplayContainer" style="display:none; margin-bottom: 18px; padding: 10px; border: 2px solid #007849; border-radius: 8px; background: #f5f9f7; color: #0d3d2e; font-weight: 500; text-align: center;"></div>
+
   <form id="uploadForm" enctype="multipart/form-data" method="POST" action="/api/payment/upload">
     <input type="text" name="name" placeholder="Your Name" required>
     <input type="email" name="email" placeholder="Your Email" required id="emailInput">
@@ -116,6 +118,7 @@
   const captionImageContainer = document.getElementById('captionImageContainer');
   const captionInputBelow = document.getElementById('captionInputBelow');
   const emailInput = document.getElementById('emailInput');
+  const themeDisplayContainer = document.getElementById('themeDisplayContainer')
 
   let timer, startTime, triviaQuestions = [];
   let timerStarted = false;
@@ -156,6 +159,8 @@
     captionInputBelow.innerHTML = '';
     captionImageContainer.innerHTML = '';
     document.getElementById('uploadForm').onsubmit = null;
+
+    await updateThemeDisplay(selectedSlug);
 
     // Trivia Contest logic
     if (isTrivia) {
@@ -407,6 +412,39 @@
       form.querySelector('input[name="contestName"]').value = contestSelect.value;
     }
   });
+
+async function updateThemeDisplay(selectedSlug) {
+  themeDisplayContainer.style.display = 'none';
+  themeDisplayContainer.textContent = '';
+  if (!selectedSlug) return;
+
+  // Platform contests: show a generic theme
+  const platformThemes = {
+    "art-contest-default": "Open Theme",
+    "photo-contest-default": "Open Theme",
+    "trivia-contest-default": "General Knowledge",
+    "caption-contest-default": "Open Theme"
+  };
+  if (platformThemes[selectedSlug]) {
+    themeDisplayContainer.style.display = '';
+    themeDisplayContainer.textContent = `Theme: ${platformThemes[selectedSlug]}`;
+    return;
+  }
+
+  // Custom contest: fetch from API
+  try {
+    const res = await fetch('/api/contest/' + encodeURIComponent(selectedSlug));
+    if (res.ok) {
+      const data = await res.json();
+      if (data.theme) {
+        themeDisplayContainer.style.display = '';
+        themeDisplayContainer.textContent = `Theme: ${data.theme}`;
+      }
+    }
+  } catch (err) {
+    // Ignore errors, keep hidden
+  }
+}
 
   // Hide expired contests in dropdown
   async function loadApprovedContests() {
