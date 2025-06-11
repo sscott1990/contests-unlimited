@@ -757,7 +757,7 @@ router.get('/trivia', async (req, res) => {
 // Creators view with search bar and host, now with address info and secure S3 file/image presigned URLs
 router.get('/creators', async (req, res) => {
   try {
-    const RESTRICTED_STATES = ['NY', 'WA', 'NJ', 'PR', 'GU', 'AS', 'VI', 'MP', 'RI', 'FL', 'AZ']; // <-- Add this line if not global
+    const RESTRICTED_STATES = ['NY', 'WA', 'NJ', 'PR', 'GU', 'AS', 'VI', 'MP', 'RI', 'FL', 'AZ'];
     const creators = await loadCreators();
 
     if (!creators || creators.length === 0) {
@@ -775,7 +775,7 @@ router.get('/creators', async (req, res) => {
         (c.theme || '').toLowerCase().includes(search) ||
         (c.description || '').toLowerCase().includes(search) ||
         (c.slug || '').toLowerCase().includes(search) ||
-        (c.address || '').toLowerCase().includes(search) || // allow search by address too
+        (c.address || '').toLowerCase().includes(search) ||
         (c.city || '').toLowerCase().includes(search) ||
         (c.state || '').toLowerCase().includes(search) ||
         (c.zipcode || '').toLowerCase().includes(search) ||
@@ -792,59 +792,59 @@ router.get('/creators', async (req, res) => {
 
     const now = Date.now();
     const rows = paginatedCreators.map(creator => {
-        let isExpired = false;
-        if (creator.endDate) {
-          const end = new Date(creator.endDate).getTime();
-          if (!isNaN(end) && end < now) isExpired = true;
+      let isExpired = false;
+      if (creator.endDate) {
+        const end = new Date(creator.endDate).getTime();
+        if (!isNaN(end) && end < now) isExpired = true;
+      }
+      // Format address: street, city, state ZIP
+      const addressDisplay = [
+        creator.address || "",
+        creator.city || "",
+        (creator.state || "") + (creator.zipcode ? " " + creator.zipcode : "")
+      ].filter(Boolean).join(', ');
+
+      // Add restricted state flag if needed
+      const creatorState = (creator.state || '').toUpperCase();
+      const restrictedFlag = RESTRICTED_STATES.includes(creatorState)
+        ? ' <span style="color:red;font-weight:bold;">⚠️ Restricted State</span>'
+        : '';
+
+      // Get S3 key safely for presigned URL fetch (no regex in HTML!)
+      let s3Key = '';
+      if (creator.fileUrl) {
+        try {
+          const url = new URL(creator.fileUrl);
+          s3Key = url.pathname.startsWith('/') ? url.pathname.slice(1) : url.pathname;
+        } catch (e) {
+          s3Key = '';
         }
-        // Format address: street, city, state ZIP
-        const addressDisplay = [
-          creator.address || "",
-          creator.city || "",
-          (creator.state || "") + (creator.zipcode ? " " + creator.zipcode : "")
-        ].filter(Boolean).join(', ');
+      }
 
-        // Add restricted state flag if needed
-        const creatorState = (creator.state || '').toUpperCase();
-        const restrictedFlag = RESTRICTED_STATES.includes(creatorState)
-          ? ' <span style="color:red;font-weight:bold;">⚠️ Restricted State</span>'
-          : '';
-
-        // Get S3 key safely for presigned URL fetch (no regex in HTML!)
-        let s3Key = '';
-        if (creator.fileUrl) {
-          try {
-            const url = new URL(creator.fileUrl);
-            s3Key = url.pathname.startsWith('/') ? url.pathname.slice(1) : url.pathname;
-          } catch (e) {
-            s3Key = '';
-          }
-        }
-
-        return `
-          <tr data-id="${creator.id || creator.timestamp}"${isExpired ? ' class="expired-row"' : ''}>
-            <td>${creator.creator || ''}${restrictedFlag}</td>
-            <td>${creator.email || ''}</td>
-            <td>${creator.contestTitle || ''}</td>
-            <td>${creator.theme || ''}</td>
-            <td>${creator.description || ''}</td>
-            <td>${new Date(creator.timestamp).toLocaleString()}</td>
-            <td>${creator.status || 'Pending'}</td>
-            <td>${addressDisplay}</td>
-            <td>
-  ${creator.fileUrl 
-    ? `<a href="#" onclick="return openCreatorFile('${creator.fileUrl.replace(/'/g, "\\'")}')" style="color:#007bff;">View</a>
-       <br><img src="" data-key="${s3Key}" alt="creator-img" style="max-width:80px;max-height:80px;margin-top:3px;border-radius:4px;display:none;">`
-    : ''}
+      return `
+        <tr data-id="${creator.id || creator.timestamp}"${isExpired ? ' class="expired-row"' : ''}>
+          <td>${creator.creator || ''}${restrictedFlag}</td>
+          <td>${creator.email || ''}</td>
+          <td>${creator.contestTitle || ''}</td>
+          <td>${creator.theme || ''}</td>
+          <td>${creator.description || ''}</td>
+          <td>${new Date(creator.timestamp).toLocaleString()}</td>
+          <td>${creator.status || 'Pending'}</td>
+          <td>${addressDisplay}</td>
+          <td>
+${creator.fileUrl 
+  ? `<a href="#" onclick="return openCreatorFile('${creator.fileUrl.replace(/'/g, "\\'")}')" style="color:#007bff;">View</a>
+     <br><img src="" data-key="${s3Key}" alt="creator-img" style="max-width:80px;max-height:80px;margin-top:3px;border-radius:4px;display:none;">`
+  : ''}
 </td>
-            <td>${creator.email ? `<a href="/creator-dashboard.html?email=${encodeURIComponent(creator.email)}" target="_blank">Go to Dashboard</a>` : ''}</td>
-            <td>
-              <button onclick="handleStatus('${creator.id || creator.timestamp}', 'approved')">Approve</button>
-              <button onclick="handleStatus('${creator.id || creator.timestamp}', 'rejected')">Reject</button>
-            </td>
-          </tr>
-        `;
-      }).join('');
+          <td>${creator.email ? `<a href="/creator-dashboard.html?email=${encodeURIComponent(creator.email)}" target="_blank">Go to Dashboard</a>` : ''}</td>
+          <td>
+            <button onclick="handleStatus('${creator.id || creator.timestamp}', 'approved')">Approve</button>
+            <button onclick="handleStatus('${creator.id || creator.timestamp}', 'rejected')">Reject</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
 
     let paginationControls = `<div style="margin-top: 1rem;">`;
     if (page > 1) {
@@ -955,15 +955,19 @@ router.get('/creators', async (req, res) => {
 
   // Open image/file in new tab using presigned URL
   async function openCreatorFile(fileUrl) {
-    const match = fileUrl.match(/^https:\/\/[^/]+\/(.+)$/);
-    if (!match) return false;
-    const key = encodeURIComponent(match[1]);
-    const res = await fetch('/api/admin/creator-file?key=' + key);
-    if (res.ok) {
-      const data = await res.json();
-      window.open(data.url, '_blank');
-    } else {
-      alert("Could not retrieve file link.");
+    try {
+      const url = new URL(fileUrl);
+      const key = encodeURIComponent(url.pathname.startsWith('/') ? url.pathname.slice(1) : url.pathname);
+      const res = await fetch('/api/admin/creator-file?key=' + key);
+      if (res.ok) {
+        const data = await res.json();
+        window.open(data.url, '_blank');
+      } else {
+        alert("Could not retrieve file link.");
+      }
+    } catch(e) {
+      alert("Invalid file URL.");
+      return false;
     }
     return false;
   }
