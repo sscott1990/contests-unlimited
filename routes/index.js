@@ -308,7 +308,15 @@ router.get('/', (req, res) => {
         }),
       ];
 
-      const prizeList = orderedPrizeTitles.map((title) => {
+      // ---- PAGINATION LOGIC for prize/host list in scrollable container ----
+      const perPage = 50;
+      const page = parseInt(req.query.page, 10) || 1;
+      const totalPrizes = orderedPrizeTitles.length;
+      const totalPages = Math.ceil(totalPrizes / perPage);
+      const startIdx = (page - 1) * perPage;
+      const paginatedPrizeTitles = orderedPrizeTitles.slice(startIdx, startIdx + perPage);
+
+      const prizeList = paginatedPrizeTitles.map((title) => {
         const data = prizes[title];
         if (!data) return '';
         let seedText = '';
@@ -329,6 +337,20 @@ router.get('/', (req, res) => {
           <div>Ends in: <span class="countdown" data-endtime="${data.endDateMs}"></span></div>
         </li>`;
       }).join('');
+
+      // ---- PAGINATION CONTROLS (below the scrollable container) ----
+      let paginationControls = '';
+      if (totalPages > 1) {
+        paginationControls += `<div style="text-align:center; margin:12px 0 18px 0; font-size:1.1em;">`;
+        if (page > 1) {
+          paginationControls += `<a href="/?page=${page - 1}" style="margin-right:16px;">&laquo; Previous</a>`;
+        }
+        paginationControls += `Page ${page} of ${totalPages}`;
+        if (page < totalPages) {
+          paginationControls += `<a href="/?page=${page + 1}" style="margin-left:16px;">Next &raquo;</a>`;
+        }
+        paginationControls += `</div>`;
+      }
 
       // --- RULE CARDS: no timer shown ---
       loadJsonFromS3('rules.json', (rules) => {
@@ -421,6 +443,7 @@ router.get('/', (req, res) => {
             <div class="contest-info-scroll">
               <ul>${prizeList || '<li>No entries yet</li>'}</ul>
             </div>
+            ${paginationControls}
 
 <!-- Judging Criteria Block -->
 ${judgingCriteriaHtml}
