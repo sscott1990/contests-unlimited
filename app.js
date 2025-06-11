@@ -701,19 +701,29 @@ app.get('/creator-dashboard/:slug', async (req, res) => {
   }
 });
 
-// === 🚩 PUBLIC GALLERY ROUTE (with pagination) ===
+// === 🚩 PUBLIC GALLERY ROUTE (with pagination and search) ===
 app.get('/gallery', async (req, res) => {
   try {
     const uploads = await getUploads();
     const creators = await getCreators();
 
+    // --- SEARCH LOGIC ---
+    const search = (req.query.search || '').trim().toLowerCase();
+    let filteredUploads = uploads;
+    if (search) {
+      filteredUploads = uploads.filter(u =>
+        (u.contestName || '').toLowerCase().includes(search) ||
+        (u.name || '').toLowerCase().includes(search)
+      );
+    }
+
     // Pagination logic
     const page = parseInt(req.query.page, 10) || 1;
     const perPage = 25;
-    const totalUploads = uploads.length;
+    const totalUploads = filteredUploads.length;
     const totalPages = Math.ceil(totalUploads / perPage);
     const start = (page - 1) * perPage;
-    const paginatedUploads = uploads.slice(start, start + perPage);
+    const paginatedUploads = filteredUploads.slice(start, start + perPage);
 
     // Helper to get presigned url
     async function getPresignedUrl(key) {
@@ -745,7 +755,7 @@ app.get('/gallery', async (req, res) => {
       return filename && /\.(jpe?g|png|gif|webp)$/i.test(filename);
     }
 
-      // Map uploads to include presigned/image/caption like admin.js
+    // Map uploads to include presigned/image/caption like admin.js
     const uploadsWithDetails = await Promise.all(
       paginatedUploads.map(async (upload) => {
         let presignedUrl = null;
@@ -852,7 +862,8 @@ app.get('/gallery', async (req, res) => {
     res.render('gallery', {
       uploads: uploadsWithDetails,
       page,
-      totalPages
+      totalPages,
+      search // <-- Pass search to template
     });
   } catch (err) {
     console.error('Failed to load gallery:', err);

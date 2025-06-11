@@ -9,6 +9,19 @@
 <body class="gallery-background">
   <div class="container">
     <h1>Gallery of Contest Uploads</h1>
+
+    <!-- Search Bar -->
+    <form class="gallery-search-bar" style="margin-bottom: 2rem;" method="get" action="/gallery">
+      <input
+        type="text"
+        name="search"
+        value="<%= typeof search !== 'undefined' ? search.replace(/"/g, "&quot;") : '' %>"
+        placeholder="Search by contest name or entrant name..."
+        style="padding: 8px 12px; min-width: 250px; font-size: 1em;"
+      />
+      <button type="submit" style="padding: 8px 18px;">Search</button>
+    </form>
+
     <div class="gallery-grid">
       <% uploads.forEach(function(upload) { %>
         <div class="gallery-card">
@@ -63,7 +76,7 @@
     <% if (totalPages && totalPages > 1) { %>
       <nav class="pagination">
         <% if (page > 1) { %>
-          <a href="?page=<%= page - 1 %>">&laquo; Previous</a>
+          <a href="?<% if (typeof search !== 'undefined' && search) { %>search=<%= encodeURIComponent(search) %>&<% } %>page=<%= page - 1 %>">&laquo; Previous</a>
         <% } else { %>
           <span class="disabled">&laquo; Previous</span>
         <% } %>
@@ -71,11 +84,11 @@
           <% if (i === page) { %>
             <span class="current"><%= i %></span>
           <% } else { %>
-            <a href="?page=<%= i %>"><%= i %></a>
+            <a href="?<% if (typeof search !== 'undefined' && search) { %>search=<%= encodeURIComponent(search) %>&<% } %>page=<%= i %>"><%= i %></a>
           <% } %>
         <% } %>
         <% if (page < totalPages) { %>
-          <a href="?page=<%= page + 1 %>">Next &raquo;</a>
+          <a href="?<% if (typeof search !== 'undefined' && search) { %>search=<%= encodeURIComponent(search) %>&<% } %>page=<%= page + 1 %>">Next &raquo;</a>
         <% } else { %>
           <span class="disabled">Next &raquo;</span>
         <% } %>
