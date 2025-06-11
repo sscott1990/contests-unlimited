@@ -778,7 +778,9 @@ router.get('/creators', async (req, res) => {
         (c.address || '').toLowerCase().includes(search) || // allow search by address too
         (c.city || '').toLowerCase().includes(search) ||
         (c.state || '').toLowerCase().includes(search) ||
-        (c.zipcode || '').toLowerCase().includes(search)
+        (c.zipcode || '').toLowerCase().includes(search) ||
+        (c.filename || '').toLowerCase().includes(search) ||
+        (c.fileCell || '').toLowerCase().includes(search) ||
       );
     }
 
@@ -819,6 +821,12 @@ router.get('/creators', async (req, res) => {
             <td>${new Date(creator.timestamp).toLocaleString()}</td>
             <td>${creator.status || 'Pending'}</td>
             <td>${addressDisplay}</td>
+            <td>
+  ${creator.fileUrl 
+    ? `<a href="${creator.fileUrl}" target="_blank">View</a>
+       <br><img src="${creator.fileUrl}" alt="creator-img" style="max-width:80px;max-height:80px;margin-top:3px;border-radius:4px;">`
+    : ''}
+</td>
             <td>${creator.email ? `<a href="/creator-dashboard.html?email=${encodeURIComponent(creator.email)}" target="_blank">Go to Dashboard</a>` : ''}</td>
             <td>
               <button onclick="handleStatus('${creator.id || creator.timestamp}', 'approved')">Approve</button>
@@ -889,6 +897,7 @@ router.get('/creators', async (req, res) => {
               <th>Submitted</th>
               <th>Status</th>
               <th>Address</th>
+              <th>File</th>
               <th>Link</th>
               <th>Actions</th>
             </tr>
