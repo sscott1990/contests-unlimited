@@ -652,6 +652,24 @@ app.get('/api/admin/creator-stats-by-email/:email', async (req, res) => {
   }
 });
 
+// === Admin: Generate a presigned URL for any S3 file (for creator file/image viewing) ===
+app.get('/api/admin/creator-file', async (req, res) => {
+  const key = req.query.key;
+  if (!key) return res.status(400).json({ error: "Missing key" });
+  try {
+    // Use AWS SDK v2 (you are using v2 now)
+    const url = await s3.getSignedUrlPromise('getObject', {
+      Bucket: ENTRIES_BUCKET,
+      Key: key,
+      Expires: 300, // 5 minutes
+    });
+    res.json({ url });
+  } catch (e) {
+    console.error("Failed to get signed url", e);
+    res.status(500).json({ error: "Failed to get signed url" });
+  }
+});
+
 // === Creator Dashboard route ===
 app.get('/creator-dashboard/:slug', async (req, res) => {
   try {
