@@ -811,9 +811,15 @@ router.get('/creators', async (req, res) => {
           : '';
 
         // Get S3 key safely for presigned URL fetch
-        const s3Key = creator.fileUrl
-          ? creator.fileUrl.replace(/^https:\/\/[^/]+\/(.+)$/, '$1')
-          : '';
+let s3Key = '';
+if (creator.fileUrl) {
+  try {
+    const url = new URL(creator.fileUrl);
+    s3Key = url.pathname.startsWith('/') ? url.pathname.slice(1) : url.pathname;
+  } catch (e) {
+    s3Key = '';
+  }
+}
 
         return `
           <tr data-id="${creator.id || creator.timestamp}"${isExpired ? ' class="expired-row"' : ''}>
