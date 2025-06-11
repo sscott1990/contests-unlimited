@@ -396,6 +396,7 @@ app.post('/api/creator/upload', upload.single('captionFile'), async (req, res) =
       contestName,
       creator,
       email,
+      theme,
       description,
       creatorSessionId,
       prizeModel,
@@ -471,7 +472,8 @@ app.post('/api/creator/upload', upload.single('captionFile'), async (req, res) =
       address,     // <-- new
       city,        // <-- new
       state,       // <-- new
-      zipcode,     // <-- new
+      zipcode,
+      theme,     // <-- new
       description,
       prizeModel,
       passwordHash,
@@ -596,6 +598,7 @@ app.get('/api/contest/:slug', async (req, res) => {
       endDate: contest.endDate,
       slug: contest.slug,
       fileUrl: signedFileUrl, // <<--- SIGNED URL HERE!
+      theme: contest.theme || "",
       description: contest.description || "",
       status: contest.status || "",
       // add other fields if needed
