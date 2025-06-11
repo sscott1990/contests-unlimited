@@ -822,8 +822,8 @@ router.get('/creators', async (req, res) => {
             <td>${addressDisplay}</td>
             <td>
   ${creator.fileUrl 
-    ? `<a href="${creator.fileUrl}" target="_blank">View</a>
-       <br><img src="${creator.fileUrl}" alt="creator-img" style="max-width:80px;max-height:80px;margin-top:3px;border-radius:4px;">`
+    ? `<a href="#" onclick="return openCreatorFile('${creator.fileUrl}')" style="color:#007bff;">View</a>
+       <br><img src="" data-key="${creator.fileUrl.replace(/^https:\/\/[^/]+\/(.+)$/, '$1')}" alt="creator-img" style="max-width:80px;max-height:80px;margin-top:3px;border-radius:4px;display:none;">`
     : ''}
 </td>
             <td>${creator.email ? `<a href="/creator-dashboard.html?email=${encodeURIComponent(creator.email)}" target="_blank">Go to Dashboard</a>` : ''}</td>
@@ -941,6 +941,40 @@ router.get('/creators', async (req, res) => {
       alert('Failed to update status.');
     }
   }
+
+// Open image/file in new tab using presigned URL
+async function openCreatorFile(fileUrl) {
+  // Extract S3 key from full URL
+  const match = fileUrl.match(/^https:\/\/[^/]+\/(.+)$/);
+  if (!match) return false;
+  const key = encodeURIComponent(match[1]);
+  const res = await fetch('/api/admin/creator-file?key=' + key);
+  if (res.ok) {
+    const data = await res.json();
+    window.open(data.url, '_blank');
+  } else {
+    alert("Could not retrieve file link.");
+  }
+  return false;
+}
+
+// On page load, set presigned URLs for all images
+window.addEventListener('DOMContentLoaded', async () => {
+  const imgs = document.querySelectorAll('img[data-key]');
+  for (const img of imgs) {
+    const key = encodeURIComponent(img.getAttribute('data-key'));
+    try {
+      const res = await fetch('/api/admin/creator-file?key=' + key);
+      if (res.ok) {
+        const data = await res.json();
+        img.src = data.url;
+        img.style.display = '';
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+});
 </script>
       </body>
       </html>
