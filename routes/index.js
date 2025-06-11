@@ -496,7 +496,7 @@ ${judgingCriteriaHtml}
       <b>Eligibility, Payments & Tax Requirements:</b>
       <ul style="margin:10px 0 0 15px;">
         <li>Contest winners and creators must be U.S. citizens, legal residents, or legal entities (such as businesses) with a valid U.S. tax identification number (SSN, TIN, or EIN).</li>
-        <li>Before any winner or creator payments totaling $600 or more in a calendar year can be issued, you must submit a completed IRS Form W-9. Failure to provide required tax documentation will result in forfeiture of creator payments exceeding this threshold.</li>
+        <li>Before any winner or creator (contest host) payments totaling $600 or more in a calendar year can be issued, you must submit a completed IRS Form W-9. Failure to provide required tax documentation within 10 business days of notification will result in forfeiture of the prize, and a new winner will be selected in your place.</li>
         <li>All winner and creator earnings are reported in accordance with IRS regulations.</li>
       </ul>
     </div>
