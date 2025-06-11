@@ -25,14 +25,13 @@
     margin-left: auto;
     margin-right: auto;
   }
-  /* Style for caption input to match other form elements, just under the image and a little longer than the image */
   #captionInputRow {
     margin: 16px auto 10px auto;
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: 32%;            /* Slightly longer than the image (image is 25%) */
-    min-width: 220px;      /* Wider minimum for mobile */
+    width: 32%;
+    min-width: 220px;
     max-width: 400px;
   }
   #captionInputRow label {
@@ -64,27 +63,26 @@
       max-width: 98vw;
     }
   }
-  /* --- Added for contest selector dropdown --- */
-  #contestSelectContainer {
-    margin-bottom: 20px;
-    position: relative;
-    max-width: 400px;
+  /* Pagination for select */
+  #contest-pagination {
+    margin: 8px 0 8px 0;
+    text-align: center;
+    font-size: 0.97em;
   }
-  #contestDropdown {
+  #contest-pagination button {
+    background: #eee;
     border: 1px solid #ccc;
-    background: #fff;
-    position: absolute;
-    width: 100%;
-    z-index: 100;
-    max-height: 180px;
-    overflow-y: auto;
-    display: none;
+    border-radius: 2px;
+    padding: 3px 10px;
+    margin: 0 6px;
+    cursor: pointer;
   }
-  .contest-option:hover, .contest-option.selected {
-    background: #f2f8ff;
-    color: #005b96;
+  #contest-pagination button:disabled {
+    cursor: not-allowed;
+    color: #aaa;
+    background: #f8f8f8;
   }
- </style>
+</style>
 </head>
 <body>
   <h1>Thank you for entering!</h1>
@@ -103,13 +101,14 @@
   <form id="uploadForm" enctype="multipart/form-data" method="POST" action="/api/payment/upload">
     <input type="text" name="name" placeholder="Your Name" required>
     <input type="email" name="email" placeholder="Your Email" required id="emailInput">
-    <!-- REPLACED select with search+dropdown+hidden -->
-    <div id="contestSelectContainer">
-      <label for="contestSearchInput" style="font-weight:bold;">Select Contest</label>
-      <input type="text" id="contestSearchInput" placeholder="Search contest..." autocomplete="off" style="width:100%;margin-bottom:6px;">
-      <div id="contestDropdown"></div>
-      <input type="hidden" name="contestName" id="contestSelectHidden" required>
-    </div>
+    <select name="contestName" id="contestSelect" required>
+      <option value="" disabled selected>Select Contest</option>
+      <option value="art-contest-default">Art Contest</option>
+      <option value="photo-contest-default">Photo Contest</option>
+      <option value="trivia-contest-default">Trivia Contest</option>
+      <option value="caption-contest-default">Caption Contest</option>
+    </select>
+    <div id="contest-pagination" style="display:none"></div>
     <input type="file" name="file" id="fileInput" accept="image/*" required>
     <input type="hidden" name="session_id" id="sessionIdInput">
 
@@ -128,104 +127,138 @@
   <a href="/">Back to Home</a>
 
 <script>
-  // --- Contest selector with search and pagination ---
+  // --- PAGINATION LOGIC FOR SELECT ---
+  const contestSelect = document.getElementById('contestSelect');
+  const contestPagination = document.getElementById('contest-pagination');
+  let contestOptionsAll = []; // {slug, name}
+  let contestPage = 1;
+  const contestsPerPage = 50;
+
+  // Add platform contests statically, always on page 1
   const platformContests = [
     { slug: "art-contest-default", name: "Art Contest" },
     { slug: "photo-contest-default", name: "Photo Contest" },
     { slug: "trivia-contest-default", name: "Trivia Contest" },
     { slug: "caption-contest-default", name: "Caption Contest" }
   ];
-  let allContests = [...platformContests];
-  let filteredContests = [];
-  let contestPage = 1;
-  const contestsPerPage = 15;
 
-  const contestSearchInput = document.getElementById('contestSearchInput');
-  const contestDropdown = document.getElementById('contestDropdown');
-  const contestSelectHidden = document.getElementById('contestSelectHidden');
-  window.contestSelect = contestSelectHidden;
-
-  async function fetchAndBuildContestList() {
+  async function loadApprovedContestsPaginated() {
+    contestPage = 1;
+    contestOptionsAll = [...platformContests];
     try {
       const res = await fetch('/api/contests/approved');
-      const custom = await res.json();
+      const contests = await res.json();
       const now = Date.now();
-      const customFiltered = custom
-        .filter(c => (!platformContests.some(pc => pc.slug === c.slug)) && (!c.endDate || new Date(c.endDate).getTime() > now))
-        .map(c => ({ slug: c.slug, name: c.name || c.slug }));
-      allContests = [...platformContests, ...customFiltered];
-      filteredContests = allContests;
-      contestPage = 1;
-      renderContestDropdown();
-    } catch (e) {
-      contestDropdown.innerHTML = '<div style="color:red;padding:8px;">Failed to load contests.</div>';
+      const filtered = contests
+        .filter(c =>
+          !platformContests.some(pc => pc.slug === c.slug) &&
+          (!c.endDate || new Date(c.endDate).getTime() > now)
+        )
+        .map(c => ({
+          slug: c.slug,
+          name: c.name || c.slug
+        }))
+        .sort((a, b) => (a.name || a.slug).localeCompare(b.name || b.slug));
+      contestOptionsAll = [...platformContests, ...filtered];
+      renderContestSelectPage();
+    } catch (err) {
+      renderContestSelectPage();
     }
   }
-  function renderContestDropdown() {
-    const search = (contestSearchInput.value || '').toLowerCase();
-    filteredContests = allContests.filter(c => c.name.toLowerCase().includes(search));
-    const totalPages = Math.ceil(filteredContests.length / contestsPerPage) || 1;
-    if (contestPage > totalPages) contestPage = totalPages;
-    if (contestPage < 1) contestPage = 1;
-    const start = (contestPage - 1) * contestsPerPage;
-    const pageContests = filteredContests.slice(start, start + contestsPerPage);
 
-    let html = '';
-    if (pageContests.length === 0) {
-      html = '<div style="padding:8px;color:#888;">No contests found.</div>';
+  function renderContestSelectPage() {
+    // Save selected value if any
+    const prevValue = contestSelect.value;
+    // Remove all options except the first placeholder
+    while (contestSelect.options.length > 1) contestSelect.remove(1);
+
+    const total = contestOptionsAll.length;
+    const totalPages = Math.ceil(total / contestsPerPage);
+    if (totalPages > 1) contestPagination.style.display = '';
+    else contestPagination.style.display = 'none';
+
+    // Always show platform contests on page 1
+    const start = contestPage === 1 ? 0 : platformContests.length + (contestPage-2)*contestsPerPage;
+    const end = contestPage === 1
+      ? Math.min(platformContests.length + contestsPerPage, total)
+      : Math.min(platformContests.length + (contestPage-1)*contestsPerPage, total);
+
+    let pageContests;
+    if (contestPage === 1) {
+      pageContests = contestOptionsAll.slice(0, end);
     } else {
-      html = pageContests.map(c =>
-        `<div class="contest-option" data-slug="${c.slug}" style="padding: 6px 10px; cursor:pointer;">${c.name}</div>`
-      ).join('');
+      pageContests = contestOptionsAll.slice(start, end);
     }
-    if (totalPages > 1) {
-      html += `<div style="padding:6px;text-align:center;background:#fafafa;">
-        <button type="button" ${contestPage === 1 ? 'disabled' : ''} onclick="window.__contestPrevPage()">&laquo; Prev</button>
-        Page ${contestPage} of ${totalPages}
-        <button type="button" ${contestPage === totalPages ? 'disabled' : ''} onclick="window.__contestNextPage()">Next &raquo;</button>
-      </div>`;
-    }
-    contestDropdown.innerHTML = html;
-    contestDropdown.style.display = "block";
 
-    document.querySelectorAll('.contest-option').forEach(el => {
-      el.onclick = () => {
-        contestSelectHidden.value = el.dataset.slug;
-        contestSearchInput.value = el.textContent;
-        contestDropdown.style.display = "none";
-        contestSelectHidden.dispatchEvent(new Event('change'));
-      };
+    pageContests.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.slug;
+      opt.textContent = c.name;
+      contestSelect.appendChild(opt);
     });
-  }
-  window.__contestPrevPage = function() { contestPage--; renderContestDropdown(); }
-  window.__contestNextPage = function() { contestPage++; renderContestDropdown(); }
 
-  contestSearchInput.addEventListener('input', function() {
-    contestPage = 1;
-    contestDropdown.style.display = 'block';
-    renderContestDropdown();
-  });
-  contestSearchInput.addEventListener('focus', function() {
-    contestDropdown.style.display = 'block';
-    renderContestDropdown();
-  });
-  document.body.addEventListener('click', function(e) {
-    if (!contestDropdown.contains(e.target) && e.target !== contestSearchInput) {
-      contestDropdown.style.display = "none";
+    // Pagination controls
+    contestPagination.innerHTML = '';
+    if (totalPages > 1) {
+      const prevBtn = document.createElement('button');
+      prevBtn.type = "button";
+      prevBtn.textContent = "« Prev";
+      prevBtn.disabled = (contestPage === 1);
+      prevBtn.onclick = () => { contestPage--; renderContestSelectPage(); };
+      contestPagination.appendChild(prevBtn);
+
+      const pageSpan = document.createElement('span');
+      pageSpan.textContent = ` Page ${contestPage} of ${totalPages} `;
+      contestPagination.appendChild(pageSpan);
+
+      const nextBtn = document.createElement('button');
+      nextBtn.type = "button";
+      nextBtn.textContent = "Next »";
+      nextBtn.disabled = (contestPage === totalPages);
+      nextBtn.onclick = () => { contestPage++; renderContestSelectPage(); };
+      contestPagination.appendChild(nextBtn);
     }
-  });
 
-  // On hidden input change, simulate the old select's change event for the rest of your code
-  contestSelectHidden.addEventListener('change', function() {
-    // Your old code expects contestSelect.value, ensure it works:
-    updatePrizePoolDisplay && updatePrizePoolDisplay();
-    // Also trigger the caption/trivia handlers if needed:
-    handleContestChange();
-  });
+    // Restore previous selection if possible
+    if (prevValue) {
+      contestSelect.value = prevValue;
+    }
+  }
+  loadApprovedContestsPaginated();
+  // --- END PAGINATION LOGIC FOR SELECT ---
 
-  // Helper to handle contest change logic (previously in select onchange)
-  async function handleContestChange() {
-    const selectedSlug = contestSelectHidden.value;
+  const fileInput = document.getElementById('fileInput');
+  const triviaSection = document.getElementById('triviaSection');
+  const triviaQuestionsDiv = document.getElementById('triviaQuestions');
+  const triviaAnswersInput = document.getElementById('triviaAnswers');
+  const timeTakenInput = document.getElementById('timeTaken');
+  const sessionIdInput = document.getElementById('sessionIdInput');
+  const captionImageContainer = document.getElementById('captionImageContainer');
+  const captionInputBelow = document.getElementById('captionInputBelow');
+  const emailInput = document.getElementById('emailInput');
+  const themeDisplayContainer = document.getElementById('themeDisplayContainer')
+
+  let timer, startTime, triviaQuestions = [];
+  let timerStarted = false;
+
+  const SESSION_KEY = "cu_session_id";
+  const urlParams = new URLSearchParams(window.location.search);
+  let sessionId = urlParams.get('session_id');
+
+  if (!sessionId) {
+    sessionId = localStorage.getItem(SESSION_KEY);
+  }
+
+  if (!sessionId) {
+    alert('Missing session ID. Please return to the homepage and try again.');
+    document.getElementById('uploadForm').style.display = 'none';
+  } else {
+    sessionIdInput.value = sessionId;
+    localStorage.setItem(SESSION_KEY, sessionId);
+  }
+
+  contestSelect.addEventListener('change', async function () {
+    const selectedSlug = contestSelect.value;
     const isTrivia = selectedSlug && selectedSlug.startsWith("trivia-contest-");
     const isCaption = selectedSlug && selectedSlug.startsWith("caption-contest-");
 
@@ -285,10 +318,11 @@
                   <input type="text" id="captionEntry" name="captionEntry" placeholder="Write your caption here..." required>
                 </div>
               `;
+              // Ensure captionEntry is submitted as "file" (simulate a file upload with caption text)
               document.getElementById('uploadForm').onsubmit = function(e) {
                 if (
-                  contestSelectHidden.value &&
-                  contestSelectHidden.value === "caption-contest-default"
+                  contestSelect.value &&
+                  contestSelect.value === "caption-contest-default"
                 ) {
                   const captionText = document.getElementById('captionEntry').value.trim();
                   if (!captionText) {
@@ -296,11 +330,12 @@
                     e.preventDefault();
                     return false;
                   }
+                  // Create a fake file from the caption and submit via FormData
                   e.preventDefault();
                   const formData = new FormData(document.getElementById('uploadForm'));
                   const captionBlob = new Blob([captionText], { type: "text/plain" });
                   formData.set('file', captionBlob, 'caption.txt');
-                  formData.set('contestName', contestSelectHidden.value);
+                  formData.set('contestName', contestSelect.value);
 
                   fetch(document.getElementById('uploadForm').action, {
                     method: 'POST',
@@ -349,11 +384,12 @@
                   <input type="text" id="captionEntry" name="captionEntry" placeholder="Write your funny caption here..." required>
                 </div>
               `;
+              // Ensure captionEntry is submitted as "file" (simulate a file upload with caption text)
               document.getElementById('uploadForm').onsubmit = function(e) {
                 if (
-                  contestSelectHidden.value &&
-                  contestSelectHidden.value.startsWith('caption-contest-') &&
-                  contestSelectHidden.value !== "caption-contest-default"
+                  contestSelect.value &&
+                  contestSelect.value.startsWith('caption-contest-') &&
+                  contestSelect.value !== "caption-contest-default"
                 ) {
                   const captionText = document.getElementById('captionEntry').value.trim();
                   if (!captionText) {
@@ -361,11 +397,12 @@
                     e.preventDefault();
                     return false;
                   }
+                  // Create a fake file from the caption and submit via FormData
                   e.preventDefault();
                   const formData = new FormData(document.getElementById('uploadForm'));
                   const captionBlob = new Blob([captionText], { type: "text/plain" });
                   formData.set('file', captionBlob, 'caption.txt');
-                  formData.set('contestName', contestSelectHidden.value);
+                  formData.set('contestName', contestSelect.value);
 
                   fetch(document.getElementById('uploadForm').action, {
                     method: 'POST',
@@ -396,48 +433,13 @@
         }
       }
     }
-  }
 
-  // Init contest selector
-  fetchAndBuildContestList();
-
-  // --- End contest selector with search/pagination ---
-
-  const fileInput = document.getElementById('fileInput');
-  const triviaSection = document.getElementById('triviaSection');
-  const triviaQuestionsDiv = document.getElementById('triviaQuestions');
-  const triviaAnswersInput = document.getElementById('triviaAnswers');
-  const timeTakenInput = document.getElementById('timeTaken');
-  const sessionIdInput = document.getElementById('sessionIdInput');
-  const captionImageContainer = document.getElementById('captionImageContainer');
-  const captionInputBelow = document.getElementById('captionInputBelow');
-  const emailInput = document.getElementById('emailInput');
-  const themeDisplayContainer = document.getElementById('themeDisplayContainer')
-
-  let timer, startTime, triviaQuestions = [];
-  let timerStarted = false;
-
-  const SESSION_KEY = "cu_session_id";
-  const urlParams = new URLSearchParams(window.location.search);
-  let sessionId = urlParams.get('session_id');
-
-  if (!sessionId) {
-    sessionId = localStorage.getItem(SESSION_KEY);
-  }
-
-  if (!sessionId) {
-    alert('Missing session ID. Please return to the homepage and try again.');
-    document.getElementById('uploadForm').style.display = 'none';
-  } else {
-    sessionIdInput.value = sessionId;
-    localStorage.setItem(SESSION_KEY, sessionId);
-  }
-
-  // The following now triggers from contestSelectHidden change event via handleContestChange
+    updatePrizePoolDisplay();
+  });
 
   async function loadTriviaQuestions() {
     try {
-      const slug = contestSelectHidden.value;
+      const slug = contestSelect.value;
 
       if (slug === "trivia-contest-default") {
         const response = await fetch('/api/trivia?slug=trivia-contest-default');
@@ -445,7 +447,7 @@
       } else if (slug.startsWith("trivia-contest-")) {
         let response = await fetch('/api/custom-trivia/by-slug/' + encodeURIComponent(slug));
         if (response.ok) {
-          const data = await response.json();
+          const data = await res.json();
           triviaQuestions = Array.isArray(data.questions) ? data.questions : [];
         } else {
           triviaQuestions = [];
@@ -503,7 +505,7 @@
   }
 
   document.getElementById('uploadForm').addEventListener('submit', function (event) {
-    const selectedSlug = contestSelectHidden.value;
+    const selectedSlug = contestSelect.value;
     const isTrivia = selectedSlug && selectedSlug.startsWith("trivia-contest-");
     if (isTrivia) {
       const answers = triviaQuestions.map((q, i) => {
@@ -522,10 +524,10 @@
       const hiddenInput = document.createElement('input');
       hiddenInput.type = "hidden";
       hiddenInput.name = "contestName";
-      hiddenInput.value = contestSelectHidden.value;
+      hiddenInput.value = contestSelect.value;
       form.appendChild(hiddenInput);
     } else {
-      form.querySelector('input[name="contestName"]').value = contestSelectHidden.value;
+      form.querySelector('input[name="contestName"]').value = contestSelect.value;
     }
   });
 
@@ -534,7 +536,6 @@ async function updateThemeDisplay(selectedSlug) {
   themeDisplayContainer.textContent = '';
   if (!selectedSlug) return;
 
-  // Platform contests: show a generic theme
   const platformThemes = {
     "art-contest-default": "Open Theme",
     "photo-contest-default": "Open Theme",
@@ -547,7 +548,6 @@ async function updateThemeDisplay(selectedSlug) {
     return;
   }
 
-  // Custom contest: fetch from API
   try {
     const res = await fetch('/api/contest/' + encodeURIComponent(selectedSlug));
     if (res.ok) {
@@ -562,25 +562,22 @@ async function updateThemeDisplay(selectedSlug) {
   }
 }
 
-  // Show caption image and pre-select contest if applicable
-  const urlParams = new URLSearchParams(window.location.search);
   const type = urlParams.get('type');
   const imgParam = urlParams.get('img');
   const imgSlug = urlParams.get('slug');
 
   if (type === 'caption' && imgParam && imgSlug && imgSlug.startsWith('caption-contest-')) {
-    contestSelectHidden.value = imgSlug;
-    contestSearchInput.value = imgSlug;
-    contestSelectHidden.dispatchEvent(new Event('change'));
+    contestSelect.value = imgSlug;
+    contestSelect.dispatchEvent(new Event('change'));
   }
 
   window.addEventListener('DOMContentLoaded', () => {
-    contestSelectHidden.dispatchEvent(new Event('change'));
+    contestSelect.dispatchEvent(new Event('change'));
     updatePrizePoolDisplay();
   });
 
   async function updatePrizePoolDisplay() {
-    const contestSlug = contestSelectHidden.value;
+    const contestSlug = contestSelect.value;
     const display = document.getElementById('prizePoolDisplay');
     if (!contestSlug) {
       display.innerHTML = `
