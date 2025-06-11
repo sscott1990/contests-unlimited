@@ -779,8 +779,6 @@ router.get('/creators', async (req, res) => {
         (c.city || '').toLowerCase().includes(search) ||
         (c.state || '').toLowerCase().includes(search) ||
         (c.zipcode || '').toLowerCase().includes(search) ||
-        (c.filename || '').toLowerCase().includes(search) ||
-        (c.fileCell || '').toLowerCase().includes(search) ||
       );
     }
 
