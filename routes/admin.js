@@ -1242,14 +1242,17 @@ router.get('/dashboard-financials', async (req, res) => {
         if (isPlatform) {
           reserve = totalEntries * entryFee * 0.1;
           platformEarnings = totalEntries * entryFee * 0.3;
+          creatorEarnings = 0;
         } else {
           reserve = totalEntries * entryFee * 0.10;
           if (totalEntries <= minEntries) {
             creatorEarnings = totalEntries * entryFee * 0.25;
+            platformEarnings = totalEntries * entryFee * 0.05;
           } else {
+            // Up to minEntries: 25% creator, 5% platform; above minEntries: 30% creator, 0% platform
             creatorEarnings = minEntries * entryFee * 0.25 + (totalEntries - minEntries) * entryFee * 0.30;
+            platformEarnings = minEntries * entryFee * 0.05;
           }
-          platformEarnings = totalEntries * entryFee * 0.05;
         }
 
         if (endDateMs && nowMs > endDateMs) {
@@ -1445,6 +1448,7 @@ router.get('/dashboard-financials', async (req, res) => {
 
       let pot = data.pot;
       let creatorEarnings = data.creatorEarnings || 0;
+      let platformEarnings = data.platformEarnings || 0;
       let outstandingToWinner = (isExpired) ? pot : 0;
       let outstandingToCreator = (isExpired && !data.isPlatform) ? creatorEarnings : 0;
 
@@ -1452,16 +1456,19 @@ router.get('/dashboard-financials', async (req, res) => {
       totalRevenue += entriesCount * entryFee;
       totalWinner += entriesCount * entryFee * 0.6;
       if (data.isPlatform) {
-        totalPlatform += entriesCount * entryFee * 0.3;
+        totalPlatform += platformEarnings;
         totalReserve += entriesCount * entryFee * 0.1;
-        myProfit += entriesCount * entryFee * 0.3;
+        myProfit += platformEarnings;
       } else {
         totalCreator += creatorEarnings;
-        totalPlatform += entriesCount * entryFee * 0.05;
+        totalPlatform += platformEarnings;
         totalReserve += entriesCount * entryFee * 0.1;
-        myProfit += entriesCount * entryFee * 0.05;
+        myProfit += platformEarnings;
       }
-      if (data.seedIncluded) totalSeed += seedAmount;
+      if (data.seedIncluded) {
+        totalSeed += seedAmount;
+        myProfit -= seedAmount; // Subtract seed from platform profit if paid
+      }
 
       if (isExpired) {
         expired.push({
@@ -1529,17 +1536,17 @@ router.get('/dashboard-financials', async (req, res) => {
       let minEntries = contestInfo.minEntries || 50;
 
       if (isPlatform) {
-        // Default contest: $30/entry to platform, $0 to creator
-        platformEarnings = totalEntries * 30;
+        // Default contest: 30% to platform, 0% to creator
+        platformEarnings = totalEntries * entryFee * 0.3;
         creatorEarnings = 0;
       } else {
-        // Custom contest: $5/entry to platform, 25-30% to creator
+        // Custom contest: 5% to platform up to min, 25% to creator up to min, 30% to creator above min, 0% to platform above min
         if (totalEntries <= minEntries) {
           creatorEarnings = totalEntries * entryFee * 0.25;
-          platformEarnings = totalEntries * 5;
+          platformEarnings = totalEntries * entryFee * 0.05;
         } else {
           creatorEarnings = minEntries * entryFee * 0.25 + (totalEntries - minEntries) * entryFee * 0.30;
-          platformEarnings = totalEntries * 5;
+          platformEarnings = minEntries * entryFee * 0.05;
         }
       }
       winnerPayout = totalEntries * entryFee * 0.6;
