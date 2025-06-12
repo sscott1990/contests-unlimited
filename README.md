@@ -1,5 +1,12 @@
 # Contests Unlimited
 
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![Issues](https://img.shields.io/github/issues/sscott1990/contests-unlimited)](https://github.com/sscott1990/contests-unlimited/issues)
+[![Pull Requests](https://img.shields.io/github/issues-pr/sscott1990/contests-unlimited)](https://github.com/sscott1990/contests-unlimited/pulls)
+[![Contributors](https://img.shields.io/github/contributors/sscott1990/contests-unlimited)](https://github.com/sscott1990/contests-unlimited/graphs/contributors)
+[![Forks](https://img.shields.io/github/forks/sscott1990/contests-unlimited?style=social)](https://github.com/sscott1990/contests-unlimited/forks)
+[![Stars](https://img.shields.io/github/stars/sscott1990/contests-unlimited?style=social)](https://github.com/sscott1990/contests-unlimited/stargazers)
+
 Welcome to [Contests Unlimited](https://contests-unlimited.onrender.com), an online platform for hosting, entering, and judging a variety of skill-based contests with real cash prizes.
 
 ---
@@ -71,6 +78,12 @@ A: Each entry is $100. 60% of entries go to the winner, up to 30% to the contest
 
 **Q: Is my data safe?**  
 A: All personal and contest data is stored securely and never sold or disclosed to third parties.
+
+---
+
+## License
+
+This project is licensed under the [Apache License 2.0](LICENSE).
 
 ---
 
