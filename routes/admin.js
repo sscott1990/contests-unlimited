@@ -1496,7 +1496,7 @@ router.get('/dashboard-financials', async (req, res) => {
       }
     }
 
-    // ---- YTD CALCULATIONS ----
+   // ---- YTD CALCULATIONS ----
     // 1. Get start of year
     const nowDate = new Date();
     const startOfYear = new Date(nowDate.getFullYear(), 0, 1).getTime();
@@ -1514,17 +1514,17 @@ router.get('/dashboard-financials', async (req, res) => {
       ytdByContest[u.contestName].push(u);
     });
 
-    // Map for creator/winner details: payout, email, name, etc
+    // YTD subtotals
     let ytdByCreator = {};
     let ytdByWinner = {};
     let ytdPlatform = 0;
     let ytdCreatorsDetails = {};
     let ytdWinnersDetails = {};
+    let ytdTotalRevenue = 0, ytdTotalWinner = 0, ytdTotalSeed = 0, ytdTotalCreator = 0, ytdTotalReserve = 0, ytdMyProfit = 0;
 
     for (const contestName in ytdByContest) {
       const contestUploads = ytdByContest[contestName];
       const contestInfo = creators.find(c => c.slug === contestName) || {};
-      // Determine if platform/default contest
       const isPlatform = PLATFORM_TITLES.includes(contestName) ||
         (!contestInfo.creator || contestInfo.creator.trim().toLowerCase() === "contests unlimited");
       const creator = contestInfo.creator || "Contests Unlimited";
@@ -1532,15 +1532,25 @@ router.get('/dashboard-financials', async (req, res) => {
       const creatorName = contestInfo.creator || "";
       const entryFee = 100;
       const totalEntries = contestUploads.length;
-      let creatorEarnings = 0, winnerPayout = 0, platformEarnings = 0;
+      let creatorEarnings = 0, winnerPayout = 0, platformEarnings = 0, reserve = 0;
       let minEntries = contestInfo.minEntries || 50;
+      let seedAmount = contestInfo.seedAmount || 0;
+      if (isPlatform) {
+        minEntries = 200;
+        seedAmount = 1000;
+      } else {
+        if (contestInfo.durationMonths == 1) { seedAmount = 250; minEntries = 50; }
+        else if (contestInfo.durationMonths == 3) { seedAmount = 500; minEntries = 100; }
+        else if (contestInfo.durationMonths == 6) { seedAmount = 750; minEntries = 150; }
+        else if (contestInfo.durationMonths == 12) { seedAmount = 1000; minEntries = 200; }
+      }
 
       if (isPlatform) {
-        // Default contest: 30% to platform, 0% to creator
+        reserve = totalEntries * entryFee * 0.1;
         platformEarnings = totalEntries * entryFee * 0.3;
         creatorEarnings = 0;
       } else {
-        // Custom contest: 5% to platform up to min, 25% to creator up to min, 30% to creator above min, 0% to platform above min
+        reserve = totalEntries * entryFee * 0.10;
         if (totalEntries <= minEntries) {
           creatorEarnings = totalEntries * entryFee * 0.25;
           platformEarnings = totalEntries * entryFee * 0.05;
@@ -1559,6 +1569,17 @@ router.get('/dashboard-financials', async (req, res) => {
       }
 
       ytdPlatform += platformEarnings;
+      ytdTotalRevenue += totalEntries * entryFee;
+      ytdTotalWinner += winnerPayout;
+      ytdTotalReserve += reserve;
+      ytdTotalCreator += creatorEarnings;
+      ytdMyProfit += platformEarnings;
+
+      // Seed logic for YTD: if contest met min, subtract from platform profit and add to total seed
+      if (totalEntries >= minEntries) {
+        ytdTotalSeed += seedAmount;
+        ytdMyProfit -= seedAmount;
+      }
 
       // Winner logic is unchanged
       const winnerUpload = contestUploads.find(u => u.isWinner);
@@ -1657,7 +1678,12 @@ router.get('/dashboard-financials', async (req, res) => {
               }).join('')}
             </ul>
           </li>
-          <li><b>Platform:</b> $${ytdPlatform.toFixed(2)}</li>
+          <li><b>Platform:</b> $${ytdMyProfit.toFixed(2)}</li>
+          <li><b>Total Revenue:</b> $${ytdTotalRevenue.toFixed(2)}</li>
+          <li><b>Total Winner Payout (60%):</b> $${ytdTotalWinner.toFixed(2)}</li>
+          <li><b>Total Seed Paid:</b> $${ytdTotalSeed.toFixed(2)}</li>
+          <li><b>Total Creator Payout:</b> $${ytdTotalCreator.toFixed(2)}</li>
+          <li><b>Total Reserve:</b> $${ytdTotalReserve.toFixed(2)}</li>
         </ul>
         <h2>Expired Contests</h2>
         <table>
