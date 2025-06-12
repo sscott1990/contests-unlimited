@@ -1792,6 +1792,7 @@ router.post('/snapshot-ytds', async (req, res) => {
 
     let ytdCreatorsDetails = {};
     let ytdWinnersDetails = {};
+    let ytdPlatform = 0;
 
     for (const contestName in ytdByContest) {
       const contestUploads = ytdByContest[contestName];
@@ -1804,17 +1805,24 @@ router.post('/snapshot-ytds', async (req, res) => {
       const creatorName = contestInfo.creator || "";
       const entryFee = 100;
       const totalEntries = contestUploads.length;
-      let creatorEarnings = 0, winnerPayout = 0;
+      let creatorEarnings = 0, winnerPayout = 0, platformEarnings = 0;
       let minEntries = contestInfo.minEntries || 50;
-      if (!isPlatform) {
+      if (isPlatform) {
+        // Default contest: $30/entry to platform
+        platformEarnings = totalEntries * 30;
+      } else {
+        // Custom contest: $5/entry to platform, 25-30% to creator
         if (totalEntries <= minEntries) {
           creatorEarnings = totalEntries * entryFee * 0.25;
+          platformEarnings = totalEntries * 5;
         } else {
           creatorEarnings = minEntries * entryFee * 0.25 + (totalEntries - minEntries) * entryFee * 0.30;
+          platformEarnings = totalEntries * 5;
         }
         ytdCreatorsDetails[creator] = ytdCreatorsDetails[creator] || { name: creatorName, email: creatorEmail, payout: 0 };
         ytdCreatorsDetails[creator].payout += creatorEarnings;
       }
+      ytdPlatform += platformEarnings;
       winnerPayout = totalEntries * entryFee * 0.6;
 
       const winnerUpload = contestUploads.find(u => u.isWinner);
@@ -1831,7 +1839,8 @@ router.post('/snapshot-ytds', async (req, res) => {
       timestamp: new Date().toISOString(),
       year: nowDate.getFullYear(),
       creators: ytdCreatorsDetails,
-      winners: ytdWinnersDetails
+      winners: ytdWinnersDetails,
+      platform: ytdPlatform
     };
 
     // Load existing snapshots
@@ -1887,6 +1896,7 @@ cron.schedule('59 59 23 31 12 *', async () => {
 
     let ytdCreatorsDetails = {};
     let ytdWinnersDetails = {};
+    let ytdPlatform = 0;
 
     for (const contestName in ytdByContest) {
       const contestUploads = ytdByContest[contestName];
@@ -1899,17 +1909,24 @@ cron.schedule('59 59 23 31 12 *', async () => {
       const creatorName = contestInfo.creator || "";
       const entryFee = 100;
       const totalEntries = contestUploads.length;
-      let creatorEarnings = 0, winnerPayout = 0;
+      let creatorEarnings = 0, winnerPayout = 0, platformEarnings = 0;
       let minEntries = contestInfo.minEntries || 50;
-      if (!isPlatform) {
+      if (isPlatform) {
+        // Default contest: $30/entry to platform
+        platformEarnings = totalEntries * 30;
+      } else {
+        // Custom contest: $5/entry to platform, 25-30% to creator
         if (totalEntries <= minEntries) {
           creatorEarnings = totalEntries * entryFee * 0.25;
+          platformEarnings = totalEntries * 5;
         } else {
           creatorEarnings = minEntries * entryFee * 0.25 + (totalEntries - minEntries) * entryFee * 0.30;
+          platformEarnings = totalEntries * 5;
         }
         ytdCreatorsDetails[creator] = ytdCreatorsDetails[creator] || { name: creatorName, email: creatorEmail, payout: 0 };
         ytdCreatorsDetails[creator].payout += creatorEarnings;
       }
+      ytdPlatform += platformEarnings;
       winnerPayout = totalEntries * entryFee * 0.6;
 
       const winnerUpload = contestUploads.find(u => u.isWinner);
@@ -1926,7 +1943,8 @@ cron.schedule('59 59 23 31 12 *', async () => {
       timestamp: new Date().toISOString(),
       year: nowDate.getFullYear(),
       creators: ytdCreatorsDetails,
-      winners: ytdWinnersDetails
+      winners: ytdWinnersDetails,
+      platform: ytdPlatform
     };
 
     // Load existing snapshots
@@ -2022,6 +2040,15 @@ router.get('/ytd-snapshots', async (req, res) => {
                   <td>$${w.payout.toFixed(2)}</td>
                 </tr>`
               ).join('')}
+            </table>
+            <h3>Platform</h3>
+            <table>
+              <tr>
+                <th>Total Platform Earnings</th>
+              </tr>
+              <tr>
+                <td>$${(snapshot.platform || 0).toFixed(2)}</td>
+              </tr>
             </table>
           </div>
         `).join('<hr style="margin:2em 0;">')}
