@@ -2,10 +2,30 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const AWS = require('aws-sdk');
+require('dotenv').config(); // <-- Ensure .env is loaded
 const router = express.Router();
 
 const s3 = new AWS.S3();
 const BUCKET_NAME = 'contests-unlimited';
+
+// === HTTP Basic Auth middleware: protects ALL routes in this file, now uses .env ===
+router.use((req, res, next) => {
+  const auth = {
+    login: process.env.BASIC_AUTH_USER,
+    password: process.env.BASIC_AUTH_PASS
+  };
+
+  // parse login and password from headers
+  const b64auth = (req.headers.authorization || '').split(' ')[1] || '';
+  const [login, password] = Buffer.from(b64auth, 'base64').toString().split(':');
+
+  if (login && password && login === auth.login && password === auth.password) {
+    return next();
+  }
+
+  res.set('WWW-Authenticate', 'Basic realm="401"');
+  res.status(401).send('Authentication required.');
+});
 
 // === Option 2 fallback start time for default contests ===
 const DEFAULT_CONTEST_START = new Date('2025-05-30T14:00:00Z'); // <-- Set to your site "launch" UTC date

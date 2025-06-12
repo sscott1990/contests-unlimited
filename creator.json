@@ -1,1 +1,46 @@
-[]
+[
+  {
+    "sessionId": "a07f9065-d30b-44c7-adfc-425937069daf",
+    "contestTitle": "Art Contest",
+    "creator": "Haag Ford",
+    "email": "hford@email.com",
+    "address": "test 123",
+    "city": "testcity",
+    "state": "IL",
+    "zipcode": "hford@email.com",
+    "theme": "Cars",
+    "description": "All about cars",
+    "passwordHash": "$2b$10$iVMpiPasnmHMX8bKIFgZi.hTfpcFVdnmzVyb7enw.rvXg6xMP8MvC",
+    "approved": false,
+    "timestamp": "2025-05-11T22:16:07.560Z",
+    "endDate": "2025-06-11T22:16:07.560Z",
+    "durationMonths": 1,
+    "seedAmount": 250,
+    "minEntries": 50,
+    "slug": "art-contest-1749680167560",
+    "fileUrl": null,
+    "status": "approved"
+  },
+  {
+    "sessionId": "6c9016f2-8fc2-4ec6-8b60-dc090a687d36",
+    "contestTitle": "Caption Contest",
+    "creator": "Haag Ford",
+    "email": "hford@email.com",
+    "address": "test 123",
+    "city": "testcity",
+    "state": "IL",
+    "zipcode": "hford@email.com",
+    "theme": "Cars",
+    "description": "caption",
+    "passwordHash": "$2b$10$ooWm/MD90C1AM06jmDtT2uNSRvbRji5Zby8lFvfw7ppicdF8OtO1e",
+    "approved": false,
+    "timestamp": "2025-06-11T22:20:06.622Z",
+    "endDate": "2025-07-11T22:20:05.849Z",
+    "durationMonths": 1,
+    "seedAmount": 250,
+    "minEntries": 50,
+    "slug": "caption-contest-1749680405849",
+    "fileUrl": "https://contests-unlimited.s3.us-east-2.amazonaws.com/creator-files/caption-contest-1749680405849-gadiel-lazcano-Qi_e-n0poRM-unsplash.jpg",
+    "status": "approved"
+  }
+]

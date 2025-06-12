@@ -199,6 +199,66 @@ async function getPresignedUrlFromFileUrl(fileUrl) {
   }
 }
 
+// === 🚩 Request Access Form (GET and POST) ===
+app.get('/request-access', (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Request Demo Access</title>
+      <meta charset="UTF-8">
+    </head>
+    <body>
+      <h1>Request Demo Access</h1>
+      <form action="/api/request-access" method="POST">
+        <label for="name">Name:</label><br>
+        <input type="text" id="name" name="name" required><br>
+        <label for="email">Email:</label><br>
+        <input type="email" id="email" name="email" required><br>
+        <label for="reason">Reason for Access (optional):</label><br>
+        <textarea id="reason" name="reason"></textarea><br>
+        <button type="submit">Request Access</button>
+      </form>
+    </body>
+    </html>
+  `);
+});
+
+app.post('/api/request-access', async (req, res) => {
+  try {
+    const { name, email, reason } = req.body;
+    if (!name || !email) {
+      return res.status(400).send('Name and email are required.');
+    }
+
+    // Create a unique filename for each request
+    const filename = `request-access/${Date.now()}_${Math.random().toString(36).substr(2, 8)}.json`;
+
+    const item = {
+      name,
+      email,
+      reason: reason || "",
+      timestamp: new Date().toISOString()
+    };
+
+    await s3.putObject({
+      Bucket: ENTRIES_BUCKET,
+      Key: filename,
+      Body: JSON.stringify(item, null, 2),
+      ContentType: 'application/json'
+    }).promise();
+
+    res.send(`
+      <h2>Thank you for your request!</h2>
+      <p>We have received your request for demo access. You will receive an email soon if approved.</p>
+      <a href="/">Back to Home</a>
+    `);
+  } catch (err) {
+    console.error('Failed to handle request access:', err);
+    res.status(500).send('Failed to process your request');
+  }
+});
+
 // === ADD THIS: API for default caption contest, with signed image URL ===
 app.get('/api/caption-contest', async (req, res) => {
   try {
