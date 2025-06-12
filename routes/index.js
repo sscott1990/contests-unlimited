@@ -8,12 +8,70 @@ const router = express.Router();
 const s3 = new AWS.S3();
 const BUCKET_NAME = 'contests-unlimited';
 
+// === DEMO EXPIRATION S3 PATCH (delete block marked DEMO-EXPIRE-S3 to remove) ===
+// [DEMO-EXPIRE-S3-START]
+const DEMO_EXPIRATION_ENABLED = true;
+const DEMO_EXPIRATION_MS = 1 * 60 * 60 * 1000; // 1 hour
+const DEMO_EXPIRY_S3_KEY = 'demo_expiry.json';
+
+function getDemoExpiryFromS3(callback) {
+  s3.getObject({
+    Bucket: BUCKET_NAME,
+    Key: DEMO_EXPIRY_S3_KEY
+  }, (err, data) => {
+    if (err) {
+      if (err.code === 'NoSuchKey') return callback(null);
+      console.error('Error loading demo expiry from S3:', err);
+      return callback(null);
+    }
+    try {
+      const json = JSON.parse(data.Body.toString('utf-8'));
+      callback(json.expiresAt || null);
+    } catch (e) {
+      console.error('Invalid JSON in demo expiry:', e);
+      callback(null);
+    }
+  });
+}
+function setDemoExpiryInS3(expiresAt, callback) {
+  s3.putObject({
+    Bucket: BUCKET_NAME,
+    Key: DEMO_EXPIRY_S3_KEY,
+    Body: JSON.stringify({ expiresAt }),
+    ContentType: 'application/json'
+  }, (err) => {
+    if (err) {
+      console.error('Error writing demo expiry to S3:', err);
+    }
+    if (callback) callback();
+  });
+}
+// [DEMO-EXPIRE-S3-END]
+// =========================================================
+
 // === HTTP Basic Auth middleware: protects ALL routes in this file, now uses .env ===
 router.use((req, res, next) => {
   const auth = {
     login: process.env.BASIC_AUTH_USER,
     password: process.env.BASIC_AUTH_PASS
   };
+
+  // [DEMO-EXPIRE-S3-START]
+  if (DEMO_EXPIRATION_ENABLED) {
+    getDemoExpiryFromS3((expiresAt) => {
+      const now = Date.now();
+      if (!expiresAt) {
+        const newExpiry = now + DEMO_EXPIRATION_MS;
+        setDemoExpiryInS3(newExpiry, () => next());
+      } else if (now > expiresAt) {
+        res.status(403).send('Demo expired. Please contact the site owner for access.');
+      } else {
+        next();
+      }
+    });
+    return; // prevent further execution until callback
+  }
+  // [DEMO-EXPIRE-S3-END]
 
   // parse login and password from headers
   const b64auth = (req.headers.authorization || '').split(' ')[1] || '';
