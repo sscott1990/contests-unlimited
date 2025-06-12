@@ -1161,6 +1161,7 @@ router.get('/dashboard-financials', async (req, res) => {
       { contestTitle: "Trivia Contest" },
       { contestTitle: "Caption Contest" }
     ];
+    const PLATFORM_TITLES = PLATFORM_CONTESTS.map(c => c.contestTitle);
     const DEFAULT_CONTEST_START = new Date('2025-05-30T14:00:00Z');
     const DEFAULT_CONTEST_DURATION_MS = 365 * 24 * 60 * 60 * 1000; // 1 year
     const DEFAULT_CONTEST_SEED = 1000;
@@ -1516,6 +1517,9 @@ router.get('/dashboard-financials', async (req, res) => {
     for (const contestName in ytdByContest) {
       const contestUploads = ytdByContest[contestName];
       const contestInfo = creators.find(c => c.slug === contestName) || {};
+      // Determine if platform/default contest
+      const isPlatform = PLATFORM_TITLES.includes(contestName) ||
+        (!contestInfo.creator || contestInfo.creator.trim().toLowerCase() === "contests unlimited");
       const creator = contestInfo.creator || "Contests Unlimited";
       const creatorEmail = contestInfo.creatorEmail || contestInfo.email || "";
       const creatorName = contestInfo.creator || "";
@@ -1523,23 +1527,33 @@ router.get('/dashboard-financials', async (req, res) => {
       const totalEntries = contestUploads.length;
       let creatorEarnings = 0, winnerPayout = 0, platformEarnings = 0;
       let minEntries = contestInfo.minEntries || 50;
-      if (totalEntries <= minEntries) {
-        creatorEarnings = totalEntries * entryFee * 0.25;
-        platformEarnings = totalEntries * entryFee * 0.05;
+
+      if (isPlatform) {
+        // Default contest: $30/entry to platform, $0 to creator
+        platformEarnings = totalEntries * 30;
+        creatorEarnings = 0;
       } else {
-        creatorEarnings = minEntries * entryFee * 0.25 + (totalEntries - minEntries) * entryFee * 0.30;
-        platformEarnings = totalEntries * entryFee * 0.05;
+        // Custom contest: $5/entry to platform, 25-30% to creator
+        if (totalEntries <= minEntries) {
+          creatorEarnings = totalEntries * entryFee * 0.25;
+          platformEarnings = totalEntries * 5;
+        } else {
+          creatorEarnings = minEntries * entryFee * 0.25 + (totalEntries - minEntries) * entryFee * 0.30;
+          platformEarnings = totalEntries * 5;
+        }
       }
       winnerPayout = totalEntries * entryFee * 0.6;
 
-      ytdByCreator[creator] = (ytdByCreator[creator] || 0) + creatorEarnings;
+      // Only add non-platform creators to YTD list
+      if (!isPlatform) {
+        ytdByCreator[creator] = (ytdByCreator[creator] || 0) + creatorEarnings;
+        ytdCreatorsDetails[creator] = ytdCreatorsDetails[creator] || { name: creatorName, email: creatorEmail, payout: 0 };
+        ytdCreatorsDetails[creator].payout += creatorEarnings;
+      }
+
       ytdPlatform += platformEarnings;
 
-      // Save details for W9 notice use
-      ytdCreatorsDetails[creator] = ytdCreatorsDetails[creator] || { name: creatorName, email: creatorEmail, payout: 0 };
-      ytdCreatorsDetails[creator].payout += creatorEarnings;
-
-      // Find winner if set for this contest
+      // Winner logic is unchanged
       const winnerUpload = contestUploads.find(u => u.isWinner);
       if (winnerUpload) {
         const winner = winnerUpload.name || winnerUpload.customerEmail || winnerUpload.sessionId;
@@ -1757,6 +1771,11 @@ router.post('/snapshot-ytds', async (req, res) => {
       loadUploads(),
       loadCreators()
     ]);
+    // Platform contest titles
+    const PLATFORM_TITLES = [
+      "Art Contest", "Photo Contest", "Trivia Contest", "Caption Contest"
+    ];
+
     // YTD calculation (same as dashboard)
     const nowDate = new Date();
     const startOfYear = new Date(nowDate.getFullYear(), 0, 1).getTime();
@@ -1777,6 +1796,9 @@ router.post('/snapshot-ytds', async (req, res) => {
     for (const contestName in ytdByContest) {
       const contestUploads = ytdByContest[contestName];
       const contestInfo = creators.find(c => c.slug === contestName) || {};
+      // Determine if platform/default contest
+      const isPlatform = PLATFORM_TITLES.includes(contestName) ||
+        (!contestInfo.creator || contestInfo.creator.trim().toLowerCase() === "contests unlimited");
       const creator = contestInfo.creator || "Contests Unlimited";
       const creatorEmail = contestInfo.creatorEmail || contestInfo.email || "";
       const creatorName = contestInfo.creator || "";
@@ -1784,15 +1806,16 @@ router.post('/snapshot-ytds', async (req, res) => {
       const totalEntries = contestUploads.length;
       let creatorEarnings = 0, winnerPayout = 0;
       let minEntries = contestInfo.minEntries || 50;
-      if (totalEntries <= minEntries) {
-        creatorEarnings = totalEntries * entryFee * 0.25;
-      } else {
-        creatorEarnings = minEntries * entryFee * 0.25 + (totalEntries - minEntries) * entryFee * 0.30;
+      if (!isPlatform) {
+        if (totalEntries <= minEntries) {
+          creatorEarnings = totalEntries * entryFee * 0.25;
+        } else {
+          creatorEarnings = minEntries * entryFee * 0.25 + (totalEntries - minEntries) * entryFee * 0.30;
+        }
+        ytdCreatorsDetails[creator] = ytdCreatorsDetails[creator] || { name: creatorName, email: creatorEmail, payout: 0 };
+        ytdCreatorsDetails[creator].payout += creatorEarnings;
       }
       winnerPayout = totalEntries * entryFee * 0.6;
-
-      ytdCreatorsDetails[creator] = ytdCreatorsDetails[creator] || { name: creatorName, email: creatorEmail, payout: 0 };
-      ytdCreatorsDetails[creator].payout += creatorEarnings;
 
       const winnerUpload = contestUploads.find(u => u.isWinner);
       if (winnerUpload) {
@@ -1843,6 +1866,11 @@ cron.schedule('59 59 23 31 12 *', async () => {
       loadUploads(),
       loadCreators()
     ]);
+    // Platform contest titles
+    const PLATFORM_TITLES = [
+      "Art Contest", "Photo Contest", "Trivia Contest", "Caption Contest"
+    ];
+
     // YTD calculation (same as dashboard)
     const nowDate = new Date();
     const startOfYear = new Date(nowDate.getFullYear(), 0, 1).getTime();
@@ -1863,6 +1891,9 @@ cron.schedule('59 59 23 31 12 *', async () => {
     for (const contestName in ytdByContest) {
       const contestUploads = ytdByContest[contestName];
       const contestInfo = creators.find(c => c.slug === contestName) || {};
+      // Determine if platform/default contest
+      const isPlatform = PLATFORM_TITLES.includes(contestName) ||
+        (!contestInfo.creator || contestInfo.creator.trim().toLowerCase() === "contests unlimited");
       const creator = contestInfo.creator || "Contests Unlimited";
       const creatorEmail = contestInfo.creatorEmail || contestInfo.email || "";
       const creatorName = contestInfo.creator || "";
@@ -1870,15 +1901,16 @@ cron.schedule('59 59 23 31 12 *', async () => {
       const totalEntries = contestUploads.length;
       let creatorEarnings = 0, winnerPayout = 0;
       let minEntries = contestInfo.minEntries || 50;
-      if (totalEntries <= minEntries) {
-        creatorEarnings = totalEntries * entryFee * 0.25;
-      } else {
-        creatorEarnings = minEntries * entryFee * 0.25 + (totalEntries - minEntries) * entryFee * 0.30;
+      if (!isPlatform) {
+        if (totalEntries <= minEntries) {
+          creatorEarnings = totalEntries * entryFee * 0.25;
+        } else {
+          creatorEarnings = minEntries * entryFee * 0.25 + (totalEntries - minEntries) * entryFee * 0.30;
+        }
+        ytdCreatorsDetails[creator] = ytdCreatorsDetails[creator] || { name: creatorName, email: creatorEmail, payout: 0 };
+        ytdCreatorsDetails[creator].payout += creatorEarnings;
       }
       winnerPayout = totalEntries * entryFee * 0.6;
-
-      ytdCreatorsDetails[creator] = ytdCreatorsDetails[creator] || { name: creatorName, email: creatorEmail, payout: 0 };
-      ytdCreatorsDetails[creator].payout += creatorEarnings;
 
       const winnerUpload = contestUploads.find(u => u.isWinner);
       if (winnerUpload) {
