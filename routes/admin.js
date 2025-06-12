@@ -1826,6 +1826,7 @@ router.post('/snapshot-ytds', async (req, res) => {
     let ytdCreatorsDetails = {};
     let ytdWinnersDetails = {};
     let ytdPlatform = 0;
+    let ytdTotalSeed = 0;
 
     for (const contestName in ytdByContest) {
       const contestUploads = ytdByContest[contestName];
@@ -1840,21 +1841,38 @@ router.post('/snapshot-ytds', async (req, res) => {
       const totalEntries = contestUploads.length;
       let creatorEarnings = 0, winnerPayout = 0, platformEarnings = 0;
       let minEntries = contestInfo.minEntries || 50;
+      let seedAmount = contestInfo.seedAmount || 0;
       if (isPlatform) {
-        // Default contest: $30/entry to platform
-        platformEarnings = totalEntries * 30;
+        minEntries = 200;
+        seedAmount = 1000;
       } else {
-        // Custom contest: $5/entry to platform, 25-30% to creator
+        if (contestInfo.durationMonths == 1) { seedAmount = 250; minEntries = 50; }
+        else if (contestInfo.durationMonths == 3) { seedAmount = 500; minEntries = 100; }
+        else if (contestInfo.durationMonths == 6) { seedAmount = 750; minEntries = 150; }
+        else if (contestInfo.durationMonths == 12) { seedAmount = 1000; minEntries = 200; }
+      }
+
+      if (isPlatform) {
+        platformEarnings = totalEntries * entryFee * 0.3;
+        creatorEarnings = 0;
+      } else {
         if (totalEntries <= minEntries) {
           creatorEarnings = totalEntries * entryFee * 0.25;
-          platformEarnings = totalEntries * 5;
+          platformEarnings = totalEntries * entryFee * 0.05;
         } else {
           creatorEarnings = minEntries * entryFee * 0.25 + (totalEntries - minEntries) * entryFee * 0.30;
-          platformEarnings = totalEntries * 5;
+          platformEarnings = minEntries * entryFee * 0.05;
         }
         ytdCreatorsDetails[creator] = ytdCreatorsDetails[creator] || { name: creatorName, email: creatorEmail, payout: 0 };
         ytdCreatorsDetails[creator].payout += creatorEarnings;
       }
+
+      // Subtract seed from platform profit if contest met minimum
+      if (totalEntries >= minEntries) {
+        ytdTotalSeed += seedAmount;
+        platformEarnings -= seedAmount;
+      }
+
       ytdPlatform += platformEarnings;
       winnerPayout = totalEntries * entryFee * 0.6;
 
@@ -1873,7 +1891,8 @@ router.post('/snapshot-ytds', async (req, res) => {
       year: nowDate.getFullYear(),
       creators: ytdCreatorsDetails,
       winners: ytdWinnersDetails,
-      platform: ytdPlatform
+      platform: ytdPlatform,
+      totalSeedPaid: ytdTotalSeed
     };
 
     // Load existing snapshots
@@ -1930,6 +1949,7 @@ cron.schedule('59 59 23 31 12 *', async () => {
     let ytdCreatorsDetails = {};
     let ytdWinnersDetails = {};
     let ytdPlatform = 0;
+    let ytdTotalSeed = 0;
 
     for (const contestName in ytdByContest) {
       const contestUploads = ytdByContest[contestName];
@@ -1944,21 +1964,38 @@ cron.schedule('59 59 23 31 12 *', async () => {
       const totalEntries = contestUploads.length;
       let creatorEarnings = 0, winnerPayout = 0, platformEarnings = 0;
       let minEntries = contestInfo.minEntries || 50;
+      let seedAmount = contestInfo.seedAmount || 0;
       if (isPlatform) {
-        // Default contest: $30/entry to platform
-        platformEarnings = totalEntries * 30;
+        minEntries = 200;
+        seedAmount = 1000;
       } else {
-        // Custom contest: $5/entry to platform, 25-30% to creator
+        if (contestInfo.durationMonths == 1) { seedAmount = 250; minEntries = 50; }
+        else if (contestInfo.durationMonths == 3) { seedAmount = 500; minEntries = 100; }
+        else if (contestInfo.durationMonths == 6) { seedAmount = 750; minEntries = 150; }
+        else if (contestInfo.durationMonths == 12) { seedAmount = 1000; minEntries = 200; }
+      }
+
+      if (isPlatform) {
+        platformEarnings = totalEntries * entryFee * 0.3;
+        creatorEarnings = 0;
+      } else {
         if (totalEntries <= minEntries) {
           creatorEarnings = totalEntries * entryFee * 0.25;
-          platformEarnings = totalEntries * 5;
+          platformEarnings = totalEntries * entryFee * 0.05;
         } else {
           creatorEarnings = minEntries * entryFee * 0.25 + (totalEntries - minEntries) * entryFee * 0.30;
-          platformEarnings = totalEntries * 5;
+          platformEarnings = minEntries * entryFee * 0.05;
         }
         ytdCreatorsDetails[creator] = ytdCreatorsDetails[creator] || { name: creatorName, email: creatorEmail, payout: 0 };
         ytdCreatorsDetails[creator].payout += creatorEarnings;
       }
+
+      // Subtract seed from platform profit if contest met minimum
+      if (totalEntries >= minEntries) {
+        ytdTotalSeed += seedAmount;
+        platformEarnings -= seedAmount;
+      }
+
       ytdPlatform += platformEarnings;
       winnerPayout = totalEntries * entryFee * 0.6;
 
@@ -1977,7 +2014,8 @@ cron.schedule('59 59 23 31 12 *', async () => {
       year: nowDate.getFullYear(),
       creators: ytdCreatorsDetails,
       winners: ytdWinnersDetails,
-      platform: ytdPlatform
+      platform: ytdPlatform,
+      totalSeedPaid: ytdTotalSeed
     };
 
     // Load existing snapshots
@@ -2077,10 +2115,12 @@ router.get('/ytd-snapshots', async (req, res) => {
             <h3>Platform</h3>
             <table>
               <tr>
-                <th>Total Platform Earnings</th>
+                <th>Total Platform Earnings (After Seed)</th>
+                <th>Total Seed Paid</th>
               </tr>
               <tr>
                 <td>$${(snapshot.platform || 0).toFixed(2)}</td>
+                <td>$${(snapshot.totalSeedPaid || 0).toFixed(2)}</td>
               </tr>
             </table>
           </div>
