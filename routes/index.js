@@ -51,38 +51,42 @@ function setDemoExpiryInS3(expiresAt, callback) {
 
 // === HTTP Basic Auth middleware: protects ALL routes in this file, now uses .env ===
 router.use((req, res, next) => {
-  const auth = {
-    login: process.env.BASIC_AUTH_USER,
-    password: process.env.BASIC_AUTH_PASS
-  };
-
   // [DEMO-EXPIRE-S3-START]
   if (DEMO_EXPIRATION_ENABLED) {
     getDemoExpiryFromS3((expiresAt) => {
       const now = Date.now();
       if (!expiresAt) {
         const newExpiry = now + DEMO_EXPIRATION_MS;
-        setDemoExpiryInS3(newExpiry, () => next());
+        // Set expiry, then run basic auth
+        return setDemoExpiryInS3(newExpiry, () => runBasicAuth());
       } else if (now > expiresAt) {
-        res.status(403).send('Demo expired. Please contact the site owner for access.');
+        return res.status(403).send('Demo expired. Please contact the site owner for access.');
       } else {
-        next();
+        return runBasicAuth();
       }
     });
     return; // prevent further execution until callback
   }
   // [DEMO-EXPIRE-S3-END]
+  return runBasicAuth();
 
-  // parse login and password from headers
-  const b64auth = (req.headers.authorization || '').split(' ')[1] || '';
-  const [login, password] = Buffer.from(b64auth, 'base64').toString().split(':');
+  function runBasicAuth() {
+    const auth = {
+      login: process.env.BASIC_AUTH_USER,
+      password: process.env.BASIC_AUTH_PASS
+    };
 
-  if (login && password && login === auth.login && password === auth.password) {
-    return next();
+    // parse login and password from headers
+    const b64auth = (req.headers.authorization || '').split(' ')[1] || '';
+    const [login, password] = Buffer.from(b64auth, 'base64').toString().split(':');
+
+    if (login && password && login === auth.login && password === auth.password) {
+      return next();
+    }
+
+    res.set('WWW-Authenticate', 'Basic realm="401"');
+    res.status(401).send('Authentication required.');
   }
-
-  res.set('WWW-Authenticate', 'Basic realm="401"');
-  res.status(401).send('Authentication required.');
 });
 
 // === Option 2 fallback start time for default contests ===
