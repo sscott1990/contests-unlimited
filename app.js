@@ -955,11 +955,13 @@ app.get('/test-proxy', async (req, res) => {
 const indexRoutes = require('./routes/index');
 const adminRoutes = require('./routes/admin');
 const triviaRoute = require('./routes/trivia');
+const demoRoutes = require('./routes/demo'); // <-- ADD THIS LINE
 
 app.use('/', indexRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/trivia', triviaRoute);
 app.use('/contest', contestRoutes);
+app.use('/demo', demoRoutes); // <-- ADD THIS LINE: demo routes protected by demo auth/expiry
 app.use('/', collectRoutes);
 
 // ⛳ Serve uploaded files via S3 proxy
