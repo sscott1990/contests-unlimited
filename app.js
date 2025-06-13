@@ -33,7 +33,7 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(express.static('public'));
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// ===== DEMO BASIC AUTH + EXPIRY MIDDLEWARE (ALL except /api/admin) =====
+// ===== DEMO BASIC AUTH + EXPIRY MIDDLEWARE (ALL except /api/admin and /request-access(.html) ) =====
 const DEMO_EXPIRATION_ENABLED = true;
 const DEMO_EXPIRATION_MS = 1 * 60 * 60 * 1000; // 1 hour
 const DEMO_EXPIRY_S3_KEY = 'demo_expiry.json';
@@ -68,8 +68,14 @@ function setDemoExpiryInS3(expiresAt, callback) {
 }
 
 function demoAuthAndExpiry(req, res, next) {
-  // Bypass for /api/admin and its subroutes only
+  // Bypass for /api/admin and its subroutes
   if (req.path.startsWith('/api/admin')) return next();
+
+  // Bypass for /request-access.html and /request-access (GET and POST)
+  if (
+    req.path === '/request-access.html' ||
+    req.path === '/request-access'
+  ) return next();
 
   if (DEMO_EXPIRATION_ENABLED) {
     getDemoExpiryFromS3((expiresAt) => {
