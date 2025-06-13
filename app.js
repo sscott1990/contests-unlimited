@@ -33,6 +33,77 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(express.static('public'));
 app.use(bodyParser.urlencoded({ extended: true }));
 
+// ===== DEMO BASIC AUTH + EXPIRY MIDDLEWARE (ALL except /api/admin) =====
+const DEMO_EXPIRATION_ENABLED = true;
+const DEMO_EXPIRATION_MS = 1 * 60 * 60 * 1000; // 1 hour
+const DEMO_EXPIRY_S3_KEY = 'demo_expiry.json';
+
+function getDemoExpiryFromS3(callback) {
+  s3.getObject({
+    Bucket: ENTRIES_BUCKET,
+    Key: DEMO_EXPIRY_S3_KEY
+  }, (err, data) => {
+    if (err) {
+      if (err.code === 'NoSuchKey') return callback(null);
+      return callback(null);
+    }
+    try {
+      const json = JSON.parse(data.Body.toString('utf-8'));
+      callback(json.expiresAt || null);
+    } catch (e) {
+      callback(null);
+    }
+  });
+}
+
+function setDemoExpiryInS3(expiresAt, callback) {
+  s3.putObject({
+    Bucket: ENTRIES_BUCKET,
+    Key: DEMO_EXPIRY_S3_KEY,
+    Body: JSON.stringify({ expiresAt }),
+    ContentType: 'application/json'
+  }, (err) => {
+    if (callback) callback();
+  });
+}
+
+function demoAuthAndExpiry(req, res, next) {
+  // Bypass for /api/admin and its subroutes only
+  if (req.path.startsWith('/api/admin')) return next();
+
+  if (DEMO_EXPIRATION_ENABLED) {
+    getDemoExpiryFromS3((expiresAt) => {
+      const now = Date.now();
+      if (!expiresAt) {
+        const newExpiry = now + DEMO_EXPIRATION_MS;
+        return setDemoExpiryInS3(newExpiry, () => runBasicAuth());
+      } else if (now > expiresAt) {
+        return res.status(403).send('Demo expired. Please contact the site owner for access.');
+      } else {
+        return runBasicAuth();
+      }
+    });
+    return;
+  }
+  return runBasicAuth();
+
+  function runBasicAuth() {
+    const auth = {
+      login: process.env.BASIC_AUTH_USER,
+      password: process.env.BASIC_AUTH_PASS
+    };
+    const b64auth = (req.headers.authorization || '').split(' ')[1] || '';
+    const [login, password] = Buffer.from(b64auth, 'base64').toString().split(':');
+    if (login && password && login === auth.login && password === auth.password) {
+      return next();
+    }
+    res.set('WWW-Authenticate', 'Basic realm="401"');
+    res.status(401).send('Authentication required.');
+  }
+}
+app.use(demoAuthAndExpiry);
+// ===== END DEMO BASIC AUTH + EXPIRY MIDDLEWARE =====
+
 // Setup body parsers
 const jsonParser = bodyParser.json();
 const rawBodyParser = bodyParser.raw({ type: 'application/json' });
@@ -136,7 +207,6 @@ async function saveCreators(creators) {
 }
 
 // === 📦 Helpers for Trivia Sets ===
-// Now trivia-contest.json is an ARRAY of contest objects (not an object/dict)
 async function getTriviaSets() {
   try {
     const data = await s3.getObject({
@@ -145,7 +215,7 @@ async function getTriviaSets() {
     }).promise();
     return JSON.parse(data.Body.toString('utf-8'));
   } catch (err) {
-    if (err.code === 'NoSuchKey') return []; // CHANGED: Array, not object
+    if (err.code === 'NoSuchKey') return [];
     throw err;
   }
 }
@@ -955,13 +1025,11 @@ app.get('/test-proxy', async (req, res) => {
 const indexRoutes = require('./routes/index');
 const adminRoutes = require('./routes/admin');
 const triviaRoute = require('./routes/trivia');
-const demoRoutes = require('./routes/demo'); // <-- ADD THIS LINE
 
 app.use('/', indexRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/trivia', triviaRoute);
 app.use('/contest', contestRoutes);
-app.use('/demo', demoRoutes); // <-- ADD THIS LINE: demo routes protected by demo auth/expiry
 app.use('/', collectRoutes);
 
 // ⛳ Serve uploaded files via S3 proxy
