@@ -33,7 +33,6 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(express.static('public'));
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// ===== DEMO BASIC AUTH + EXPIRY MIDDLEWARE (ALL except /api/admin and /request-access(.html) ) =====
 const DEMO_EXPIRATION_ENABLED = true;
 const DEMO_EXPIRATION_MS = 1 * 60 * 60 * 1000; // 1 hour
 const DEMO_EXPIRY_S3_KEY = 'demo_expiry.json';
@@ -82,19 +81,33 @@ function demoAuthAndExpiry(req, res, next) {
     getDemoExpiryFromS3((expiresAt) => {
       const now = Date.now();
       if (!expiresAt) {
-        const newExpiry = now + DEMO_EXPIRATION_MS;
-        return setDemoExpiryInS3(newExpiry, () => runBasicAuth());
+        // No expiry set yet: require login, only set expiry on successful login
+        return runBasicAuth((success) => {
+          if (success) {
+            const newExpiry = now + DEMO_EXPIRATION_MS;
+            return setDemoExpiryInS3(newExpiry, () => next());
+          }
+          // If not successful, runBasicAuth handles response
+        });
       } else if (now > expiresAt) {
         return res.status(403).send('Demo expired. Please contact the site owner for access.');
       } else {
-        return runBasicAuth();
+        // Expiry valid, require login as usual
+        return runBasicAuth((success) => {
+          if (success) return next();
+          // If not successful, runBasicAuth handles response
+        });
       }
     });
     return;
   }
-  return runBasicAuth();
+  // If expiration not enabled, just run basic auth
+  return runBasicAuth((success) => {
+    if (success) return next();
+    // If not successful, runBasicAuth handles response
+  });
 
-  function runBasicAuth() {
+  function runBasicAuth(callback) {
     const auth = {
       login: process.env.BASIC_AUTH_USER,
       password: process.env.BASIC_AUTH_PASS
@@ -102,14 +115,14 @@ function demoAuthAndExpiry(req, res, next) {
     const b64auth = (req.headers.authorization || '').split(' ')[1] || '';
     const [login, password] = Buffer.from(b64auth, 'base64').toString().split(':');
     if (login && password && login === auth.login && password === auth.password) {
-      return next();
+      return callback(true);
     }
     res.set('WWW-Authenticate', 'Basic realm="401"');
     res.status(401).send('Authentication required.');
+    return callback(false);
   }
 }
 app.use(demoAuthAndExpiry);
-// ===== END DEMO BASIC AUTH + EXPIRY MIDDLEWARE =====
 
 // Setup body parsers
 const jsonParser = bodyParser.json();
