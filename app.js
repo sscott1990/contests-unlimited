@@ -75,6 +75,7 @@ function demoAuthAndExpiry(req, res, next) {
   if (
     req.path === '/request-access.html' ||
     req.path === '/request-access'
+    req.path === '/api/request-access'
   ) return next();
 
   if (DEMO_EXPIRATION_ENABLED) {
