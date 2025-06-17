@@ -72,10 +72,11 @@ function demoAuthAndExpiry(req, res, next) {
 
   // Bypass for /request-access.html and /request-access (GET and POST)
   if (
-    req.path === '/request-access.html' ||
-    req.path === '/request-access' ||
-    req.path === '/api/request-access'
-  ) return next();
+  req.path === '/request-access.html' ||
+  req.path === '/request-access' ||
+  req.path === '/api/request-access' ||
+  req.path === '/api/payment/webhook'
+) return next();
 
   if (DEMO_EXPIRATION_ENABLED) {
     getDemoExpiryFromS3((expiresAt) => {
