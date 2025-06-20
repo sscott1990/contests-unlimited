@@ -539,7 +539,6 @@ ${judgingCriteriaHtml}
             </div>
 
             <a class="admin-link" href="/api/admin/uploads">Admin</a>
-            <a class="gallery-link" href="/gallery">Gallery</a>
 
             <script>
               // Countdown script for all contests (prize list)
