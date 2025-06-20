@@ -5,6 +5,15 @@
   <title>Gallery - All Contest Uploads</title>
   <link rel="stylesheet" href="styles.css">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    .gallery-loader {
+      text-align: center;
+      color: #007849;
+      font-size: 1.15em;
+      margin: 24px 0 40px 0;
+      display: none;
+    }
+  </style>
 </head>
 <body class="gallery-background">
   <nav class="sticky-nav">
@@ -31,77 +40,143 @@
       <button type="submit" style="padding: 8px 18px;">Search</button>
     </form>
 
-    <div class="gallery-grid">
-      <% uploads.forEach(function(upload) { %>
+    <div class="gallery-grid" id="gallery-grid">
+      <!-- Cards will be inserted here by JS -->
+    </div>
+    <div class="gallery-loader" id="gallery-loader">Loading more...</div>
+    <div id="gallery-end" style="text-align:center; color:#888; margin: 32px 0 0 0; display:none;">No more uploads to show.</div>
+  </div>
+  <script>
+    // Setup for lazy loading
+    const grid = document.getElementById('gallery-grid');
+    const loader = document.getElementById('gallery-loader');
+    const endMsg = document.getElementById('gallery-end');
+    let page = 1;
+    let loading = false;
+    let noMore = false;
+
+    // Get search string from query
+    function getQueryParam(param) {
+      const urlParams = new URLSearchParams(window.location.search);
+      return urlParams.get(param) || '';
+    }
+    const searchParam = getQueryParam('search');
+
+    // Helper: Sanitize HTML for text
+    function sanitize(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    function renderCard(upload) {
+      // Caption contest default
+      if (
+        upload.contestName === 'caption-contest-default' &&
+        upload.contestImageUrl && upload.captionText
+      ) {
+        return `
+          <div class="gallery-card">
+            <img class="gallery-img" src="${sanitize(upload.contestImageUrl)}" alt="Caption Contest Image" loading="lazy">
+            <div class="caption-block">
+              <strong>Caption:</strong> <span>${sanitize(upload.captionText)}</span>
+            </div>
+            <div class="gallery-info">
+              <div><strong>Name:</strong> ${sanitize(upload.name || 'Anonymous')}</div>
+              <div><strong>Contest:</strong> ${sanitize(upload.contestName || 'Unknown')}</div>
+              <div><strong>Host:</strong> ${sanitize(upload.host || 'Contests Unlimited')}</div>
+              <div class="date"><strong>Date:</strong> ${new Date(upload.timestamp).toLocaleDateString()}</div>
+            </div>
+          </div>
+        `;
+      }
+      // Custom caption contest
+      if (
+        upload.contestName &&
+        upload.contestName.startsWith('caption-contest-') &&
+        upload.contestName !== 'caption-contest-default' &&
+        upload.contestImageUrl && upload.captionText
+      ) {
+        return `
+          <div class="gallery-card">
+            <img class="gallery-img" src="${sanitize(upload.contestImageUrl)}" alt="Caption Contest Image" loading="lazy">
+            <div class="caption-block">
+              <strong>Caption:</strong> <span>${sanitize(upload.captionText)}</span>
+            </div>
+            <div class="gallery-info">
+              <div><strong>Name:</strong> ${sanitize(upload.name || 'Anonymous')}</div>
+              <div><strong>Contest:</strong> ${sanitize(upload.contestName || 'Unknown')}</div>
+              <div><strong>Host:</strong> ${sanitize(upload.host || 'Contests Unlimited')}</div>
+              <div class="date"><strong>Date:</strong> ${new Date(upload.timestamp).toLocaleDateString()}</div>
+            </div>
+          </div>
+        `;
+      }
+      // Regular image
+      if (upload.presignedUrl && upload.isImageFile) {
+        return `
+          <div class="gallery-card">
+            <img class="gallery-img" src="${sanitize(upload.presignedUrl)}" alt="Upload by ${sanitize(upload.name)}" loading="lazy">
+            <div class="gallery-info">
+              <div><strong>Name:</strong> ${sanitize(upload.name || 'Anonymous')}</div>
+              <div><strong>Contest:</strong> ${sanitize(upload.contestName || 'Unknown')}</div>
+              <div><strong>Host:</strong> ${sanitize(upload.host || 'Contests Unlimited')}</div>
+              <div class="date"><strong>Date:</strong> ${new Date(upload.timestamp).toLocaleDateString()}</div>
+            </div>
+          </div>
+        `;
+      }
+      // No image
+      return `
         <div class="gallery-card">
-          <% 
-            // --- PATCH: Default Caption Contest ---
-            if (
-              upload.contestName === 'caption-contest-default' &&
-              upload.contestImageUrl && upload.captionText
-            ) { 
-          %>
-            <img class="gallery-img" src="<%= upload.contestImageUrl %>" alt="Caption Contest Image">
-            <div class="caption-block">
-              <strong>Caption:</strong> <span><%= upload.captionText %></span>
-            </div>
-          <% 
-            // --- END PATCH ---
-            // If it's a custom caption contest and a caption was submitted, 
-            // show the contest image and the caption text 
-            } else if (
-              upload.contestName && 
-              upload.contestName.startsWith('caption-contest-') && 
-              upload.contestName !== 'caption-contest-default' &&
-              upload.contestImageUrl && upload.captionText
-            ) { 
-          %>
-            <img class="gallery-img" src="<%= upload.contestImageUrl %>" alt="Caption Contest Image">
-            <div class="caption-block">
-              <strong>Caption:</strong> <span><%= upload.captionText %></span>
-            </div>
-          <% 
-            // Show the uploaded image if present and not a caption contest with caption
-            } else if (upload.presignedUrl && upload.isImageFile) { 
-          %>
-            <img class="gallery-img" src="<%= upload.presignedUrl %>" alt="Upload by <%= upload.name %>">
-          <% 
-            } else { 
-          %>
-            <div class="no-image">No Image</div>
-          <% } %>
+          <div class="no-image">No Image</div>
           <div class="gallery-info">
-            <div><strong>Name:</strong> <%= upload.name || 'Anonymous' %></div>
-            <div><strong>Contest:</strong> <%= upload.contestName || 'Unknown' %></div>
-            <div><strong>Host:</strong> <%= upload.host || 'Contests Unlimited' %></div>
-            <div class="date"><strong>Date:</strong> <%= new Date(upload.timestamp).toLocaleDateString() %></div>
+            <div><strong>Name:</strong> ${sanitize(upload.name || 'Anonymous')}</div>
+            <div><strong>Contest:</strong> ${sanitize(upload.contestName || 'Unknown')}</div>
+            <div><strong>Host:</strong> ${sanitize(upload.host || 'Contests Unlimited')}</div>
+            <div class="date"><strong>Date:</strong> ${new Date(upload.timestamp).toLocaleDateString()}</div>
           </div>
         </div>
-      <% }); %>
-    </div>
+      `;
+    }
 
-    <!-- Pagination Controls -->
-    <% if (totalPages && totalPages > 1) { %>
-      <nav class="pagination">
-        <% if (page > 1) { %>
-          <a href="?<% if (typeof search !== 'undefined' && search) { %>search=<%= encodeURIComponent(search) %>&<% } %>page=<%= page - 1 %>">&laquo; Previous</a>
-        <% } else { %>
-          <span class="disabled">&laquo; Previous</span>
-        <% } %>
-        <% for (var i = 1; i <= totalPages; i++) { %>
-          <% if (i === page) { %>
-            <span class="current"><%= i %></span>
-          <% } else { %>
-            <a href="?<% if (typeof search !== 'undefined' && search) { %>search=<%= encodeURIComponent(search) %>&<% } %>page=<%= i %>"><%= i %></a>
-          <% } %>
-        <% } %>
-        <% if (page < totalPages) { %>
-          <a href="?<% if (typeof search !== 'undefined' && search) { %>search=<%= encodeURIComponent(search) %>&<% } %>page=<%= page + 1 %>">Next &raquo;</a>
-        <% } else { %>
-          <span class="disabled">Next &raquo;</span>
-        <% } %>
-      </nav>
-    <% } %>
-  </div>
+    async function loadMore() {
+      if (loading || noMore) return;
+      loading = true;
+      loader.style.display = 'block';
+
+      // API expects ?page=X&search=Y
+      const params = new URLSearchParams();
+      params.set('page', page);
+      if (searchParam) params.set('search', searchParam);
+      const res = await fetch(`/api/gallery?${params.toString()}`);
+      const data = await res.json();
+
+      if (Array.isArray(data.uploads) && data.uploads.length > 0) {
+        for (const upload of data.uploads) {
+          grid.insertAdjacentHTML('beforeend', renderCard(upload));
+        }
+        page++;
+      }
+
+      if (data.uploads.length < (data.perPage || 30)) {
+        noMore = true;
+        endMsg.style.display = 'block';
+      }
+      loader.style.display = 'none';
+      loading = false;
+    }
+
+    // Infinite scroll: load more when near bottom
+    window.addEventListener('scroll', () => {
+      if (noMore || loading) return;
+      const scrollPos = window.innerHeight + window.scrollY;
+      const threshold = document.body.offsetHeight - 400;
+      if (scrollPos >= threshold) loadMore();
+    });
+
+    // Initial load
+    loadMore();
+  </script>
 </body>
 </html>
