@@ -13,6 +13,49 @@ body {
   align-items: center;
 }
 
+/* Sticky Navigation Bar */
+nav.sticky-nav {
+  position: sticky;
+  top: 0;
+  width: 100%;
+  background: rgba(255,255,255,0.78);
+  box-shadow: 0 2px 12px rgba(62,198,168,0.07);
+  z-index: 1000;
+  backdrop-filter: blur(8px) saturate(180%);
+  -webkit-backdrop-filter: blur(8px) saturate(180%);
+  border-bottom: 1.5px solid rgba(62,198,168,0.14);
+  /* Optional: add padding and layout for nav content */
+}
+
+/* Example nav content styles for modern look */
+nav.sticky-nav ul {
+  list-style: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 0;
+  padding: 0.7em 0;
+  gap: 2.2em;
+}
+nav.sticky-nav li {
+  display: inline;
+}
+nav.sticky-nav a {
+  color: #3ec6a8;
+  font-weight: 600;
+  text-decoration: none;
+  font-size: 1.12em;
+  padding: 4px 12px;
+  border-radius: 7px;
+  transition: background 0.2s, color 0.2s;
+}
+nav.sticky-nav a:hover,
+nav.sticky-nav a:focus {
+  background: rgba(62,198,168,0.12);
+  color: #b721ff;
+  outline: none;
+}
+
 /* Heading */
 h1 {
   color: #3ec6a8;
@@ -269,6 +312,7 @@ a:hover, a:focus {
   .gallery-grid { gap: 1.2rem; }
   .gallery-card { padding: 1.1rem 0.7rem; }
   h1 { font-size: 1.55rem; }
+  nav.sticky-nav ul { gap: 1.2em; }
 }
 
 /* Accessibility: focus styles */
