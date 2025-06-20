@@ -1,9 +1,14 @@
+/* 1. Import Modern Google Font */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
 /* General page styles */
 body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: linear-gradient(135deg, #dff9fb, #c7ecee); /* soft blue-green gradient */
-  color: #22244c;
-  margin: 40px;
+  font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%);
+  color: #21223a;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -11,161 +16,155 @@ body {
 
 /* Heading */
 h1 {
-  color: #e74c3c;
-  margin-bottom: 20px;
-  font-size: 2.3rem;
-  font-weight: bold;
-  text-shadow: 0 2px 14px #fff6, 1px 1px 2px #fad0c433;
-  letter-spacing: 0.04em;
+  color: #3ec6a8;
+  margin: 40px 0 24px 0;
+  font-size: 2.7rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-shadow: 0 2px 16px #3ec6a833, 1px 2px 4px #fff8;
 }
 
 /* Form container */
 form#uploadForm {
-  background: #ffffff;
-  padding: 30px 35px;
-  border-radius: 12px;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
-  width: 360px;
+  background: rgba(255,255,255,0.96);
+  padding: 38px 40px 32px 40px;
+  border-radius: 18px;
+  box-shadow: 0 8px 32px rgba(62,198,168,0.11);
+  width: 370px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  border: 2px solid #fad0c4;
+  gap: 22px;
+  border: 1.5px solid #b2bec3;
+  margin-bottom: 36px;
+  backdrop-filter: blur(2px);
 }
 
 /* Inputs and select dropdown */
 form#uploadForm input[type="text"],
 form#uploadForm select,
-form#uploadForm input[type="file"] {
-  padding: 12px 14px;
-  font-size: 1rem;
-  border: 2px solid #a29bfe;
-  border-radius: 6px;
-  background-color: #f7f1e3;
+form#uploadForm input[type="file"],
+form#uploadForm input[type="email"] {
+  padding: 14px 16px;
+  font-size: 1.08rem;
+  border: 2px solid #b2bec3;
+  border-radius: 8px;
+  background: #f6fafd;
   outline-offset: 2px;
-  transition: border-color 0.3s ease, background-color 0.3s ease;
+  transition: border-color 0.22s, background-color 0.22s, box-shadow 0.2s;
+  box-shadow: 0 2px 8px #cfdef355;
 }
-
 form#uploadForm input[type="text"]:focus,
 form#uploadForm select:focus,
-form#uploadForm input[type="file"]:focus {
-  border-color: #6c5ce7;
-  background-color: #ffffff;
-}
-
-/* --- Add this for email input: --- */
-form#uploadForm input[type="email"] {
-  padding: 12px 14px;
-  font-size: 1rem;
-  border: 2px solid #a29bfe;
-  border-radius: 6px;
-  background-color: #f7f1e3;
-  outline-offset: 2px;
-  transition: border-color 0.3s ease, background-color 0.3s ease;
-}
+form#uploadForm input[type="file"]:focus,
 form#uploadForm input[type="email"]:focus {
-  border-color: #6c5ce7;
-  background-color: #ffffff;
+  border-color: #3ec6a8;
+  background-color: #fff;
+  box-shadow: 0 4px 20px #3ec6a822;
 }
 
 /* Submit button and general buttons */
 form#uploadForm button,
 button {
-  padding: 14px;
-  font-size: 1.1rem;
-  font-weight: bold;
-  color: white;
-  background: linear-gradient(90deg, #f85c7f 0%, #3ec6a8 100%);
+  padding: 15px 0;
+  font-size: 1.17rem;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(90deg, #21d4fd 0%, #b721ff 100%);
   border: none;
-  border-radius: 8px;
+  border-radius: 11px;
   cursor: pointer;
-  transition: background 0.3s ease, box-shadow 0.2s;
-  box-shadow: 0 2px 10px #fad0c455;
+  transition: background 0.22s, transform 0.12s, box-shadow 0.2s;
+  box-shadow: 0 4px 18px #b721ff22;
+  letter-spacing: 0.03em;
 }
-
 form#uploadForm button:hover,
 button:hover {
-  background: linear-gradient(90deg, #3ec6a8 0%, #f85c7f 100%);
-  box-shadow: 0 6px 24px #f85c7f33;
+  background: linear-gradient(90deg, #b721ff 0%, #21d4fd 100%);
+  transform: translateY(-3px) scale(1.03);
+  box-shadow: 0 12px 32px #21d4fd33;
 }
 
 /* Back to home link */
 a {
-  margin-top: 25px;
-  color: #10ac84;
+  margin-top: 28px;
+  color: #3ec6a8;
   text-decoration: none;
   font-weight: 600;
-  transition: color 0.3s ease;
+  transition: color 0.18s;
+  font-size: 1.08em;
 }
-a:hover {
-  color: #1e7e5a;
+a:hover, a:focus {
+  color: #21a179;
+  text-decoration: underline;
+  outline: none;
 }
 
 /* --- GALLERY PAGE STYLES --- */
 .container {
-  max-width: 1150px;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 2.5rem 1rem;
+  padding: 3rem 1.2rem 2rem 1.2rem;
 }
 
 .gallery-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(235px, 1fr));
-  gap: 2rem;
+  grid-template-columns: repeat(auto-fit, minmax(255px, 1fr));
+  gap: 2.2rem;
 }
 
 .gallery-card {
-  background: linear-gradient(135deg, #ffd6e8 0%, #a29bfe 70%, #3ec6a8 100%);
-  border-radius: 18px;
-  box-shadow: 0 8px 28px #f85c7f33, 0 2px 16px #3ec6a833;
-  padding: 1.7rem 1.1rem 1.2rem 1.1rem;
+  background: rgba(255,255,255,0.85);
+  border-radius: 20px;
+  box-shadow: 0 8px 32px #3ec6a833, 0 2px 16px #b721ff22;
+  padding: 1.85rem 1.2rem 1.4rem 1.2rem;
   display: flex;
   flex-direction: column;
   align-items: center;
-  border: 3px solid #f85c7f;
+  border: 2.5px solid #3ec6a8;
   position: relative;
   overflow: hidden;
-  transition: box-shadow 0.18s, transform 0.18s, border 0.18s;
+  transition: box-shadow 0.18s, transform 0.18s, border 0.18s, background 0.18s;
+  backdrop-filter: blur(2px);
 }
 
 .gallery-card:hover {
-  box-shadow: 0 14px 40px #3ec6a866, 0 6px 32px #f85c7f66;
-  border-color: #3ec6a8;
-  transform: translateY(-8px) scale(1.05);
-  background: linear-gradient(135deg, #f9f871 0%, #fae1dd 100%);
+  box-shadow: 0 18px 55px #3ec6a877, 0 12px 40px #b721ff44;
+  border-color: #b721ff;
+  transform: translateY(-10px) scale(1.04);
+  background: linear-gradient(120deg, #f9fafc 20%, #f6e2ff 100%);
 }
 
 .gallery-img {
-  max-width: 170px;
-  max-height: 170px;
-  border-radius: 14px;
+  max-width: 180px;
+  max-height: 180px;
+  border-radius: 16px;
   object-fit: cover;
-  margin-bottom: 1.2rem;
-  box-shadow: 0 4px 18px #f85c7f22, 0 2px 10px #3ec6a833;
-  border: 4px solid #3ec6a8;
+  margin-bottom: 1.3rem;
+  box-shadow: 0 6px 18px #b721ff11, 0 2px 10px #3ec6a822;
+  border: 4px solid #21d4fd;
   background: #fff;
   transition: border 0.2s;
 }
-
 .gallery-card:hover .gallery-img {
-  border-color: #f85c7f;
+  border-color: #b721ff;
 }
 
 .gallery-info {
   width: 100%;
   text-align: left;
-  font-size: 1.09em;
-  margin-top: 0.4em;
+  font-size: 1.13em;
+  margin-top: 0.5em;
 }
 
 .gallery-info strong {
-  color: #f85c7f;
+  color: #b721ff;
   font-weight: 700;
-  text-shadow: 0 1px 0 #ffd6e9;
+  text-shadow: 0 1px 0 #f8efff;
 }
 
 .gallery-info .date {
   color: #3ec6a8;
-  font-size: 1.05em;
+  font-size: 1.06em;
   margin-top: 0.3em;
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -173,65 +172,65 @@ a:hover {
 
 .gallery-tag {
   display: inline-block;
-  background: linear-gradient(90deg, #f85c7f 0%, #3ec6a8 100%);
+  background: linear-gradient(90deg, #21d4fd 0%, #b721ff 100%);
   color: #fff;
-  font-size: 0.95em;
-  font-weight: 800;
-  border-radius: 8px 8px 8px 0;
-  padding: 0.45em 1.05em;
+  font-size: 0.98em;
+  font-weight: 700;
+  border-radius: 10px 10px 10px 0;
+  padding: 0.47em 1.1em;
   position: absolute;
   top: 0;
   right: 0;
-  margin: 0.75em 1em 0 0;
+  margin: 0.85em 1.1em 0 0;
   box-shadow: 0 2px 10px #fff8;
   letter-spacing: 0.11em;
 }
 
 .no-image {
-  padding:2.2em 0;
-  color:#fff;
-  background: linear-gradient(90deg, #f85c7f 0%, #3ec6a8 100%);
-  border-radius: 10px;
+  padding: 2.2em 0;
+  color: #fff;
+  background: linear-gradient(90deg, #21d4fd 0%, #b721ff 100%);
+  border-radius: 12px;
   opacity: 0.96;
   width: 100%;
   font-weight: 700;
   text-align: center;
-  box-shadow: 0 2px 16px #ea267855;
+  box-shadow: 0 2px 16px #21d4fd55;
 }
 
 .pagination {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 1.15rem;
-  margin: 3rem 0 0 0;
-  font-size: 1.24em;
+  gap: 1.2rem;
+  margin: 3.5rem 0 0 0;
+  font-size: 1.26em;
 }
 
 .pagination a, .pagination span {
-  padding: 0.48em 1.32em;
-  border-radius: 12px;
+  padding: 0.51em 1.38em;
+  border-radius: 13px;
   text-decoration: none;
   color: #fff;
-  background: linear-gradient(90deg, #f85c7f 0%, #3ec6a8 100%);
+  background: linear-gradient(90deg, #21d4fd 0%, #b721ff 100%);
   transition: background 0.15s, color 0.15s, box-shadow 0.15s;
-  border: 2.5px solid #f85c7f;
+  border: 2.5px solid #b721ff;
   margin: 0 0.13em;
   font-weight: 800;
   box-shadow: 0 1px 6px #fff6;
   letter-spacing: 0.06em;
 }
 .pagination a:hover {
-  background: linear-gradient(90deg, #3ec6a8 0%, #f85c7f 100%);
-  color: #f85c7f;
-  border-color: #3ec6a8;
-  box-shadow: 0 2px 12px #3ec6a833;
+  background: linear-gradient(90deg, #b721ff 0%, #21d4fd 100%);
+  color: #b721ff;
+  border-color: #21d4fd;
+  box-shadow: 0 2px 12px #b721ff33;
 }
 .pagination .current {
-  background: linear-gradient(90deg, #f85c7f 0%, #3ec6a8 100%);
+  background: linear-gradient(90deg, #21d4fd 0%, #b721ff 100%);
   color: #fff;
   font-weight: bold;
-  border-color: #3ec6a8;
+  border-color: #21d4fd;
   pointer-events: none;
   box-shadow: 0 2px 14px #fff8;
 }
@@ -241,15 +240,36 @@ a:hover {
   border-color: #e7d2e4;
 }
 
-@media (max-width: 700px) {
-  .gallery-card { padding: 1rem 0.5rem; }
-  .gallery-grid { gap: 1.1rem; }
-  .gallery-img { max-width: 100%; }
-  .pagination { flex-direction: column; gap: 0.8rem; }
-  h1 { font-size: 1.3rem; }
+/* Subtle fade-in animation for cards and images */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.gallery-card, .gallery-img {
+  animation: fadeInUp 0.7s cubic-bezier(.4,1.4,.7,1) both;
 }
 
-/* Forest green gallery background */
+@media (max-width: 900px) {
+  .container { max-width: 96vw; }
+  form#uploadForm { width: 98vw; max-width: 425px; }
+  .gallery-grid { gap: 1.2rem; }
+  .gallery-card { padding: 1.1rem 0.7rem; }
+  h1 { font-size: 1.55rem; }
+}
+
+/* Accessibility: focus styles */
+input:focus, select:focus, button:focus, a:focus {
+  outline: 2px solid #21d4fd;
+  outline-offset: 2px;
+}
+
+/* Forest green gallery background (optional theme) */
 body.gallery-background {
   background: linear-gradient(135deg, #14532d 0%, #228B22 100%);
   color: #fff;
