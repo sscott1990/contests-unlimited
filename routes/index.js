@@ -433,6 +433,15 @@ router.get('/', (req, res) => {
             </style>
           </head>
           <body>
+            <nav class="sticky-nav">
+              <ul>
+                <li><a href="/">Home</a></li>
+                <li><a href="/gallery">Gallery</a></li>
+                <li><a href="/create.html">Create Contest</a></li>
+                <li><a href="/payment.html">Enter Contest</a></li>
+                <li><a href="/creator-login.html">Creator Login</a></li>
+              </ul>
+            </nav>
             <h1>Contests Unlimited</h1>
             <p>
               <button onclick="window.location.href='/payment.html'" style="padding: 10px 20px; background-color: #007849; color: white; border: none; border-radius: 5px; cursor: pointer;">
