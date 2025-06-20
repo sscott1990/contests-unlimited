@@ -1,4 +1,3 @@
-/* 1. Import Modern Google Font */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
 
 /* General page styles */
@@ -24,19 +23,21 @@ h1 {
   text-shadow: 0 2px 16px #3ec6a833, 1px 2px 4px #fff8;
 }
 
-/* Form container */
+/* Form container with glassmorphism */
 form#uploadForm {
-  background: rgba(255,255,255,0.96);
+  background: rgba(255,255,255,0.30);
   padding: 38px 40px 32px 40px;
   border-radius: 18px;
-  box-shadow: 0 8px 32px rgba(62,198,168,0.11);
+  box-shadow: 0 8px 32px rgba(62,198,168,0.11), 0 1.5px 24px 0.5px #b721ff33;
   width: 370px;
   display: flex;
   flex-direction: column;
   gap: 22px;
-  border: 1.5px solid #b2bec3;
+  border: 1.5px solid rgba(178, 190, 195, 0.35);
   margin-bottom: 36px;
-  backdrop-filter: blur(2px);
+  backdrop-filter: blur(13px) saturate(180%);
+  -webkit-backdrop-filter: blur(13px) saturate(180%);
+  transition: background 0.3s, border 0.3s;
 }
 
 /* Inputs and select dropdown */
@@ -48,17 +49,19 @@ form#uploadForm input[type="email"] {
   font-size: 1.08rem;
   border: 2px solid #b2bec3;
   border-radius: 8px;
-  background: #f6fafd;
+  background: rgba(246,250,253,0.87);
   outline-offset: 2px;
   transition: border-color 0.22s, background-color 0.22s, box-shadow 0.2s;
   box-shadow: 0 2px 8px #cfdef355;
+  backdrop-filter: blur(2px);
 }
+
 form#uploadForm input[type="text"]:focus,
 form#uploadForm select:focus,
 form#uploadForm input[type="file"]:focus,
 form#uploadForm input[type="email"]:focus {
   border-color: #3ec6a8;
-  background-color: #fff;
+  background-color: rgba(255,255,255,0.87);
   box-shadow: 0 4px 20px #3ec6a822;
 }
 
@@ -76,6 +79,7 @@ button {
   transition: background 0.22s, transform 0.12s, box-shadow 0.2s;
   box-shadow: 0 4px 18px #b721ff22;
   letter-spacing: 0.03em;
+  backdrop-filter: blur(3px);
 }
 form#uploadForm button:hover,
 button:hover {
@@ -106,6 +110,7 @@ a:hover, a:focus {
   padding: 3rem 1.2rem 2rem 1.2rem;
 }
 
+/* Glassmorphic gallery grid cards */
 .gallery-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(255px, 1fr));
@@ -113,25 +118,26 @@ a:hover, a:focus {
 }
 
 .gallery-card {
-  background: rgba(255,255,255,0.85);
+  background: rgba(255,255,255,0.18);
   border-radius: 20px;
   box-shadow: 0 8px 32px #3ec6a833, 0 2px 16px #b721ff22;
   padding: 1.85rem 1.2rem 1.4rem 1.2rem;
   display: flex;
   flex-direction: column;
   align-items: center;
-  border: 2.5px solid #3ec6a8;
+  border: 2.5px solid rgba(62,198,168,0.22);
   position: relative;
   overflow: hidden;
   transition: box-shadow 0.18s, transform 0.18s, border 0.18s, background 0.18s;
-  backdrop-filter: blur(2px);
+  backdrop-filter: blur(15px) saturate(180%);
+  -webkit-backdrop-filter: blur(15px) saturate(180%);
 }
 
 .gallery-card:hover {
   box-shadow: 0 18px 55px #3ec6a877, 0 12px 40px #b721ff44;
   border-color: #b721ff;
   transform: translateY(-10px) scale(1.04);
-  background: linear-gradient(120deg, #f9fafc 20%, #f6e2ff 100%);
+  background: rgba(255,255,255,0.36);
 }
 
 .gallery-img {
@@ -144,6 +150,7 @@ a:hover, a:focus {
   border: 4px solid #21d4fd;
   background: #fff;
   transition: border 0.2s;
+  backdrop-filter: blur(4px);
 }
 .gallery-card:hover .gallery-img {
   border-color: #b721ff;
@@ -219,6 +226,7 @@ a:hover, a:focus {
   font-weight: 800;
   box-shadow: 0 1px 6px #fff6;
   letter-spacing: 0.06em;
+  backdrop-filter: blur(3px);
 }
 .pagination a:hover {
   background: linear-gradient(90deg, #b721ff 0%, #21d4fd 100%);
