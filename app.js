@@ -890,17 +890,16 @@ app.get('/gallery', async (req, res) => {
     const start = (page - 1) * perPage;
     const paginatedUploads = filteredUploads.slice(start, start + perPage);
 
-    // Helper to get presigned url
-    async function getPresignedUrl(key) {
-      return await s3.getSignedUrlPromise('getObject', {
+    // Helper: presigned url for S3 object
+    const getPresignedUrl = async (key) =>
+      await s3.getSignedUrlPromise('getObject', {
         Bucket: ENTRIES_BUCKET,
         Key: key,
         Expires: 900,
       });
-    }
 
-    // Helper to fetch text file contents from presigned url
-    async function getTextFileContents(url) {
+    // Helper: fetch text file content from presigned URL
+    const getTextFileContents = async (url) => {
       try {
         const response = await fetch(url);
         if (!response.ok) return null;
@@ -908,19 +907,12 @@ app.get('/gallery', async (req, res) => {
       } catch {
         return null;
       }
-    }
+    };
 
-    // Helper: is this a text file?
-    function isTextFile(filename) {
-      return filename && /\.(txt|md|csv|json)$/i.test(filename);
-    }
+    const isTextFile = (filename) => filename && /\.(txt|md|csv|json)$/i.test(filename);
+    const isImageFile = (filename) => filename && /\.(jpe?g|png|gif|webp)$/i.test(filename);
 
-    // Helper: is this an image file?
-    function isImageFile(filename) {
-      return filename && /\.(jpe?g|png|gif|webp)$/i.test(filename);
-    }
-
-    // Map uploads to include presigned/image/caption like admin.js
+    // Map uploads to include presigned/image/caption
     const uploadsWithDetails = await Promise.all(
       paginatedUploads.map(async (upload) => {
         let presignedUrl = null;
@@ -938,7 +930,6 @@ app.get('/gallery', async (req, res) => {
             filename = url.pathname.split('/').pop();
             presignedUrl = await getPresignedUrl(key);
             isImageFileFlag = isImageFile(filename);
-            // If it's a text file, fetch its contents (caption)
             if (isTextFile(filename)) {
               fileContent = await getTextFileContents(presignedUrl);
             }
@@ -947,18 +938,17 @@ app.get('/gallery', async (req, res) => {
           }
         }
 
-        // Find contest info
+        // Find contest info for custom contests
         const creatorContest = creators.find(c =>
           (c.slug && upload.contestName === c.slug) ||
           (c.contestTitle && upload.contestName === c.contestTitle)
         );
 
-        // --- PATCH: Default Caption Contest support ---
+        // Default Caption Contest
         if (
           upload.contestName === 'caption-contest-default' &&
           upload.fileUrl && isTextFile(filename)
         ) {
-          // Fetch default image from S3 caption-contest.json
           try {
             const data = await s3.getObject({
               Bucket: ENTRIES_BUCKET,
@@ -977,7 +967,7 @@ app.get('/gallery', async (req, res) => {
           }
           captionText = fileContent;
         }
-        // For custom caption contests, fetch contest image + caption
+        // Custom Caption Contest
         else if (
           creatorContest &&
           creatorContest.fileUrl &&
@@ -985,7 +975,6 @@ app.get('/gallery', async (req, res) => {
           upload.contestName.startsWith('caption-contest-') &&
           upload.contestName !== 'caption-contest-default'
         ) {
-          // Get contest image presigned URL
           try {
             const url = new URL(creatorContest.fileUrl);
             const key = url.pathname.startsWith('/') ? url.pathname.slice(1) : url.pathname;
@@ -993,14 +982,11 @@ app.get('/gallery', async (req, res) => {
           } catch (e) {
             contestImageUrl = creatorContest.fileUrl;
           }
-          // The caption is the caption file content if present
           if (fileContent) captionText = fileContent;
         } else if (isImageFileFlag) {
-          // For regular image uploads
           contestImageUrl = presignedUrl;
         }
 
-        // Host logic
         let host = upload.host || "Contests Unlimited";
 
         return {
