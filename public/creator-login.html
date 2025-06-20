@@ -4,6 +4,7 @@
   <title>Creator Login</title>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <link rel="stylesheet" href="/styles.css">
   <style>
     body { background: #f4f8fb; font-family: Arial, sans-serif; }
     .container { background: #fff; padding: 2em; border-radius: 12px; max-width: 400px; margin: 80px auto; box-shadow: 0 0 15px rgba(0,0,0,0.07);}
@@ -15,6 +16,15 @@
   </style>
 </head>
 <body>
+  <nav class="sticky-nav">
+    <ul>
+      <li><a href="/">Home</a></li>
+      <li><a href="/gallery">Gallery</a></li>
+      <li><a href="/create.html">Create Contest</a></li>
+      <li><a href="/payment.html">Enter Contest</a></li>
+      <li><a href="/creator-login.html">Creator Login</a></li>
+    </ul>
+  </nav>
   <div class="container">
     <h1>Creator Login</h1>
     <form method="POST" action="/api/creator-login">

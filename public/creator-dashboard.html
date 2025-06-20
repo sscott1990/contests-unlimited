@@ -4,6 +4,7 @@
   <title>Creator Dashboard</title>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <link rel="stylesheet" href="/styles.css">
   <style>
     body { background: #f4f8fb; font-family: Arial, sans-serif; }
     .container { background: #fff; padding: 2em; border-radius: 12px; max-width: 900px; margin: 40px auto; box-shadow: 0 0 15px rgba(0,0,0,0.07);}
@@ -45,14 +46,21 @@
   </style>
 </head>
 <body>
-
-<div class="w9-email-notice">
-  <svg viewBox="0 0 24 24" fill="none" width="24" height="24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#38b6ff"/><text x="12" y="17" text-anchor="middle" font-size="13" font-family="Arial, sans-serif" fill="#fff" font-weight="bold">i</text></svg>
-  <span>
-    <strong>Notice:</strong> If your total revenue from Contests Unlimited exceeds $600 in a taxable year, you will receive an email with instructions to submit a W-9 form. After submission, a 1099-NEC tax form will be sent to you at the beginning of the following tax year, as required by IRS regulations.
-  </span>
-</div>
-
+  <nav class="sticky-nav">
+    <ul>
+      <li><a href="/">Home</a></li>
+      <li><a href="/gallery">Gallery</a></li>
+      <li><a href="/create.html">Create Contest</a></li>
+      <li><a href="/payment.html">Enter Contest</a></li>
+      <li><a href="/creator-login.html">Creator Login</a></li>
+    </ul>
+  </nav>
+  <div class="w9-email-notice">
+    <svg viewBox="0 0 24 24" fill="none" width="24" height="24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#38b6ff"/><text x="12" y="17" text-anchor="middle" font-size="13" font-family="Arial, sans-serif" fill="#fff" font-weight="bold">i</text></svg>
+    <span>
+      <strong>Notice:</strong> If your total revenue from Contests Unlimited exceeds $600 in a taxable year, you will receive an email with instructions to submit a W-9 form. After submission, a 1099-NEC tax form will be sent to you at the beginning of the following tax year, as required by IRS regulations.
+    </span>
+  </div>
   <div class="container">
     <button class="logout-btn" onclick="logout()">Logout</button>
     <h1>Creator Dashboard</h1>

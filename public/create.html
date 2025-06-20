@@ -6,7 +6,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="/styles.css">
   <style>
-    /* ... existing styles ... */
     form {
       max-width: 600px;
       margin: 50px auto;
@@ -118,6 +117,15 @@
   </style>
 </head>
 <body>
+  <nav class="sticky-nav">
+    <ul>
+      <li><a href="/">Home</a></li>
+      <li><a href="/gallery">Gallery</a></li>
+      <li><a href="/create.html">Create Contest</a></li>
+      <li><a href="/payment.html">Enter Contest</a></li>
+      <li><a href="/creator-login.html">Creator Login</a></li>
+    </ul>
+  </nav>
   <h1 style="text-align: center;">Submit Your Contest</h1>
   <form id="contestForm" onsubmit="return false;">
     <label for="contestType">Select Contest Type:</label>

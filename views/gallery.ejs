@@ -7,6 +7,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
 <body class="gallery-background">
+  <nav class="sticky-nav">
+    <ul>
+      <li><a href="/">Home</a></li>
+      <li><a href="/gallery">Gallery</a></li>
+      <li><a href="/create.html">Create Contest</a></li>
+      <li><a href="/payment.html">Enter Contest</a></li>
+      <li><a href="/creator-login.html">Creator Login</a></li>
+    </ul>
+  </nav>
   <div class="container">
     <h1>Gallery of Contest Uploads</h1>
 
@@ -15,7 +24,7 @@
       <input
         type="text"
         name="search"
-        value="<%= typeof search !== 'undefined' ? search.replace(/"/g, "&quot;") : '' %>"
+        value="<%= typeof search !== 'undefined' ? search.replace(/\"/g, "&quot;") : '' %>"
         placeholder="Search by contest name, entrant name, or host..."
         style="padding: 8px 12px; min-width: 250px; font-size: 1em;"
       />
