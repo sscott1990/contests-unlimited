@@ -176,6 +176,22 @@ a:hover, a:focus {
   -webkit-backdrop-filter: blur(15px) saturate(180%);
 }
 
+/* Winner tag for recent winners */
+.winner-tag {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: gold;
+  color: #111;
+  font-weight: bold;
+  border-radius: 8px;
+  padding: 0.4em 1em;
+  font-size: 1.1em;
+  box-shadow: 0 2px 10px #fff8;
+  z-index: 2;
+  letter-spacing: 0.04em;
+}
+
 .gallery-card:hover {
   box-shadow: 0 18px 55px #3ec6a877, 0 12px 40px #b721ff44;
   border-color: #b721ff;

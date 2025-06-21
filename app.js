@@ -1016,6 +1016,8 @@ app.get('/gallery', async (req, res) => {
   try {
     const uploads = await getUploads();
     const creators = await getCreators();
+    const now = Date.now();
+    const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
     // --- Attach host (creator) to each upload ---
     const uploadsWithHost = uploads.map(u => {
@@ -1030,6 +1032,13 @@ app.get('/gallery', async (req, res) => {
       };
     });
 
+    // --- Winners in last 30 days, sorted newest first ---
+    const winners = uploadsWithHost.filter(u =>
+      u.isWinner === true &&
+      u.timestamp &&
+      (now - new Date(u.timestamp).getTime() < 30 * MS_PER_DAY)
+    ).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
     // --- SEARCH LOGIC: contest name, entrant name, host ---
     const search = (req.query.search || '').trim().toLowerCase();
     let filteredUploads = uploadsWithHost;
@@ -1041,13 +1050,20 @@ app.get('/gallery', async (req, res) => {
       );
     }
 
-    // --- Pagination ---
+    // --- Remove winner uploads from regular list (avoid duplicates) ---
+    const winnerSessionIds = new Set(winners.map(w => w.sessionId));
+    let regularUploads = filteredUploads.filter(u => !winnerSessionIds.has(u.sessionId));
+
+    // --- Pagination (for regular uploads) ---
     const page = parseInt(req.query.page, 10) || 1;
     const perPage = 25;
-    const totalUploads = filteredUploads.length;
+    const totalUploads = regularUploads.length;
     const totalPages = Math.ceil(totalUploads / perPage);
     const start = (page - 1) * perPage;
-    const paginatedUploads = filteredUploads.slice(start, start + perPage);
+    const paginatedUploads = regularUploads.slice(start, start + perPage);
+
+    // --- Combine winners (always at top) + paginated regular uploads ---
+    const uploadsToShow = [...winners, ...paginatedUploads];
 
     // Helper: presigned url for S3 object
     const getPresignedUrl = async (key) =>
@@ -1073,7 +1089,7 @@ app.get('/gallery', async (req, res) => {
 
     // Map uploads to include presigned/image/caption
     const uploadsWithDetails = await Promise.all(
-      paginatedUploads.map(async (upload) => {
+      uploadsToShow.map(async (upload) => {
         let presignedUrl = null;
         let filename = null;
         let fileContent = null;

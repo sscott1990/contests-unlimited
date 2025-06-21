@@ -61,6 +61,11 @@
     }
 
     function renderCard(upload) {
+      // Add a winner badge if this upload is a recent winner
+      const winnerTag = upload.isWinner
+        ? `<div class="winner-tag" title="Recent Winner">🏆 Winner</div>`
+        : "";
+
       // Caption contest default
       if (
         upload.contestName === 'caption-contest-default' &&
@@ -68,6 +73,7 @@
       ) {
         return `
           <div class="gallery-card">
+            ${winnerTag}
             <img class="gallery-img" src="${sanitize(upload.contestImageUrl)}" alt="Caption Contest Image" loading="lazy">
             <div class="caption-block">
               <strong>Caption:</strong> <span>${sanitize(upload.captionText)}</span>
@@ -90,6 +96,7 @@
       ) {
         return `
           <div class="gallery-card">
+            ${winnerTag}
             <img class="gallery-img" src="${sanitize(upload.contestImageUrl)}" alt="Caption Contest Image" loading="lazy">
             <div class="caption-block">
               <strong>Caption:</strong> <span>${sanitize(upload.captionText)}</span>
@@ -107,6 +114,7 @@
       if (upload.presignedUrl && upload.isImageFile) {
         return `
           <div class="gallery-card">
+            ${winnerTag}
             <img class="gallery-img" src="${sanitize(upload.presignedUrl)}" alt="Upload by ${sanitize(upload.name)}" loading="lazy">
             <div class="gallery-info">
               <div><strong>Name:</strong> ${sanitize(upload.name || 'Anonymous')}</div>
@@ -120,6 +128,7 @@
       // No image
       return `
         <div class="gallery-card">
+          ${winnerTag}
           <div class="no-image">No Image</div>
           <div class="gallery-info">
             <div><strong>Name:</strong> ${sanitize(upload.name || 'Anonymous')}</div>
