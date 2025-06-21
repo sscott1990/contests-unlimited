@@ -1032,23 +1032,63 @@ app.get('/gallery', async (req, res) => {
       };
     });
 
-    // --- Winners in last 30 days, sorted newest first ---
-    const winners = uploadsWithHost.filter(u =>
-      u.isWinner === true &&
-      u.timestamp &&
-      (now - new Date(u.timestamp).getTime() < 30 * MS_PER_DAY)
-    ).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    // --- NEW: Filter uploads according to contest status and winner display rule ---
+    // Group uploads by contest key (slug or contestTitle, lowercase)
+    const contestUploadsMap = {};
+    uploadsWithHost.forEach(u => {
+      const contestKey = (u.contestName || '').toLowerCase();
+      if (!contestUploadsMap[contestKey]) contestUploadsMap[contestKey] = [];
+      contestUploadsMap[contestKey].push(u);
+    });
+
+    // Build filteredUploadsFinal
+    let filteredUploadsFinal = [];
+
+    for (const creator of creators) {
+      const contestKey = (creator.slug || creator.contestTitle || '').toLowerCase();
+      const contestUploads = contestUploadsMap[contestKey] || [];
+      if (!contestUploads.length) continue;
+
+      const contestEnd = new Date(creator.endDate).getTime();
+      const expired = now > contestEnd;
+      const within30Days = now - contestEnd < 30 * MS_PER_DAY;
+
+      if (!expired) {
+        // Not expired: show all uploads
+        filteredUploadsFinal.push(...contestUploads);
+      } else if (within30Days) {
+        // Expired, but within 30 days after: show only winner(s) (if any)
+        const winners = contestUploads.filter(u => u.isWinner);
+        if (winners.length) filteredUploadsFinal.push(...winners);
+        // else: show nothing for this contest
+      }
+      // else: expired & over 30 days, show nothing for this contest
+    }
+
+    // Add uploads not associated with any contest in creators.json (orphans)
+    const knownContestKeys = new Set(creators.map(c => (c.slug || c.contestTitle || '').toLowerCase()));
+    const orphanUploads = uploadsWithHost.filter(
+      u => !knownContestKeys.has((u.contestName || '').toLowerCase())
+    );
+    filteredUploadsFinal.push(...orphanUploads);
 
     // --- SEARCH LOGIC: contest name, entrant name, host ---
     const search = (req.query.search || '').trim().toLowerCase();
-    let filteredUploads = uploadsWithHost;
+    let filteredUploads = filteredUploadsFinal;
     if (search) {
-      filteredUploads = uploadsWithHost.filter(u =>
+      filteredUploads = filteredUploads.filter(u =>
         (u.contestName || '').toLowerCase().includes(search) ||
         (u.name || '').toLowerCase().includes(search) ||
         (u.host || '').toLowerCase().includes(search)
       );
     }
+
+    // --- Winners in last 30 days, sorted newest first (from filtered uploads only) ---
+    const winners = filteredUploads.filter(u =>
+      u.isWinner === true &&
+      u.timestamp &&
+      (now - new Date(u.timestamp).getTime() < 30 * MS_PER_DAY)
+    ).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
     // --- Remove winner uploads from regular list (avoid duplicates) ---
     const winnerSessionIds = new Set(winners.map(w => w.sessionId));
