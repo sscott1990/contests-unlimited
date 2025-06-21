@@ -881,6 +881,13 @@ app.get('/api/gallery', async (req, res) => {
       contestUploadsMap[key].push(u);
     });
 
+    // Collect all contest keys in creators
+    const creatorKeys = new Set();
+    creators.forEach(c => {
+      if (c.slug) creatorKeys.add(c.slug.toLowerCase());
+      if (c.contestTitle) creatorKeys.add(c.contestTitle.toLowerCase());
+    });
+
     // Filter: Active = show all, Expired <30d = only winners, Expired >30d = none
     let filteredUploadsFinal = [];
     creators.forEach(creator => {
@@ -905,6 +912,13 @@ app.get('/api/gallery', async (req, res) => {
         if (winners.length) filteredUploadsFinal.push(...winners);
       }
     });
+
+    // === ADD: Include default/unknown contests (not in creators.json) and treat as active ===
+    const orphanUploads = uploadsWithHost.filter(u =>
+      u.contestName &&
+      !creatorKeys.has(u.contestName.toLowerCase())
+    );
+    filteredUploadsFinal.push(...orphanUploads);
 
     // --- SEARCH LOGIC ---
     const search = (req.query.search || '').trim().toLowerCase();
@@ -1089,6 +1103,13 @@ app.get('/gallery', async (req, res) => {
       contestUploadsMap[key].push(u);
     });
 
+    // Collect all contest keys in creators
+    const creatorKeys = new Set();
+    creators.forEach(c => {
+      if (c.slug) creatorKeys.add(c.slug.toLowerCase());
+      if (c.contestTitle) creatorKeys.add(c.contestTitle.toLowerCase());
+    });
+
     // Filter: Active = show all, Expired <30d = only winners, Expired >30d = none
     let filteredUploadsFinal = [];
     creators.forEach(creator => {
@@ -1113,6 +1134,13 @@ app.get('/gallery', async (req, res) => {
         if (winners.length) filteredUploadsFinal.push(...winners);
       }
     });
+
+    // === ADD: Include default/unknown contests (not in creators.json) and treat as active ===
+    const orphanUploads = uploadsWithHost.filter(u =>
+      u.contestName &&
+      !creatorKeys.has(u.contestName.toLowerCase())
+    );
+    filteredUploadsFinal.push(...orphanUploads);
 
     // --- SEARCH LOGIC ---
     const search = (req.query.search || '').trim().toLowerCase();
