@@ -967,11 +967,31 @@ app.get('/api/gallery', async (req, res) => {
     }
 
     // --- Winners in last 30 days, sorted newest first ---
-    const winners = filteredUploads.filter(u =>
-      u.isWinner === true &&
-      u.timestamp &&
-      (now - new Date(u.timestamp).getTime() < 30 * MS_PER_DAY)
-    ).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    // REVISED: Use contest endDate instead of upload timestamp!
+    const winners = filteredUploads.filter(u => {
+      if (u.isWinner === true) {
+        const contest = creators.find(c =>
+          (c.slug && u.contestName === c.slug) ||
+          (c.contestTitle && u.contestName === c.contestTitle)
+        );
+        const contestEnd = contest ? new Date(contest.endDate).getTime() : null;
+        return contestEnd && (now - contestEnd < 30 * MS_PER_DAY);
+      }
+      return false;
+    }).sort((a, b) => {
+      const contestA = creators.find(c =>
+        (c.slug && a.contestName === c.slug) ||
+        (c.contestTitle && a.contestName === c.contestTitle)
+      );
+      const contestB = creators.find(c =>
+        (c.slug && b.contestName === c.slug) ||
+        (c.contestTitle && b.contestName === c.contestTitle)
+      );
+      const endA = contestA ? new Date(contestA.endDate).getTime() : new Date(a.timestamp).getTime();
+      const endB = contestB ? new Date(contestB.endDate).getTime() : new Date(b.timestamp).getTime();
+      return endB - endA;
+    });
+
     const winnerSessionIds = new Set(winners.map(w => w.sessionId));
     let regularUploads = filteredUploads.filter(u => !winnerSessionIds.has(u.sessionId));
 
@@ -1223,11 +1243,31 @@ app.get('/gallery', async (req, res) => {
     }
 
     // --- Winners in last 30 days, sorted newest first ---
-    const winners = filteredUploads.filter(u =>
-      u.isWinner === true &&
-      u.timestamp &&
-      (now - new Date(u.timestamp).getTime() < 30 * MS_PER_DAY)
-    ).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    // REVISED: Use contest endDate instead of upload timestamp!
+    const winners = filteredUploads.filter(u => {
+      if (u.isWinner === true) {
+        const contest = creators.find(c =>
+          (c.slug && u.contestName === c.slug) ||
+          (c.contestTitle && u.contestName === c.contestTitle)
+        );
+        const contestEnd = contest ? new Date(contest.endDate).getTime() : null;
+        return contestEnd && (now - contestEnd < 30 * MS_PER_DAY);
+      }
+      return false;
+    }).sort((a, b) => {
+      const contestA = creators.find(c =>
+        (c.slug && a.contestName === c.slug) ||
+        (c.contestTitle && a.contestName === c.contestTitle)
+      );
+      const contestB = creators.find(c =>
+        (c.slug && b.contestName === c.slug) ||
+        (c.contestTitle && b.contestName === c.contestTitle)
+      );
+      const endA = contestA ? new Date(contestA.endDate).getTime() : new Date(a.timestamp).getTime();
+      const endB = contestB ? new Date(contestB.endDate).getTime() : new Date(b.timestamp).getTime();
+      return endB - endA;
+    });
+
     const winnerSessionIds = new Set(winners.map(w => w.sessionId));
     let regularUploads = filteredUploads.filter(u => !winnerSessionIds.has(u.sessionId));
 
