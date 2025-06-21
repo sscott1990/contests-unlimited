@@ -816,14 +816,18 @@ router.get('/uploads', async (req, res) => {
     paginationControls += `</div>`;
 
     // --- Judge Expired Contests Button ---
+    // Prompt for admin credentials at click, never hardcoded
     const judgeBtn = `
       <button id="judge-expired-btn">Judge Expired Contests (AI)</button>
       <script>
         document.getElementById('judge-expired-btn').onclick = function() {
+          const username = prompt("Admin username:");
+          const password = prompt("Admin password:");
+          if (!username || !password) return;
           if (!confirm("Run AI judging for expired contests now?")) return;
           fetch('/api/admin/judge-expired-contests', {
             method: 'POST',
-            headers: { 'Authorization': 'Basic ' + btoa('admin:heythere#1') }
+            headers: { 'Authorization': 'Basic ' + btoa(username + ':' + password) }
           })
             .then(res => res.json())
             .then(data => {
