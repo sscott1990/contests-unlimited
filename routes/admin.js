@@ -4,6 +4,7 @@ const router = express.Router();
 const { loadJSONFromS3 } = require('../utils/s3Utils');
 const slugify = require('slugify');
 const fetch = require('node-fetch'); // For text file preview
+const cron = require('node-cron');
 
 // ==== Gemini AI integration ====
 const { GoogleGenerativeAI } = require("@google/generative-ai");
