@@ -1033,20 +1033,36 @@ app.get('/gallery', async (req, res) => {
     });
 
     // --- NEW: Filter uploads according to contest status and winner display rule ---
-    // Group uploads by contest key (slug or contestTitle, lowercase)
+    // Group uploads by contest key (slug and contestTitle, lowercase)
     const contestUploadsMap = {};
     uploadsWithHost.forEach(u => {
-      const contestKey = (u.contestName || '').toLowerCase();
-      if (!contestUploadsMap[contestKey]) contestUploadsMap[contestKey] = [];
-      contestUploadsMap[contestKey].push(u);
+      if (!u.contestName) return;
+      const key = u.contestName.toLowerCase();
+      if (!contestUploadsMap[key]) contestUploadsMap[key] = [];
+      contestUploadsMap[key].push(u);
     });
 
     // Build filteredUploadsFinal
     let filteredUploadsFinal = [];
 
+    // Build a set of all possible contest keys for matching
+    const knownContestKeys = new Set();
+    creators.forEach(c => {
+      if (c.slug) knownContestKeys.add(c.slug.toLowerCase());
+      if (c.contestTitle) knownContestKeys.add(c.contestTitle.toLowerCase());
+    });
+
     for (const creator of creators) {
-      const contestKey = (creator.slug || creator.contestTitle || '').toLowerCase();
-      const contestUploads = contestUploadsMap[contestKey] || [];
+      // Try matching by slug first, then contestTitle
+      const contestKeys = [];
+      if (creator.slug) contestKeys.push(creator.slug.toLowerCase());
+      if (creator.contestTitle) contestKeys.push(creator.contestTitle.toLowerCase());
+
+      // Gather all uploads for this contest (by any recognized key)
+      let contestUploads = [];
+      contestKeys.forEach(key => {
+        if (contestUploadsMap[key]) contestUploads = contestUploads.concat(contestUploadsMap[key]);
+      });
       if (!contestUploads.length) continue;
 
       const contestEnd = new Date(creator.endDate).getTime();
@@ -1065,11 +1081,11 @@ app.get('/gallery', async (req, res) => {
       // else: expired & over 30 days, show nothing for this contest
     }
 
-    // Add uploads not associated with any contest in creators.json (orphans)
-    const knownContestKeys = new Set(creators.map(c => (c.slug || c.contestTitle || '').toLowerCase()));
-    const orphanUploads = uploadsWithHost.filter(
-      u => !knownContestKeys.has((u.contestName || '').toLowerCase())
-    );
+    // Only add uploads truly not associated with any known contest
+    const orphanUploads = uploadsWithHost.filter(u => {
+      const key = (u.contestName || '').toLowerCase();
+      return !knownContestKeys.has(key);
+    });
     filteredUploadsFinal.push(...orphanUploads);
 
     // --- SEARCH LOGIC: contest name, entrant name, host ---
