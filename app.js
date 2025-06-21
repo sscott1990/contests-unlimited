@@ -466,6 +466,7 @@ app.post('/api/payment/upload', upload.single('file'), async (req, res) => {
 
     let fileUrl = null;
     let captionText = null;
+    let fileContent = null; // <-- add this line
     let contestImageUrl = null;
 
     // Save caption as a .txt file in S3 for caption contests (robust)
@@ -486,6 +487,7 @@ app.post('/api/payment/upload', upload.single('file'), async (req, res) => {
       }).promise();
       fileUrl = `https://${ENTRIES_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${s3Key}`;
       captionText = file.buffer.toString('utf-8');
+      fileContent = captionText; // <-- add this line
       // Get contest image from the creators list
       const creators = await getCreators();
       const contest = creators.find(c => c.slug === contestName);
@@ -520,6 +522,7 @@ app.post('/api/payment/upload', upload.single('file'), async (req, res) => {
       timeTaken,
       timestamp: new Date().toISOString(),
       captionText,
+      fileContent, // <-- add this line
       contestImageUrl,
     });
 
