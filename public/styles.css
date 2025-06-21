@@ -206,18 +206,56 @@ a:hover, a:focus {
   margin-top: 0.5em;
 }
 
-.gallery-info strong {
-  color: #b721ff;
+/* Update: Make Name, Contest, Host, Date text black instead of purple */
+.gallery-info div,
+.gallery-info strong,
+.gallery-info .date {
+  color: #111 !important;
   font-weight: 700;
-  text-shadow: 0 1px 0 #f8efff;
+  text-shadow: none;
+}
+
+/* Remove old purple styling */
+.gallery-info strong {
+  /* previously: color: #b721ff; */
+  font-weight: 700;
 }
 
 .gallery-info .date {
-  color: #3ec6a8;
+  /* previously: color: #3ec6a8; */
   font-size: 1.06em;
   margin-top: 0.3em;
   font-weight: 600;
   letter-spacing: 0.04em;
+}
+
+/* Spinner loader for gallery lazy loading */
+.gallery-loader {
+  color: #3ec6a8;
+  text-align: center;
+  font-size: 1.2em;
+  padding: 2.5em 0 1.5em 0;
+  letter-spacing: 0.05em;
+  animation: fadeInUp 0.6s;
+  display: block;
+  position: relative;
+}
+
+/* Spinner animation */
+.gallery-loader::after {
+  content: '';
+  display: inline-block;
+  width: 1.1em;
+  height: 1.1em;
+  border: 3px solid #3ec6a8;
+  border-radius: 50%;
+  border-right-color: transparent;
+  vertical-align: middle;
+  margin-left: 0.7em;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 .gallery-tag {
@@ -325,4 +363,15 @@ input:focus, select:focus, button:focus, a:focus {
 body.gallery-background {
   background: linear-gradient(135deg, #14532d 0%, #228B22 100%);
   color: #fff;
+}
+
+/* Responsive for extra small screens */
+@media (max-width: 600px) {
+  .gallery-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  .gallery-card {
+    padding: 0.8rem 0.22rem;
+  }
 }
