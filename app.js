@@ -852,12 +852,15 @@ app.get('/creator-dashboard/:slug', async (req, res) => {
   }
 });
 
+// === API Gallery Route: Strict Filtering (for frontend JS fetching) ===
 app.get('/api/gallery', async (req, res) => {
   try {
     const uploads = await getUploads();
     const creators = await getCreators();
+    const now = Date.now();
+    const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
-    // --- Attach host (creator) to each upload ---
+    // Attach host (creator) to each upload
     const uploadsWithHost = uploads.map(u => {
       const creatorMatch = creators.find(c =>
         (c.slug && u.contestName === c.slug) ||
@@ -869,26 +872,72 @@ app.get('/api/gallery', async (req, res) => {
       };
     });
 
-    // --- SEARCH LOGIC: contest name, entrant name, host ---
+    // Group uploads by contest key
+    const contestUploadsMap = {};
+    uploadsWithHost.forEach(u => {
+      if (!u.contestName) return;
+      const key = u.contestName.toLowerCase();
+      if (!contestUploadsMap[key]) contestUploadsMap[key] = [];
+      contestUploadsMap[key].push(u);
+    });
+
+    // Filter: Active = show all, Expired <30d = only winners, Expired >30d = none
+    let filteredUploadsFinal = [];
+    creators.forEach(creator => {
+      const contestKeys = [];
+      if (creator.slug) contestKeys.push(creator.slug.toLowerCase());
+      if (creator.contestTitle) contestKeys.push(creator.contestTitle.toLowerCase());
+
+      let contestUploads = [];
+      contestKeys.forEach(key => {
+        if (contestUploadsMap[key]) contestUploads = contestUploads.concat(contestUploadsMap[key]);
+      });
+      if (!contestUploads.length) return;
+
+      const contestEnd = new Date(creator.endDate).getTime();
+      const expired = now > contestEnd;
+      const within30Days = now - contestEnd < 30 * MS_PER_DAY;
+
+      if (!expired) {
+        filteredUploadsFinal.push(...contestUploads);
+      } else if (within30Days) {
+        const winners = contestUploads.filter(u => u.isWinner === true);
+        if (winners.length) filteredUploadsFinal.push(...winners);
+      }
+    });
+
+    // --- SEARCH LOGIC ---
     const search = (req.query.search || '').trim().toLowerCase();
-    let filteredUploads = uploadsWithHost;
+    let filteredUploads = filteredUploadsFinal;
     if (search) {
-      filteredUploads = uploadsWithHost.filter(u =>
+      filteredUploads = filteredUploads.filter(u =>
         (u.contestName || '').toLowerCase().includes(search) ||
         (u.name || '').toLowerCase().includes(search) ||
         (u.host || '').toLowerCase().includes(search)
       );
     }
 
+    // --- Winners in last 30 days, sorted newest first ---
+    const winners = filteredUploads.filter(u =>
+      u.isWinner === true &&
+      u.timestamp &&
+      (now - new Date(u.timestamp).getTime() < 30 * MS_PER_DAY)
+    ).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    const winnerSessionIds = new Set(winners.map(w => w.sessionId));
+    let regularUploads = filteredUploads.filter(u => !winnerSessionIds.has(u.sessionId));
+
     // --- Pagination ---
     const page = parseInt(req.query.page, 10) || 1;
     const perPage = 25;
-    const totalUploads = filteredUploads.length;
+    const totalUploads = regularUploads.length;
     const totalPages = Math.ceil(totalUploads / perPage);
     const start = (page - 1) * perPage;
-    const paginatedUploads = filteredUploads.slice(start, start + perPage);
+    const paginatedUploads = regularUploads.slice(start, start + perPage);
 
-    // Helpers
+    // --- Combine winners (always at top) + paginated regular uploads ---
+    const uploadsToShow = [...winners, ...paginatedUploads];
+
+    // --- S3 helpers ---
     const getPresignedUrl = async (key) =>
       await s3.getSignedUrlPromise('getObject', {
         Bucket: ENTRIES_BUCKET,
@@ -909,9 +958,9 @@ app.get('/api/gallery', async (req, res) => {
     const isTextFile = (filename) => filename && /\.(txt|md|csv|json)$/i.test(filename);
     const isImageFile = (filename) => filename && /\.(jpe?g|png|gif|webp)$/i.test(filename);
 
-    // Compose API JSON with presigned URLs
+    // Compose API JSON with presigned URLs & captions
     const uploadsWithDetails = await Promise.all(
-      paginatedUploads.map(async (upload) => {
+      uploadsToShow.map(async (upload) => {
         let presignedUrl = null;
         let filename = null;
         let fileContent = null;
@@ -1011,15 +1060,15 @@ app.get('/api/gallery', async (req, res) => {
   }
 });
 
-// ===Gallery Route ===
-app.get('/api/gallery', async (req, res) => {
+// === Gallery SSR Route (for direct browser page load) ===
+app.get('/gallery', async (req, res) => {
   try {
     const uploads = await getUploads();
     const creators = await getCreators();
     const now = Date.now();
     const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
-    // --- Attach host (creator) to each upload ---
+    // Attach host (creator) to each upload
     const uploadsWithHost = uploads.map(u => {
       const creatorMatch = creators.find(c =>
         (c.slug && u.contestName === c.slug) ||
@@ -1031,8 +1080,7 @@ app.get('/api/gallery', async (req, res) => {
       };
     });
 
-    // --- Filter uploads according to contest status and winner display rule ---
-    // Group uploads by contest key (slug and contestTitle, lowercase)
+    // Group uploads by contest key
     const contestUploadsMap = {};
     uploadsWithHost.forEach(u => {
       if (!u.contestName) return;
@@ -1041,48 +1089,32 @@ app.get('/api/gallery', async (req, res) => {
       contestUploadsMap[key].push(u);
     });
 
-    // Build filteredUploadsFinal
+    // Filter: Active = show all, Expired <30d = only winners, Expired >30d = none
     let filteredUploadsFinal = [];
-
-    // Build a set of all possible contest keys for matching
-    const knownContestKeys = new Set();
-    creators.forEach(c => {
-      if (c.slug) knownContestKeys.add(c.slug.toLowerCase());
-      if (c.contestTitle) knownContestKeys.add(c.contestTitle.toLowerCase());
-    });
-
-    for (const creator of creators) {
-      // Try matching by slug first, then contestTitle
+    creators.forEach(creator => {
       const contestKeys = [];
       if (creator.slug) contestKeys.push(creator.slug.toLowerCase());
       if (creator.contestTitle) contestKeys.push(creator.contestTitle.toLowerCase());
 
-      // Gather all uploads for this contest (by any recognized key)
       let contestUploads = [];
       contestKeys.forEach(key => {
         if (contestUploadsMap[key]) contestUploads = contestUploads.concat(contestUploadsMap[key]);
       });
-      if (!contestUploads.length) continue;
+      if (!contestUploads.length) return;
 
       const contestEnd = new Date(creator.endDate).getTime();
       const expired = now > contestEnd;
       const within30Days = now - contestEnd < 30 * MS_PER_DAY;
 
       if (!expired) {
-        // Not expired: show all uploads
         filteredUploadsFinal.push(...contestUploads);
       } else if (within30Days) {
-        // Expired, but within 30 days after: show only winner(s) (if any)
         const winners = contestUploads.filter(u => u.isWinner === true);
         if (winners.length) filteredUploadsFinal.push(...winners);
-        // else: show nothing for this contest
       }
-      // else: expired & over 30 days, show nothing for this contest
-    }
+    });
 
-    // --- No orphan uploads block ---
-
-    // --- SEARCH LOGIC: contest name, entrant name, host ---
+    // --- SEARCH LOGIC ---
     const search = (req.query.search || '').trim().toLowerCase();
     let filteredUploads = filteredUploadsFinal;
     if (search) {
@@ -1093,18 +1125,16 @@ app.get('/api/gallery', async (req, res) => {
       );
     }
 
-    // --- Winners in last 30 days, sorted newest first (from filtered uploads only) ---
+    // --- Winners in last 30 days, sorted newest first ---
     const winners = filteredUploads.filter(u =>
       u.isWinner === true &&
       u.timestamp &&
       (now - new Date(u.timestamp).getTime() < 30 * MS_PER_DAY)
     ).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-    // --- Remove winner uploads from regular list (avoid duplicates) ---
     const winnerSessionIds = new Set(winners.map(w => w.sessionId));
     let regularUploads = filteredUploads.filter(u => !winnerSessionIds.has(u.sessionId));
 
-    // --- Pagination (for regular uploads) ---
+    // --- Pagination ---
     const page = parseInt(req.query.page, 10) || 1;
     const perPage = 25;
     const totalUploads = regularUploads.length;
@@ -1115,7 +1145,7 @@ app.get('/api/gallery', async (req, res) => {
     // --- Combine winners (always at top) + paginated regular uploads ---
     const uploadsToShow = [...winners, ...paginatedUploads];
 
-    // Helpers
+    // S3 helpers
     const getPresignedUrl = async (key) =>
       await s3.getSignedUrlPromise('getObject', {
         Bucket: ENTRIES_BUCKET,
@@ -1136,7 +1166,7 @@ app.get('/api/gallery', async (req, res) => {
     const isTextFile = (filename) => filename && /\.(txt|md|csv|json)$/i.test(filename);
     const isImageFile = (filename) => filename && /\.(jpe?g|png|gif|webp)$/i.test(filename);
 
-    // Compose API JSON with presigned URLs
+    // Map uploads to include presigned/image/caption
     const uploadsWithDetails = await Promise.all(
       uploadsToShow.map(async (upload) => {
         let presignedUrl = null;
@@ -1225,16 +1255,16 @@ app.get('/api/gallery', async (req, res) => {
       })
     );
 
-    res.json({
+    // Render gallery EJS template (views/gallery.ejs)
+    res.render('gallery', {
       uploads: uploadsWithDetails,
       page,
-      perPage,
       totalPages,
-      totalUploads
+      search
     });
   } catch (err) {
-    console.error('Failed to load gallery API:', err);
-    res.status(500).json({ error: 'Failed to load gallery.' });
+    console.error('Failed to load gallery:', err);
+    res.status(500).send('Failed to load gallery.');
   }
 });
 
