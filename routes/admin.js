@@ -74,10 +74,37 @@ router.use((req, res, next) => {
 // JSON view of Stripe entries
 router.get('/entries-view', async (req, res) => {
   try {
-    const RESTRICTED_STATES = ['NY', 'WA', 'NJ', 'PR', 'GU', 'AS', 'VI', 'MP', 'RI', 'FL', 'AZ']; // Add this line
+    const RESTRICTED_STATES = ['NY', 'WA', 'NJ', 'PR', 'GU', 'AS', 'VI', 'MP', 'RI', 'FL', 'AZ'];
     const entries = await loadEntries();
     const creators = await loadCreators();
     const uploads = await loadUploads();
+
+    // === PATCH: AUTO-DISQUALIFY uploads from restricted states ===
+    let uploadsChanged = false;
+    for (const entry of entries) {
+      const userState = (entry.billingAddress?.state || '').toUpperCase();
+      if (RESTRICTED_STATES.includes(userState)) {
+        // Try to match by sessionId if possible, else by email+contest
+        let uploadMatch = uploads.find(u => u.sessionId === entry.sessionId);
+        if (!uploadMatch) {
+          const entryEmail = (entry.customerEmail || entry.billingAddress?.email || '').trim().toLowerCase();
+          const entryName = `${entry.billingAddress?.first_name || ''} ${entry.billingAddress?.last_name || ''}`.trim().toLowerCase();
+          const entryContest = (entry.contestName || '').trim().toLowerCase();
+          uploadMatch = uploads.find(u =>
+            (u.contestName || '').trim().toLowerCase() === entryContest &&
+            (
+              (u.email || u.customerEmail || '').trim().toLowerCase() === entryEmail ||
+              (u.name || '').trim().toLowerCase() === entryName
+            )
+          );
+        }
+        if (uploadMatch && !uploadMatch.isDisqualified) {
+          uploadMatch.isDisqualified = true;
+          uploadsChanged = true;
+        }
+      }
+    }
+    if (uploadsChanged) await saveUploads(uploads);
 
     if (!entries || entries.length === 0) {
       return res.send('<h2>No entries found</h2>');
