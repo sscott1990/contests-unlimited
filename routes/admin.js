@@ -284,10 +284,35 @@ router.get('/uploads', async (req, res) => {
     const RESTRICTED_STATES = ['NY', 'WA', 'NJ', 'PR', 'GU', 'AS', 'VI', 'MP', 'RI', 'FL', 'AZ'];
     const uploads = await loadUploads();
     const creators = await loadCreators();
+    const entries = await loadEntries(); // <-- Load entries for state checking
 
     if (!uploads || uploads.length === 0) {
       return res.send('<h2>No uploads found</h2>');
     }
+
+    // === AUTO-DISQUALIFY uploads from restricted states by name+email (no sessionId used) ===
+    let uploadsChanged = false;
+    for (const upload of uploads) {
+      const uploadName = (upload.name || '').trim().toLowerCase();
+      const uploadEmail = (upload.email || '').trim().toLowerCase();
+
+      const matchingEntry = entries.find(entry => {
+        const entryName = `${entry.billingAddress?.first_name || ''} ${entry.billingAddress?.last_name || ''}`.trim().toLowerCase();
+        const entryEmail = (entry.customerEmail || entry.billingAddress?.email || '').trim().toLowerCase();
+        const entryState = (entry.billingAddress?.state || '').toUpperCase();
+        return (
+          uploadName === entryName &&
+          uploadEmail === entryEmail &&
+          RESTRICTED_STATES.includes(entryState)
+        );
+      });
+
+      if (matchingEntry && !upload.isDisqualified) {
+        upload.isDisqualified = true;
+        uploadsChanged = true;
+      }
+    }
+    if (uploadsChanged) await saveUploads(uploads);
 
     // SEARCH LOGIC
     const search = (req.query.search || '').trim().toLowerCase();
@@ -357,7 +382,7 @@ router.get('/uploads', async (req, res) => {
       return { ...upload, host };
     });
 
-    // --- New: Get contest end time for each upload for "expired" highlight ---
+    // --- Get contest end time for each upload for "expired" highlight ---
     const now = Date.now();
 
     const rows = await Promise.all(uploadsWithHost.map(async upload => {
@@ -372,12 +397,31 @@ router.get('/uploads', async (req, res) => {
       );
 
       // --- Add restricted state flag for uploads ---
-      const userState = (upload.state || upload.billingAddress?.state || '').toUpperCase();
-      const restrictedFlag = RESTRICTED_STATES.includes(userState)
-        ? ' <span style="color:red;font-weight:bold;">⚠️ Restricted State</span>'
-        : '';
+      let restrictedFlag = '';
+      // Try to show the flag if the upload is disqualified by state
+      if (upload.isDisqualified) {
+        // Try to find the matching entry for display
+        const uploadName = (upload.name || '').trim().toLowerCase();
+        const uploadEmail = (upload.email || '').trim().toLowerCase();
+        const foundEntry = entries.find(entry => {
+          const entryName = `${entry.billingAddress?.first_name || ''} ${entry.billingAddress?.last_name || ''}`.trim().toLowerCase();
+          const entryEmail = (entry.customerEmail || entry.billingAddress?.email || '').trim().toLowerCase();
+          const entryState = (entry.billingAddress?.state || '').toUpperCase();
+          return (
+            uploadName === entryName &&
+            uploadEmail === entryEmail &&
+            RESTRICTED_STATES.includes(entryState)
+          );
+        });
+        const entryState = (foundEntry?.billingAddress?.state || '').toUpperCase();
+        if (entryState) {
+          restrictedFlag = ` <span style="color:red;font-weight:bold;">⚠️ Restricted State (${entryState})</span>`;
+        } else {
+          restrictedFlag = ' <span style="color:red;font-weight:bold;">⚠️ Disqualified</span>';
+        }
+      }
 
-      // --- New: Is contest expired? ---
+      // --- Is contest expired? ---
       let isExpired = false;
       if (creatorContest && creatorContest.endDate) {
         try {
@@ -388,7 +432,7 @@ router.get('/uploads', async (req, res) => {
 
       let fileCell = 'No file available';
 
-      // === PATCH: Handle default caption contest ===
+      // === Handle default caption contest ===
       if (
         upload.contestName === 'caption-contest-default' &&
         upload.fileContent
