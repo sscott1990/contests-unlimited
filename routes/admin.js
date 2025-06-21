@@ -74,15 +74,15 @@ async function judgeGemini({ imageUrl, caption, contestTitle, isCaptionContest }
   if (isCaptionContest) {
     basePrompt =
       `You are a judge for a caption contest titled "${contestTitle}". ` +
-      `Score each entry for creativity (1-10), humor (1-10), and fit with theme (1-10). ` +
-      `Also rate caption creativity (1-10). ` +
-      `Return your response as JSON: {"creativity":<int>,"humor":<int>,"theme":<int>,"caption":<int>,"total":<int>,"justification":"..."}`;
+      `Score each entry for creativity (1-10), humor (1-10), relevance to the image or prompt (1-10), and clarity and conciseness (1-10). ` +
+      `Return your response as JSON: {"creativity":<int>,"humor":<int>,"relevance":<int>,"clarity":<int>,"total":<int>,"justification":"..."}`;
   } else {
     basePrompt =
       `You are a judge for a contest titled "${contestTitle}". ` +
-      `Score each entry for creativity (1-10), technique (1-10), and fit with theme (1-10). ` +
+      `If this is an art contest, score each entry for creativity and originality (1-10), artistic technique and skill (1-10), adherence to theme or prompt (1-10), and overall impression (1-10). ` +
+      `If this is a photo contest, score each entry for creativity and originality (1-10), technical quality (focus, lighting, composition) (1-10), relevance to theme or prompt (1-10), and overall impact (1-10). ` +
       `If there is a caption, also rate caption creativity (1-10). ` +
-      `Return your response as JSON: {"creativity":<int>,"technique":<int>,"theme":<int>,"caption":<int>,"total":<int>,"justification":"..."}`;
+      `Return your response as JSON: {"creativity":<int>,"technique":<int>,"theme":<int>,"overall":<int>,"caption":<int>,"total":<int>,"justification":"..."}`;
   }
 
   let imagePart = undefined;
@@ -108,8 +108,11 @@ async function judgeGemini({ imageUrl, caption, contestTitle, isCaptionContest }
   return {
     creativity: 0,
     humor: isCaptionContest ? 0 : undefined,
+    relevance: isCaptionContest ? 0 : undefined,
+    clarity: isCaptionContest ? 0 : undefined,
     technique: isCaptionContest ? undefined : 0,
     theme: 0,
+    overall: isCaptionContest ? undefined : 0,
     caption: 0,
     total: 0,
     justification: text
