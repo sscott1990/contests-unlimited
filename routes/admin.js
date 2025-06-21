@@ -290,29 +290,30 @@ router.get('/uploads', async (req, res) => {
       return res.send('<h2>No uploads found</h2>');
     }
 
-    // === AUTO-DISQUALIFY uploads from restricted states by name+email (no sessionId used) ===
-    let uploadsChanged = false;
-    for (const upload of uploads) {
-      const uploadName = (upload.name || '').trim().toLowerCase();
-      const uploadEmail = (upload.email || '').trim().toLowerCase();
+  // === AUTO-DISQUALIFY uploads from restricted states by last name+email (no sessionId used) ===
+let uploadsChanged = false;
+for (const upload of uploads) {
+  // Use last name from upload name for more robust matching
+  const uploadLastName = (upload.name || '').split(' ').slice(-1)[0].trim().toLowerCase();
+  const uploadEmail = (upload.email || '').trim().toLowerCase();
 
-      const matchingEntry = entries.some(entry => {
-        const entryName = `${entry.billingAddress?.first_name || ''} ${entry.billingAddress?.last_name || ''}`.trim().toLowerCase();
-        const entryEmail = (entry.customerEmail || entry.billingAddress?.email || '').trim().toLowerCase();
-        const entryState = (entry.billingAddress?.state || '').toUpperCase();
-        return (
-          uploadName === entryName &&
-          uploadEmail === entryEmail &&
-          RESTRICTED_STATES.includes(entryState)
-        );
-      });
+  const isRestricted = entries.some(entry => {
+    const entryLastName = (entry.billingAddress?.last_name || '').trim().toLowerCase();
+    const entryEmail = (entry.customerEmail || entry.billingAddress?.email || '').trim().toLowerCase();
+    const entryState = (entry.billingAddress?.state || '').toUpperCase();
+    return (
+      uploadLastName === entryLastName &&
+      uploadEmail === entryEmail &&
+      RESTRICTED_STATES.includes(entryState)
+    );
+  });
 
-      if (matchingEntry && !upload.isDisqualified) {
-        upload.isDisqualified = true;
-        uploadsChanged = true;
-      }
-    }
-    if (uploadsChanged) await saveUploads(uploads);
+  if (isRestricted && !upload.isDisqualified) {
+    upload.isDisqualified = true;
+    uploadsChanged = true;
+  }
+}
+if (uploadsChanged) await saveUploads(uploads);
 
     // SEARCH LOGIC
     const search = (req.query.search || '').trim().toLowerCase();
