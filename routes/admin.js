@@ -81,8 +81,7 @@ async function judgeGemini({ imageUrl, caption, contestTitle, isCaptionContest }
       `You are a judge for a contest titled "${contestTitle}". ` +
       `If this is an art contest, score each entry for creativity and originality (1-10), artistic technique and skill (1-10), adherence to theme or prompt (1-10), and overall impression (1-10). ` +
       `If this is a photo contest, score each entry for creativity and originality (1-10), technical quality (focus, lighting, composition) (1-10), relevance to theme or prompt (1-10), and overall impact (1-10). ` +
-      `If there is a caption, also rate caption creativity (1-10). ` +
-      `Return your response as JSON: {"creativity":<int>,"technique":<int>,"theme":<int>,"overall":<int>,"caption":<int>,"total":<int>,"justification":"..."}`;
+      `Return your response as JSON: {"creativity":<int>,"technique":<int>,"theme":<int>,"overall":<int>,"total":<int>,"justification":"..."}`;
   }
 
   let imagePart = undefined;
@@ -95,7 +94,8 @@ async function judgeGemini({ imageUrl, caption, contestTitle, isCaptionContest }
   }
   const parts = [{ text: basePrompt }];
   if (imagePart) parts.push(imagePart);
-  if (caption) parts.push({ text: `Caption: ${caption}` });
+  // Only include caption for caption contests
+  if (caption && isCaptionContest) parts.push({ text: `Caption: ${caption}` });
 
   const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
   const result = await model.generateContent({ contents: [{ role: "user", parts }] });
@@ -113,7 +113,6 @@ async function judgeGemini({ imageUrl, caption, contestTitle, isCaptionContest }
     technique: isCaptionContest ? undefined : 0,
     theme: 0,
     overall: isCaptionContest ? undefined : 0,
-    caption: 0,
     total: 0,
     justification: text
   };
@@ -183,14 +182,16 @@ router.post('/judge-expired-contests', async (req, res) => {
       for (const u of contestUploads) {
         // --- Skip if both imageUrl and caption are null ---
         let imageUrl = null, caption = null;
-        if (u.fileUrl && isImageFile(u.filename)) {
+        // Use fileUrl for the image for all contests
+        if (u.fileUrl) {
           try {
             const url = new URL(u.fileUrl);
             const key = url.pathname.startsWith('/') ? url.pathname.slice(1) : url.pathname;
             imageUrl = await getPresignedUrl(key);
           } catch (e) { imageUrl = u.fileUrl; }
         }
-        if (u.fileContent && isTextFile(u.filename)) caption = u.fileContent;
+        // Only set caption if it's a caption contest
+        if (u.fileContent && isCaptionContest) caption = u.fileContent;
         if (isCaptionContest) {
           if (creatorContest.fileUrl) {
             try {

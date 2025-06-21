@@ -64,5 +64,27 @@
     "slug": "trivia-contest-1750480289539",
     "fileUrl": null,
     "status": "approved"
+  },
+  {
+    "sessionId": "9eac1d1d-eb6c-45a8-84cf-15d471fb5495",
+    "contestTitle": "Photo Contest",
+    "creator": "Swim Wear LLC",
+    "email": "jdoe@fmail.com",
+    "address": "test456",
+    "city": "testcity",
+    "state": "KS",
+    "zipcode": "12345",
+    "theme": "Summer Fun",
+    "description": "Pictures of people doing summer events",
+    "passwordHash": "$2b$10$8xRUIB8CzuvJTf8oQZCKwuX7F9VJZhnQqqZOymTlnj1mH31IWi/VS",
+    "approved": false,
+    "timestamp": "2025-04-21T18:45:02.739Z",
+    "endDate": "2025-05-21T18:45:02.739Z",
+    "durationMonths": 1,
+    "seedAmount": 250,
+    "minEntries": 50,
+    "slug": "photo-contest-1750531502739",
+    "fileUrl": null,
+    "status": "approved"
   }
 ]
