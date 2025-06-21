@@ -1032,7 +1032,7 @@ app.get('/gallery', async (req, res) => {
       };
     });
 
-    // --- NEW: Filter uploads according to contest status and winner display rule ---
+    // --- Filter uploads according to contest status and winner display rule ---
     // Group uploads by contest key (slug and contestTitle, lowercase)
     const contestUploadsMap = {};
     uploadsWithHost.forEach(u => {
@@ -1074,14 +1074,14 @@ app.get('/gallery', async (req, res) => {
         filteredUploadsFinal.push(...contestUploads);
       } else if (within30Days) {
         // Expired, but within 30 days after: show only winner(s) (if any)
-        const winners = contestUploads.filter(u => u.isWinner);
+        const winners = contestUploads.filter(u => u.isWinner === true);
         if (winners.length) filteredUploadsFinal.push(...winners);
         // else: show nothing for this contest
       }
       // else: expired & over 30 days, show nothing for this contest
     }
 
-    // Orphan uploads block REMOVED - do not add orphan uploads to filteredUploadsFinal!
+    // --- No orphan uploads block ---
 
     // --- SEARCH LOGIC: contest name, entrant name, host ---
     const search = (req.query.search || '').trim().toLowerCase();
