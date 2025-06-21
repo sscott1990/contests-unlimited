@@ -1081,12 +1081,7 @@ app.get('/gallery', async (req, res) => {
       // else: expired & over 30 days, show nothing for this contest
     }
 
-    // Only add uploads truly not associated with any known contest
-    const orphanUploads = uploadsWithHost.filter(u => {
-      const key = (u.contestName || '').toLowerCase();
-      return !knownContestKeys.has(key);
-    });
-    filteredUploadsFinal.push(...orphanUploads);
+    // Orphan uploads block REMOVED - do not add orphan uploads to filteredUploadsFinal!
 
     // --- SEARCH LOGIC: contest name, entrant name, host ---
     const search = (req.query.search || '').trim().toLowerCase();
