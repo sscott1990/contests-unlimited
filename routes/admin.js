@@ -282,35 +282,44 @@ router.get('/entries-view', async (req, res) => {
 router.get('/uploads', async (req, res) => {
   try {
     const RESTRICTED_STATES = ['NY', 'WA', 'NJ', 'PR', 'GU', 'AS', 'VI', 'MP', 'RI', 'FL', 'AZ'];
-    const uploads = await loadUploads();
-    const creators = await loadCreators();
-    const entries = await loadEntries(); // <-- Load entries for state checking
 
-    if (!uploads || uploads.length === 0) {
+    // Robust data loading to ensure arrays
+    let rawUploads = await loadUploads();
+    let rawCreators = await loadCreators();
+    let rawEntries = await loadEntries();
+    const uploads = Array.isArray(rawUploads) ? rawUploads : [];
+    const creators = Array.isArray(rawCreators) ? rawCreators : [];
+    const entries = Array.isArray(rawEntries) ? rawEntries : [];
+
+    if (uploads.length === 0) {
       return res.send('<h2>No uploads found</h2>');
     }
 
     // === AUTO-DISQUALIFY uploads from restricted states by last name+email (no sessionId used) ===
     let uploadsChanged = false;
     for (const upload of uploads) {
-      // Use last name from upload name for more robust matching
-      const uploadLastName = (upload.name || '').split(' ').slice(-1)[0].trim().toLowerCase();
-      const uploadEmail = (upload.email || '').trim().toLowerCase();
+      try {
+        // Use last name from upload name for robust matching
+        const uploadLastName = (upload.name || '').split(' ').slice(-1)[0].trim().toLowerCase();
+        const uploadEmail = (upload.email || '').trim().toLowerCase();
 
-      const isRestricted = entries.some(entry => {
-        const entryLastName = (entry.billingAddress?.last_name || '').trim().toLowerCase();
-        const entryEmail = (entry.customerEmail || entry.billingAddress?.email || '').trim().toLowerCase();
-        const entryState = (entry.billingAddress?.state || '').toUpperCase();
-        return (
-          uploadLastName === entryLastName &&
-          uploadEmail === entryEmail &&
-          RESTRICTED_STATES.includes(entryState)
-        );
-      });
+        const isRestricted = entries.some(entry => {
+          const entryLastName = (entry.billingAddress?.last_name || '').trim().toLowerCase();
+          const entryEmail = (entry.customerEmail || entry.billingAddress?.email || '').trim().toLowerCase();
+          const entryState = (entry.billingAddress?.state || '').toUpperCase();
+          return (
+            uploadLastName === entryLastName &&
+            uploadEmail === entryEmail &&
+            RESTRICTED_STATES.includes(entryState)
+          );
+        });
 
-      if (isRestricted && !upload.isDisqualified) {
-        upload.isDisqualified = true;
-        uploadsChanged = true;
+        if (isRestricted && !upload.isDisqualified) {
+          upload.isDisqualified = true;
+          uploadsChanged = true;
+        }
+      } catch (e) {
+        console.error('Error processing upload for disqualification:', upload, e);
       }
     }
     if (uploadsChanged) await saveUploads(uploads);
@@ -401,22 +410,26 @@ router.get('/uploads', async (req, res) => {
       let restrictedFlag = '';
       // Use last name + email for both disqualify and display logic
       if (upload.isDisqualified) {
-        const uploadLastName = (upload.name || '').split(' ').slice(-1)[0].trim().toLowerCase();
-        const uploadEmail = (upload.email || '').trim().toLowerCase();
-        const foundEntry = entries.find(entry => {
-          const entryLastName = (entry.billingAddress?.last_name || '').trim().toLowerCase();
-          const entryEmail = (entry.customerEmail || entry.billingAddress?.email || '').trim().toLowerCase();
-          const entryState = (entry.billingAddress?.state || '').toUpperCase();
-          return (
-            uploadLastName === entryLastName &&
-            uploadEmail === entryEmail &&
-            RESTRICTED_STATES.includes(entryState)
-          );
-        });
-        const entryState = (foundEntry?.billingAddress?.state || '').toUpperCase();
-        if (entryState) {
-          restrictedFlag = ` <span style="color:red;font-weight:bold;">⚠️ Restricted State (${entryState})</span>`;
-        } else {
+        try {
+          const uploadLastName = (upload.name || '').split(' ').slice(-1)[0].trim().toLowerCase();
+          const uploadEmail = (upload.email || '').trim().toLowerCase();
+          const foundEntry = entries.find(entry => {
+            const entryLastName = (entry.billingAddress?.last_name || '').trim().toLowerCase();
+            const entryEmail = (entry.customerEmail || entry.billingAddress?.email || '').trim().toLowerCase();
+            const entryState = (entry.billingAddress?.state || '').toUpperCase();
+            return (
+              uploadLastName === entryLastName &&
+              uploadEmail === entryEmail &&
+              RESTRICTED_STATES.includes(entryState)
+            );
+          });
+          const entryState = (foundEntry?.billingAddress?.state || '').toUpperCase();
+          if (entryState) {
+            restrictedFlag = ` <span style="color:red;font-weight:bold;">⚠️ Restricted State (${entryState})</span>`;
+          } else {
+            restrictedFlag = ' <span style="color:red;font-weight:bold;">⚠️ Disqualified</span>';
+          }
+        } catch (e) {
           restrictedFlag = ' <span style="color:red;font-weight:bold;">⚠️ Disqualified</span>';
         }
       }
@@ -657,6 +670,7 @@ router.get('/uploads', async (req, res) => {
       </html>
    `);
   } catch (err) {
+    console.error('Failed to load uploads:', err);
     res.status(500).send('Failed to load uploads.');
   }
 });
