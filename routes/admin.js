@@ -69,18 +69,20 @@ async function saveUploads(uploads) {
 }
 
 // === Gemini AI Judging Helper ===
-async function judgeGemini({ imageUrl, caption, contestTitle, isCaptionContest }) {
+async function judgeGemini({ imageUrl, caption, contestTitle, isCaptionContest, theme }) {
   let basePrompt;
   if (isCaptionContest) {
     basePrompt =
-      `You are a judge for a caption contest titled "${contestTitle}". ` +
+      `You are a judge for a caption contest titled "${contestTitle}". The contest theme is "${theme}". ` +
       `Score each entry for creativity (1-10), humor (1-10), relevance to the image or prompt (1-10), and clarity and conciseness (1-10). ` +
+      `Pay special attention to how well the caption matches the theme "${theme}". ` +
       `Return your response as JSON: {"creativity":<int>,"humor":<int>,"relevance":<int>,"clarity":<int>,"total":<int>,"justification":"..."}`;
   } else {
     basePrompt =
-      `You are a judge for a contest titled "${contestTitle}". ` +
-      `If this is an art contest, score each entry for creativity and originality (1-10), artistic technique and skill (1-10), adherence to theme or prompt (1-10), and overall impression (1-10). ` +
-      `If this is a photo contest, score each entry for creativity and originality (1-10), technical quality (focus, lighting, composition) (1-10), relevance to theme or prompt (1-10), and overall impact (1-10). ` +
+      `You are a judge for a contest titled "${contestTitle}". The contest theme is "${theme}". ` +
+      `If this is an art contest, score each entry for creativity and originality (1-10), artistic technique and skill (1-10), adherence to the theme "${theme}" (1-10), and overall impression (1-10). ` +
+      `If this is a photo contest, score each entry for creativity and originality (1-10), technical quality (focus, lighting, composition) (1-10), relevance to the theme "${theme}" (1-10), and overall impact (1-10). ` +
+      `Pay special attention to how well the entry matches the theme "${theme}". ` +
       `Return your response as JSON: {"creativity":<int>,"technique":<int>,"theme":<int>,"overall":<int>,"total":<int>,"justification":"..."}`;
   }
 
@@ -94,7 +96,6 @@ async function judgeGemini({ imageUrl, caption, contestTitle, isCaptionContest }
   }
   const parts = [{ text: basePrompt }];
   if (imagePart) parts.push(imagePart);
-  // Only include caption for caption contests
   if (caption && isCaptionContest) parts.push({ text: `Caption: ${caption}` });
 
   const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
@@ -182,7 +183,6 @@ router.post('/judge-expired-contests', async (req, res) => {
       for (const u of contestUploads) {
         // --- Skip if both imageUrl and caption are null ---
         let imageUrl = null, caption = null;
-        // Use fileUrl for the image for all contests
         if (u.fileUrl) {
           try {
             const url = new URL(u.fileUrl);
@@ -190,7 +190,6 @@ router.post('/judge-expired-contests', async (req, res) => {
             imageUrl = await getPresignedUrl(key);
           } catch (e) { imageUrl = u.fileUrl; }
         }
-        // Only set caption if it's a caption contest
         if (u.fileContent && isCaptionContest) caption = u.fileContent;
         if (isCaptionContest) {
           if (creatorContest.fileUrl) {
@@ -213,7 +212,8 @@ router.post('/judge-expired-contests', async (req, res) => {
             imageUrl,
             caption,
             contestTitle: creatorContest.contestTitle || creatorContest.slug,
-            isCaptionContest
+            isCaptionContest,
+            theme: creatorContest.theme || ""
           });
           // LOG: Gemini result
           console.log(`Gemini score for sessionId ${u.sessionId}:`, result);
