@@ -9,7 +9,8 @@
     "timeTaken": null,
     "timestamp": "2025-06-11T20:00:00.000Z",
     "captionText": null,
-    "contestImageUrl": null
+    "contestImageUrl": null,
+    "isWinner": true
   },
   {
     "sessionId": "2-2222-2222-2222-222222222222",
@@ -21,7 +22,8 @@
     "timeTaken": null,
     "timestamp": "2025-06-11T20:01:00.000Z",
     "captionText": null,
-    "contestImageUrl": null
+    "contestImageUrl": null,
+    "isWinner": false
   },
   {
     "sessionId": "3-3333-3333-3333-333333333333",
@@ -33,7 +35,8 @@
     "timeTaken": null,
     "timestamp": "2025-06-11T20:02:00.000Z",
     "captionText": null,
-    "contestImageUrl": null
+    "contestImageUrl": null,
+    "isWinner": false
   },
   {
     "sessionId": "4-4444-4444-4444-444444444444",
@@ -45,7 +48,8 @@
     "timeTaken": null,
     "timestamp": "2025-06-11T20:03:00.000Z",
     "captionText": null,
-    "contestImageUrl": null
+    "contestImageUrl": null,
+    "isWinner": false
   },
   {
     "sessionId": "5-5555-5555-5555-555555555555",
@@ -57,7 +61,8 @@
     "timeTaken": null,
     "timestamp": "2025-06-11T20:04:00.000Z",
     "captionText": null,
-    "contestImageUrl": null
+    "contestImageUrl": null,
+    "isWinner": false
   },
   {
     "sessionId": "6-6666-6666-6666-666666666666",
@@ -69,7 +74,8 @@
     "timeTaken": null,
     "timestamp": "2025-06-11T20:05:00.000Z",
     "captionText": null,
-    "contestImageUrl": null
+    "contestImageUrl": null,
+    "isWinner": false
   },
   {
     "sessionId": "7-7777-7777-7777-777777777777",
@@ -81,7 +87,8 @@
     "timeTaken": null,
     "timestamp": "2025-06-11T20:06:00.000Z",
     "captionText": null,
-    "contestImageUrl": null
+    "contestImageUrl": null,
+    "isWinner": false
   },
   {
     "sessionId": "8-8888-8888-8888-888888888888",
@@ -93,7 +100,8 @@
     "timeTaken": null,
     "timestamp": "2025-06-11T20:07:00.000Z",
     "captionText": null,
-    "contestImageUrl": null
+    "contestImageUrl": null,
+    "isWinner": false
   },
   {
     "sessionId": "9-9999-9999-9999-999999999999",
@@ -105,7 +113,8 @@
     "timeTaken": null,
     "timestamp": "2025-06-11T20:08:00.000Z",
     "captionText": null,
-    "contestImageUrl": null
+    "contestImageUrl": null,
+    "isWinner": false
   },
   {
     "sessionId": "10-1010-1010-1010-101010101010",
@@ -117,7 +126,8 @@
     "timeTaken": null,
     "timestamp": "2025-06-11T20:09:00.000Z",
     "captionText": null,
-    "contestImageUrl": null
+    "contestImageUrl": null,
+    "isWinner": false
   },
   {
     "sessionId": "11-1111-1111-1111-111111111112",
@@ -129,7 +139,8 @@
     "timeTaken": null,
     "timestamp": "2025-06-11T20:10:00.000Z",
     "captionText": null,
-    "contestImageUrl": null
+    "contestImageUrl": null,
+    "isWinner": false
   },
   {
     "sessionId": "12-1212-1212-1212-121212121212",
@@ -141,7 +152,8 @@
     "timeTaken": null,
     "timestamp": "2025-06-11T20:11:00.000Z",
     "captionText": null,
-    "contestImageUrl": null
+    "contestImageUrl": null,
+    "isWinner": false
   },
   {
     "sessionId": "13-1313-1313-1313-131313131313",
@@ -153,7 +165,8 @@
     "timeTaken": null,
     "timestamp": "2025-06-11T20:12:00.000Z",
     "captionText": null,
-    "contestImageUrl": null
+    "contestImageUrl": null,
+    "isWinner": false
   },
   {
     "sessionId": "14-1414-1414-1414-141414141414",
@@ -165,7 +178,8 @@
     "timeTaken": null,
     "timestamp": "2025-06-11T20:13:00.000Z",
     "captionText": null,
-    "contestImageUrl": null
+    "contestImageUrl": null,
+    "isWinner": false
   },
   {
     "sessionId": "15-1515-1515-1515-151515151515",
@@ -177,7 +191,8 @@
     "timeTaken": null,
     "timestamp": "2025-06-11T20:14:00.000Z",
     "captionText": null,
-    "contestImageUrl": null
+    "contestImageUrl": null,
+    "isWinner": false
   },
   {
     "sessionId": "16-1616-1616-1616-161616161616",
@@ -189,7 +204,8 @@
     "timeTaken": null,
     "timestamp": "2025-06-11T20:15:00.000Z",
     "captionText": null,
-    "contestImageUrl": null
+    "contestImageUrl": null,
+    "isWinner": false
   },
   {
     "sessionId": "17-1717-1717-1717-171717171717",
@@ -201,7 +217,8 @@
     "timeTaken": null,
     "timestamp": "2025-06-11T20:16:00.000Z",
     "captionText": null,
-    "contestImageUrl": null
+    "contestImageUrl": null,
+    "isWinner": false
   },
   {
     "sessionId": "18-1818-1818-1818-181818181818",
@@ -213,7 +230,8 @@
     "timeTaken": null,
     "timestamp": "2025-06-11T20:17:00.000Z",
     "captionText": null,
-    "contestImageUrl": null
+    "contestImageUrl": null,
+    "isWinner": false
   },
   {
     "sessionId": "19-1919-1919-1919-191919191919",
@@ -225,7 +243,8 @@
     "timeTaken": null,
     "timestamp": "2025-06-11T20:18:00.000Z",
     "captionText": null,
-    "contestImageUrl": null
+    "contestImageUrl": null,
+    "isWinner": false
   },
   {
     "sessionId": "20-2020-2020-2020-202020202020",
@@ -237,7 +256,8 @@
     "timeTaken": null,
     "timestamp": "2025-06-11T20:19:00.000Z",
     "captionText": null,
-    "contestImageUrl": null
+    "contestImageUrl": null,
+    "isWinner": false
   },
   {
     "sessionId": "21-2121-2121-2121-212121212121",
@@ -249,7 +269,8 @@
     "timeTaken": null,
     "timestamp": "2025-06-11T20:20:00.000Z",
     "captionText": null,
-    "contestImageUrl": null
+    "contestImageUrl": null,
+    "isWinner": false
   },
   {
     "sessionId": "22-2222-2222-2222-222222222223",
@@ -261,7 +282,8 @@
     "timeTaken": null,
     "timestamp": "2025-06-11T20:21:00.000Z",
     "captionText": null,
-    "contestImageUrl": null
+    "contestImageUrl": null,
+    "isWinner": false
   },
   {
     "sessionId": "23-2323-2323-2323-232323232323",
@@ -273,7 +295,8 @@
     "timeTaken": null,
     "timestamp": "2025-06-11T20:22:00.000Z",
     "captionText": null,
-    "contestImageUrl": null
+    "contestImageUrl": null,
+    "isWinner": false
   },
   {
     "sessionId": "24-2424-2424-2424-242424242424",
@@ -285,7 +308,8 @@
     "timeTaken": null,
     "timestamp": "2025-06-11T20:23:00.000Z",
     "captionText": null,
-    "contestImageUrl": null
+    "contestImageUrl": null,
+    "isWinner": false
   },
   {
     "sessionId": "25-2525-2525-2525-252525252525",
@@ -297,7 +321,8 @@
     "timeTaken": null,
     "timestamp": "2025-06-11T20:24:00.000Z",
     "captionText": null,
-    "contestImageUrl": null
+    "contestImageUrl": null,
+    "isWinner": false
   },
   {
     "sessionId": "26-2626-2626-2626-262626262626",
@@ -309,7 +334,8 @@
     "timeTaken": null,
     "timestamp": "2025-06-11T20:25:00.000Z",
     "captionText": null,
-    "contestImageUrl": null
+    "contestImageUrl": null,
+    "isWinner": false
   },
   {
     "sessionId": "27-2727-2727-2727-272727272727",
@@ -321,7 +347,8 @@
     "timeTaken": null,
     "timestamp": "2025-06-11T20:26:00.000Z",
     "captionText": null,
-    "contestImageUrl": null
+    "contestImageUrl": null,
+    "isWinner": false
   },
   {
     "sessionId": "28-2828-2828-2828-282828282828",
@@ -333,7 +360,8 @@
     "timeTaken": null,
     "timestamp": "2025-06-11T20:27:00.000Z",
     "captionText": null,
-    "contestImageUrl": null
+    "contestImageUrl": null,
+    "isWinner": false
   },
   {
     "sessionId": "29-2929-2929-2929-292929292929",
@@ -345,7 +373,8 @@
     "timeTaken": null,
     "timestamp": "2025-06-11T20:28:00.000Z",
     "captionText": null,
-    "contestImageUrl": null
+    "contestImageUrl": null,
+    "isWinner": false
   },
   {
     "sessionId": "30-3030-3030-3030-303030303030",
@@ -357,7 +386,8 @@
     "timeTaken": null,
     "timestamp": "2025-06-11T20:29:00.000Z",
     "captionText": null,
-    "contestImageUrl": null
+    "contestImageUrl": null,
+    "isWinner": false
   },
   {
     "sessionId": "31-3131-3131-3131-313131313131",
@@ -369,7 +399,8 @@
     "timeTaken": null,
     "timestamp": "2025-06-11T20:30:00.000Z",
     "captionText": null,
-    "contestImageUrl": null
+    "contestImageUrl": null,
+    "isWinner": false
   },
   {
     "sessionId": "32-3232-3232-3232-323232323232",
@@ -381,7 +412,8 @@
     "timeTaken": null,
     "timestamp": "2025-06-11T20:31:00.000Z",
     "captionText": null,
-    "contestImageUrl": null
+    "contestImageUrl": null,
+    "isWinner": false
   },
   {
     "sessionId": "33-3333-3333-3333-333333333334",
@@ -393,7 +425,8 @@
     "timeTaken": null,
     "timestamp": "2025-06-11T20:32:00.000Z",
     "captionText": null,
-    "contestImageUrl": null
+    "contestImageUrl": null,
+    "isWinner": false
   },
   {
     "sessionId": "34-3434-3434-3434-343434343434",
@@ -405,7 +438,8 @@
     "timeTaken": null,
     "timestamp": "2025-06-11T20:33:00.000Z",
     "captionText": null,
-    "contestImageUrl": null
+    "contestImageUrl": null,
+    "isWinner": false
   },
   {
     "sessionId": "35-3535-3535-3535-353535353535",
@@ -417,7 +451,8 @@
     "timeTaken": null,
     "timestamp": "2025-06-11T20:34:00.000Z",
     "captionText": null,
-    "contestImageUrl": null
+    "contestImageUrl": null,
+    "isWinner": false
   },
   {
     "sessionId": "36-3636-3636-3636-363636363636",
@@ -429,7 +464,8 @@
     "timeTaken": null,
     "timestamp": "2025-06-11T20:35:00.000Z",
     "captionText": null,
-    "contestImageUrl": null
+    "contestImageUrl": null,
+    "isWinner": false
   },
   {
     "sessionId": "37-3737-3737-3737-373737373737",
@@ -441,7 +477,8 @@
     "timeTaken": null,
     "timestamp": "2025-06-11T20:36:00.000Z",
     "captionText": null,
-    "contestImageUrl": null
+    "contestImageUrl": null,
+    "isWinner": false
   },
   {
     "sessionId": "38-3838-3838-3838-383838383838",
@@ -453,7 +490,8 @@
     "timeTaken": null,
     "timestamp": "2025-06-11T20:37:00.000Z",
     "captionText": null,
-    "contestImageUrl": null
+    "contestImageUrl": null,
+    "isWinner": false
   },
   {
     "sessionId": "39-3939-3939-3939-393939393939",
@@ -465,7 +503,8 @@
     "timeTaken": null,
     "timestamp": "2025-06-11T20:38:00.000Z",
     "captionText": null,
-    "contestImageUrl": null
+    "contestImageUrl": null,
+    "isWinner": false
   },
   {
     "sessionId": "40-4040-4040-4040-404040404040",
@@ -477,7 +516,8 @@
     "timeTaken": null,
     "timestamp": "2025-06-11T20:39:00.000Z",
     "captionText": null,
-    "contestImageUrl": null
+    "contestImageUrl": null,
+    "isWinner": false
   },
   {
     "sessionId": "41-4141-4141-4141-414141414141",
@@ -489,7 +529,8 @@
     "timeTaken": null,
     "timestamp": "2025-06-11T20:40:00.000Z",
     "captionText": null,
-    "contestImageUrl": null
+    "contestImageUrl": null,
+    "isWinner": false
   },
   {
     "sessionId": "42-4242-4242-4242-424242424242",
@@ -501,7 +542,8 @@
     "timeTaken": null,
     "timestamp": "2025-06-11T20:41:00.000Z",
     "captionText": null,
-    "contestImageUrl": null
+    "contestImageUrl": null,
+    "isWinner": false
   },
   {
     "sessionId": "43-4343-4343-4343-434343434343",
@@ -513,7 +555,8 @@
     "timeTaken": null,
     "timestamp": "2025-06-11T20:42:00.000Z",
     "captionText": null,
-    "contestImageUrl": null
+    "contestImageUrl": null,
+    "isWinner": false
   },
   {
     "sessionId": "44-4444-4444-4444-444444444445",
@@ -525,7 +568,8 @@
     "timeTaken": null,
     "timestamp": "2025-06-11T20:43:00.000Z",
     "captionText": null,
-    "contestImageUrl": null
+    "contestImageUrl": null,
+    "isWinner": false
   },
   {
     "sessionId": "45-4545-4545-4545-454545454545",
@@ -537,7 +581,8 @@
     "timeTaken": null,
     "timestamp": "2025-06-11T20:44:00.000Z",
     "captionText": null,
-    "contestImageUrl": null
+    "contestImageUrl": null,
+    "isWinner": false
   },
   {
     "sessionId": "46-4646-4646-4646-464646464646",
@@ -549,7 +594,8 @@
     "timeTaken": null,
     "timestamp": "2025-06-11T20:45:00.000Z",
     "captionText": null,
-    "contestImageUrl": null
+    "contestImageUrl": null,
+    "isWinner": false
   },
   {
     "sessionId": "47-4747-4747-4747-474747474747",
@@ -561,7 +607,8 @@
     "timeTaken": null,
     "timestamp": "2025-06-11T20:46:00.000Z",
     "captionText": null,
-    "contestImageUrl": null
+    "contestImageUrl": null,
+    "isWinner": false
   },
   {
     "sessionId": "48-4848-4848-4848-484848484848",
@@ -573,7 +620,8 @@
     "timeTaken": null,
     "timestamp": "2025-06-11T20:47:00.000Z",
     "captionText": null,
-    "contestImageUrl": null
+    "contestImageUrl": null,
+    "isWinner": false
   },
   {
     "sessionId": "49-4949-4949-4949-494949494949",
@@ -585,7 +633,8 @@
     "timeTaken": null,
     "timestamp": "2025-06-11T20:48:00.000Z",
     "captionText": null,
-    "contestImageUrl": null
+    "contestImageUrl": null,
+    "isWinner": false
   },
   {
     "sessionId": "50-5050-5050-5050-505050505050",
@@ -597,6 +646,195 @@
     "timeTaken": null,
     "timestamp": "2025-06-11T20:49:00.000Z",
     "captionText": null,
+    "contestImageUrl": null,
+    "isWinner": false
+  },
+  {
+  "sessionId": "d7faa46a-97fc-41a7-b8e6-f2e8fa3441ff",
+  "name": "jill jackson",
+  "email": "jjackson@email.com",
+  "contestName": "caption-contest-1749680405849",
+  "fileUrl": "https://contests-unlimited.s3.us-east-2.amazonaws.com/uploads/d7faa46a-97fc-41a7-b8e6-f2e8fa3441ff/1750112910457_caption.txt",
+  "triviaAnswers": null,
+  "timeTaken": null,
+  "timestamp": "2025-06-16T22:28:30.989Z",
+  "captionText": "hahahahaha",
+  "fileContent": "hahahahaha",
+  "contestImageUrl": "https://contests-unlimited.s3.us-east-2.amazonaws.com/creator-files/caption-contest-1749680405849-gadiel-lazcano-Qi_e-n0poRM-unsplash.jpg"
+  },
+  {
+    "sessionId": "9a96dd6d-e74b-43c1-b651-f5a9da39dc66",
+    "name": "jill jackson",
+    "email": "jjackson@email.com",
+    "contestName": "art-contest-default",
+    "fileUrl": "https://contests-unlimited.s3.us-east-2.amazonaws.com/uploads/9a96dd6d-e74b-43c1-b651-f5a9da39dc66/1750127831078_test.jpg",
+    "triviaAnswers": null,
+    "timeTaken": null,
+    "timestamp": "2025-06-17T02:37:11.538Z",
+    "captionText": null,
     "contestImageUrl": null
+  },
+  {
+    "sessionId": "e5202062-ca17-4d05-aa08-da5d9143b174",
+    "name": "jill jackson",
+    "email": "jjackson@email.com",
+    "contestName": "art-contest-default",
+    "fileUrl": "https://contests-unlimited.s3.us-east-2.amazonaws.com/uploads/e5202062-ca17-4d05-aa08-da5d9143b174/1750129931565_test.jpg",
+    "triviaAnswers": null,
+    "timeTaken": null,
+    "timestamp": "2025-06-17T03:12:11.963Z",
+    "captionText": null,
+    "contestImageUrl": null
+  },
+  {
+    "sessionId": "e51a11b3-7a5a-4bc3-96e0-df9173b6127e",
+    "name": "dr doolittle",
+    "email": "drdoolittle@email.com",
+    "contestName": "trivia-contest-default",
+    "fileUrl": null,
+    "triviaAnswers": [
+      {
+        "question": "What is the capital of France?",
+        "selected": "A",
+        "correct": true
+      },
+      {
+        "question": "Which planet is known as the Red Planet?",
+        "selected": "A",
+        "correct": true
+      },
+      {
+        "question": "How many continents are there?",
+        "selected": "C",
+        "correct": true
+      },
+      {
+        "question": "What is the largest ocean on Earth?",
+        "selected": "C",
+        "correct": true
+      },
+      {
+        "question": "Who wrote the play 'Romeo and Juliet'?",
+        "selected": "B",
+        "correct": true
+      },
+      {
+        "question": "What is the chemical symbol for gold?",
+        "selected": "A",
+        "correct": true
+      },
+      {
+        "question": "Which country hosted the 2016 Summer Olympics?",
+        "selected": "B",
+        "correct": true
+      },
+      {
+        "question": "What is the tallest mountain in the world?",
+        "selected": "A",
+        "correct": false
+      },
+      {
+        "question": "Which language has the most native speakers worldwide?",
+        "selected": "C",
+        "correct": true
+      },
+      {
+        "question": "In which year did the Titanic sink?",
+        "selected": "B",
+        "correct": true
+      },
+      {
+        "question": "Who painted the Mona Lisa?",
+        "selected": "C",
+        "correct": true
+      },
+      {
+        "question": "What is the smallest prime number?",
+        "selected": "C",
+        "correct": true
+      },
+      {
+        "question": "Which planet has the most moons?",
+        "selected": "A",
+        "correct": true
+      },
+      {
+        "question": "What is the hardest natural substance on Earth?",
+        "selected": "C",
+        "correct": true
+      },
+      {
+        "question": "Who discovered penicillin?",
+        "selected": "B",
+        "correct": true
+      },
+      {
+        "question": "What is the main ingredient in traditional Japanese miso soup?",
+        "selected": "B",
+        "correct": true
+      },
+      {
+        "question": "Which city is known as the 'Big Apple'?",
+        "selected": "C",
+        "correct": true
+      },
+      {
+        "question": "What is the chemical formula of water?",
+        "selected": "B",
+        "correct": true
+      },
+      {
+        "question": "Who was the first President of the United States?",
+        "selected": "C",
+        "correct": true
+      },
+      {
+        "question": "Which element has the atomic number 1?",
+        "selected": "C",
+        "correct": false
+      },
+      {
+        "question": "Which continent is the Sahara Desert located on?",
+        "selected": "B",
+        "correct": true
+      }
+    ],
+    "timeTaken": 74.013,
+    "timestamp": "2025-06-21T02:52:17.502Z",
+    "captionText": null,
+    "contestImageUrl": null,
+    "isDisqualified": true
+  },
+  {
+    "sessionId": "ecae8e61-91b9-4b0a-82ac-cc61f060798b",
+    "name": "dr doolittle",
+    "email": "drdoolittle@email.com",
+    "contestName": "art-contest-default",
+    "fileUrl": "https://contests-unlimited.s3.us-east-2.amazonaws.com/uploads/ecae8e61-91b9-4b0a-82ac-cc61f060798b/1750475107248_test.jpg",
+    "triviaAnswers": null,
+    "timeTaken": null,
+    "timestamp": "2025-06-21T03:05:07.746Z",
+    "captionText": null,
+    "contestImageUrl": null,
+    "isDisqualified": true
+  },
+  {
+    "sessionId": "720e07a4-8dc0-4110-be1c-47db675a6f2e",
+    "name": "jill jackson",
+    "email": "jjackson@email.com",
+    "contestName": "trivia-contest-1750480289539",
+    "fileUrl": null,
+    "triviaAnswers": [
+      {
+        "question": "The answer is a?",
+        "selected": "A",
+        "correct": true
+      }
+    ],
+    "timeTaken": 16.468,
+    "timestamp": "2025-06-21T04:45:33.578Z",
+    "captionText": null,
+    "contestImageUrl": null,
+    "isWinner": true
   }
 ]

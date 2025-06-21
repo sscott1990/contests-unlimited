@@ -152,12 +152,21 @@ router.post('/judge-expired-contests', async (req, res) => {
         creatorContest.slug &&
         creatorContest.slug.startsWith('caption-contest-');
 
+      // LOG: Contest info
+      console.log(`Processing contest: ${creatorContest.slug} (caption contest: ${isCaptionContest})`);
+
       const contestUploads = uploads.filter(u =>
         u.contestName === creatorContest.slug &&
         !u.isDisqualified &&
         !u.isWinner
       );
-      if (contestUploads.length === 0) continue;
+      // LOG: Uploads considered
+      console.log(`Uploads considered for contest ${creatorContest.slug}:`, contestUploads.length);
+
+      if (contestUploads.length === 0) {
+        console.log(`No uploads found for contest ${creatorContest.slug}`);
+        continue;
+      }
       const scored = [];
       for (const u of contestUploads) {
         if (!u.geminiScore) {
@@ -180,20 +189,29 @@ router.post('/judge-expired-contests', async (req, res) => {
             }
             caption = u.fileContent;
           }
+          // LOG: What is being sent to Gemini
+          console.log(`Calling Gemini for sessionId ${u.sessionId} with imageUrl: ${imageUrl}, caption: ${caption}`);
           const result = await judgeGemini({
             imageUrl,
             caption,
             contestTitle: creatorContest.contestTitle || creatorContest.slug,
             isCaptionContest
           });
+          // LOG: Gemini result
+          console.log(`Gemini score for sessionId ${u.sessionId}:`, result);
           u.geminiScore = result;
           uploadsChanged = true;
         }
         scored.push({ upload: u, score: (u.geminiScore && u.geminiScore.total) || 0 });
       }
-      if (scored.length === 0) continue;
+      if (scored.length === 0) {
+        console.log(`No scored uploads for contest ${creatorContest.slug}`);
+        continue;
+      }
       scored.sort((a, b) => b.score - a.score || (a.upload.timestamp || 0) - (b.upload.timestamp || 0));
       const winner = scored[0].upload;
+      // LOG: Winner selection
+      console.log(`Winner for contest ${creatorContest.slug}: sessionId ${winner.sessionId}, score: ${winner.geminiScore ? winner.geminiScore.total : 'N/A'}`);
       for (const u of contestUploads) {
         if (u.sessionId === winner.sessionId && !u.isWinner) {
           u.isWinner = true;
