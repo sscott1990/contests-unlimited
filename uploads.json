@@ -650,17 +650,26 @@
     "isWinner": false
   },
   {
-  "sessionId": "d7faa46a-97fc-41a7-b8e6-f2e8fa3441ff",
-  "name": "jill jackson",
-  "email": "jjackson@email.com",
-  "contestName": "caption-contest-1749680405849",
-  "fileUrl": "https://contests-unlimited.s3.us-east-2.amazonaws.com/uploads/d7faa46a-97fc-41a7-b8e6-f2e8fa3441ff/1750112910457_caption.txt",
-  "triviaAnswers": null,
-  "timeTaken": null,
-  "timestamp": "2025-06-16T22:28:30.989Z",
-  "captionText": "hahahahaha",
-  "fileContent": "hahahahaha",
-  "contestImageUrl": "https://contests-unlimited.s3.us-east-2.amazonaws.com/creator-files/caption-contest-1749680405849-gadiel-lazcano-Qi_e-n0poRM-unsplash.jpg"
+    "sessionId": "d7faa46a-97fc-41a7-b8e6-f2e8fa3441ff",
+    "name": "jill jackson",
+    "email": "jjackson@email.com",
+    "contestName": "caption-contest-1749680405849",
+    "fileUrl": "https://contests-unlimited.s3.us-east-2.amazonaws.com/uploads/d7faa46a-97fc-41a7-b8e6-f2e8fa3441ff/1750112910457_caption.txt",
+    "triviaAnswers": null,
+    "timeTaken": null,
+    "timestamp": "2025-06-16T22:28:30.989Z",
+    "captionText": "hahahahaha",
+    "fileContent": "hahahahaha",
+    "contestImageUrl": "https://contests-unlimited.s3.us-east-2.amazonaws.com/creator-files/caption-contest-1749680405849-gadiel-lazcano-Qi_e-n0poRM-unsplash.jpg",
+    "geminiScore": {
+      "creativity": 1,
+      "humor": 2,
+      "theme": 10,
+      "caption": 1,
+      "total": 14,
+      "justification": "The caption is not creative, and while it is intended to be humorous, it's not very funny. However, it perfectly fits the theme of a caption contest, as it's a simple and direct caption. "
+    },
+    "isWinner": true
   },
   {
     "sessionId": "9a96dd6d-e74b-43c1-b651-f5a9da39dc66",
@@ -836,5 +845,31 @@
     "captionText": null,
     "contestImageUrl": null,
     "isWinner": true
+  },
+  {
+    "sessionId": "e93cbe37-1b7f-4269-b832-b8aab3c85be3",
+    "name": "test bob",
+    "email": "test@fmail.com",
+    "contestName": "photo-contest-1750531502739",
+    "fileUrl": "https://contests-unlimited.s3.us-east-2.amazonaws.com/uploads/e93cbe37-1b7f-4269-b832-b8aab3c85be3/1750531735318_test.jpg",
+    "triviaAnswers": null,
+    "timeTaken": null,
+    "timestamp": "2025-06-21T18:48:55.782Z",
+    "captionText": null,
+    "fileContent": null,
+    "contestImageUrl": null
+  },
+  {
+    "sessionId": "d7e467db-189b-4a0f-bb9e-d33f28dc25ac",
+    "name": "dr doolittle",
+    "email": "ddoolittle@email.com",
+    "contestName": "photo-contest-1750531502739",
+    "fileUrl": "https://contests-unlimited.s3.us-east-2.amazonaws.com/uploads/d7e467db-189b-4a0f-bb9e-d33f28dc25ac/1750531864131_gadiel-lazcano-Qi_e-n0poRM-unsplash.jpg",
+    "triviaAnswers": null,
+    "timeTaken": null,
+    "timestamp": "2025-06-21T18:51:05.254Z",
+    "captionText": null,
+    "fileContent": null,
+    "contestImageUrl": null
   }
 ]

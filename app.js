@@ -1083,6 +1083,7 @@ app.get('/api/gallery', async (req, res) => {
 
         let host = upload.host || "Contests Unlimited";
 
+        // Always include geminiScore if present (for gallery display)
         return {
           ...upload,
           presignedUrl,
@@ -1092,6 +1093,7 @@ app.get('/api/gallery', async (req, res) => {
           captionText,
           isImageFile: isImageFileFlag,
           host,
+          geminiScore: upload.geminiScore || null
         };
       })
     );
@@ -1337,6 +1339,7 @@ app.get('/gallery', async (req, res) => {
 
         let host = upload.host || "Contests Unlimited";
 
+        // Always include geminiScore if present (for gallery display)
         return {
           ...upload,
           presignedUrl,
@@ -1346,6 +1349,7 @@ app.get('/gallery', async (req, res) => {
           captionText,
           isImageFile: isImageFileFlag,
           host,
+          geminiScore: upload.geminiScore || null
         };
       })
     );

@@ -60,6 +60,33 @@
       return div.innerHTML;
     }
 
+    // Render contest winner score block based on contest type and geminiScore
+    function renderScoreBlock(upload) {
+      if (!upload.isWinner || !upload.geminiScore) return '';
+      // Determine contest type by contestName prefix
+      let contestType = '';
+      if (upload.contestName && upload.contestName.startsWith('caption-contest-')) contestType = 'caption';
+      else if (upload.contestName && upload.contestName.startsWith('art-contest-')) contestType = 'art';
+      else if (upload.contestName && upload.contestName.startsWith('photo-contest-')) contestType = 'photo';
+
+      let scoreHtml = '<div class="winner-score"><strong>Winner Score:</strong><ul>';
+      if (contestType === 'caption') {
+        scoreHtml += `<li>Creativity: ${upload.geminiScore.creativity ?? 'N/A'}</li>`;
+        scoreHtml += `<li>Humor: ${upload.geminiScore.humor ?? 'N/A'}</li>`;
+        scoreHtml += `<li>Relevance: ${upload.geminiScore.relevance ?? 'N/A'}</li>`;
+        scoreHtml += `<li>Clarity: ${upload.geminiScore.clarity ?? 'N/A'}</li>`;
+        scoreHtml += `<li>Total: ${upload.geminiScore.total ?? 'N/A'}</li>`;
+      } else if (contestType === 'art' || contestType === 'photo') {
+        scoreHtml += `<li>Creativity: ${upload.geminiScore.creativity ?? 'N/A'}</li>`;
+        scoreHtml += `<li>Technique: ${upload.geminiScore.technique ?? 'N/A'}</li>`;
+        scoreHtml += `<li>Theme: ${upload.geminiScore.theme ?? 'N/A'}</li>`;
+        scoreHtml += `<li>Overall: ${upload.geminiScore.overall ?? 'N/A'}</li>`;
+        scoreHtml += `<li>Total: ${upload.geminiScore.total ?? 'N/A'}</li>`;
+      }
+      scoreHtml += '</ul></div>';
+      return scoreHtml;
+    }
+
     function renderCard(upload) {
       // Add a winner badge if this upload is a recent winner
       const winnerTag = upload.isWinner
@@ -78,6 +105,7 @@
             <div class="caption-block">
               <strong>Caption:</strong> <span>${sanitize(upload.captionText)}</span>
             </div>
+            ${renderScoreBlock(upload)}
             <div class="gallery-info">
               <div><strong>Name:</strong> ${sanitize(upload.name || 'Anonymous')}</div>
               <div><strong>Contest:</strong> ${sanitize(upload.contestName || 'Unknown')}</div>
@@ -101,6 +129,7 @@
             <div class="caption-block">
               <strong>Caption:</strong> <span>${sanitize(upload.captionText)}</span>
             </div>
+            ${renderScoreBlock(upload)}
             <div class="gallery-info">
               <div><strong>Name:</strong> ${sanitize(upload.name || 'Anonymous')}</div>
               <div><strong>Contest:</strong> ${sanitize(upload.contestName || 'Unknown')}</div>
@@ -116,6 +145,7 @@
           <div class="gallery-card">
             ${winnerTag}
             <img class="gallery-img" src="${sanitize(upload.presignedUrl)}" alt="Upload by ${sanitize(upload.name)}" loading="lazy">
+            ${renderScoreBlock(upload)}
             <div class="gallery-info">
               <div><strong>Name:</strong> ${sanitize(upload.name || 'Anonymous')}</div>
               <div><strong>Contest:</strong> ${sanitize(upload.contestName || 'Unknown')}</div>
@@ -130,6 +160,7 @@
         <div class="gallery-card">
           ${winnerTag}
           <div class="no-image">No Image</div>
+          ${renderScoreBlock(upload)}
           <div class="gallery-info">
             <div><strong>Name:</strong> ${sanitize(upload.name || 'Anonymous')}</div>
             <div><strong>Contest:</strong> ${sanitize(upload.contestName || 'Unknown')}</div>
