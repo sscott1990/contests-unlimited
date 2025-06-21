@@ -447,7 +447,7 @@
       } else if (slug.startsWith("trivia-contest-")) {
         let response = await fetch('/api/custom-trivia/by-slug/' + encodeURIComponent(slug));
         if (response.ok) {
-          const data = await res.json();
+          const data = await response.json(); // FIXED: was res.json()
           triviaQuestions = Array.isArray(data.questions) ? data.questions : [];
         } else {
           triviaQuestions = [];
