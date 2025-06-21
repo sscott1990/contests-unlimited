@@ -296,7 +296,7 @@ router.get('/uploads', async (req, res) => {
       const uploadName = (upload.name || '').trim().toLowerCase();
       const uploadEmail = (upload.email || '').trim().toLowerCase();
 
-      const matchingEntry = entries.find(entry => {
+      const matchingEntry = entries.some(entry => {
         const entryName = `${entry.billingAddress?.first_name || ''} ${entry.billingAddress?.last_name || ''}`.trim().toLowerCase();
         const entryEmail = (entry.customerEmail || entry.billingAddress?.email || '').trim().toLowerCase();
         const entryState = (entry.billingAddress?.state || '').toUpperCase();
