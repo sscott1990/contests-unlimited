@@ -860,6 +860,21 @@ app.get('/api/gallery', async (req, res) => {
     const now = Date.now();
     const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
+    // --- Platform contest logic for default expiration ---
+    const PLATFORM_SLUG_MAP = {
+      "art-contest-default": "Art Contest",
+      "Art Contest": "Art Contest",
+      "photo-contest-default": "Photo Contest",
+      "Photo Contest": "Photo Contest",
+      "trivia-contest-default": "Trivia Contest",
+      "Trivia Contest": "Trivia Contest",
+      "caption-contest-default": "Caption Contest",
+      "Caption Contest": "Caption Contest"
+    };
+    const DEFAULT_CONTEST_START = new Date('2025-05-30T14:00:00Z');
+    const DEFAULT_CONTEST_DURATION_MS = 365 * 24 * 60 * 60 * 1000;
+    const DEFAULT_CONTEST_END = DEFAULT_CONTEST_START.getTime() + DEFAULT_CONTEST_DURATION_MS;
+
     // Attach host (creator) to each upload
     const uploadsWithHost = uploads.map(u => {
       const creatorMatch = creators.find(c =>
@@ -913,11 +928,28 @@ app.get('/api/gallery', async (req, res) => {
       }
     });
 
-    // === ADD: Include default/unknown contests (not in creators.json) and treat as active ===
-    const orphanUploads = uploadsWithHost.filter(u =>
-      u.contestName &&
-      !creatorKeys.has(u.contestName.toLowerCase())
-    );
+    // === ADD: Include default/unknown contests (not in creators.json) and match expiration logic ===
+    const orphanUploads = uploadsWithHost.filter(u => {
+      if (
+        u.contestName &&
+        !creatorKeys.has(u.contestName.toLowerCase()) &&
+        PLATFORM_SLUG_MAP[u.contestName]
+      ) {
+        // Platform default contest. Check if expired.
+        if (now > DEFAULT_CONTEST_END) {
+          // Expired > 30d ago: hide all uploads
+          if (now - DEFAULT_CONTEST_END >= 30 * MS_PER_DAY) {
+            return false; // hide
+          }
+          // Expired within 30d: show only winners
+          return u.isWinner === true;
+        }
+        // Not expired: show all
+        return true;
+      }
+      // Not a platform contest, not an orphan, or not in platform map
+      return false;
+    });
     filteredUploadsFinal.push(...orphanUploads);
 
     // --- SEARCH LOGIC ---
@@ -1082,6 +1114,21 @@ app.get('/gallery', async (req, res) => {
     const now = Date.now();
     const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
+    // --- Platform contest logic for default expiration ---
+    const PLATFORM_SLUG_MAP = {
+      "art-contest-default": "Art Contest",
+      "Art Contest": "Art Contest",
+      "photo-contest-default": "Photo Contest",
+      "Photo Contest": "Photo Contest",
+      "trivia-contest-default": "Trivia Contest",
+      "Trivia Contest": "Trivia Contest",
+      "caption-contest-default": "Caption Contest",
+      "Caption Contest": "Caption Contest"
+    };
+    const DEFAULT_CONTEST_START = new Date('2025-05-30T14:00:00Z');
+    const DEFAULT_CONTEST_DURATION_MS = 365 * 24 * 60 * 60 * 1000;
+    const DEFAULT_CONTEST_END = DEFAULT_CONTEST_START.getTime() + DEFAULT_CONTEST_DURATION_MS;
+
     // Attach host (creator) to each upload
     const uploadsWithHost = uploads.map(u => {
       const creatorMatch = creators.find(c =>
@@ -1135,11 +1182,28 @@ app.get('/gallery', async (req, res) => {
       }
     });
 
-    // === ADD: Include default/unknown contests (not in creators.json) and treat as active ===
-    const orphanUploads = uploadsWithHost.filter(u =>
-      u.contestName &&
-      !creatorKeys.has(u.contestName.toLowerCase())
-    );
+    // === ADD: Include default/unknown contests (not in creators.json) and match expiration logic ===
+    const orphanUploads = uploadsWithHost.filter(u => {
+      if (
+        u.contestName &&
+        !creatorKeys.has(u.contestName.toLowerCase()) &&
+        PLATFORM_SLUG_MAP[u.contestName]
+      ) {
+        // Platform default contest. Check if expired.
+        if (now > DEFAULT_CONTEST_END) {
+          // Expired > 30d ago: hide all uploads
+          if (now - DEFAULT_CONTEST_END >= 30 * MS_PER_DAY) {
+            return false; // hide
+          }
+          // Expired within 30d: show only winners
+          return u.isWinner === true;
+        }
+        // Not expired: show all
+        return true;
+      }
+      // Not a platform contest, not an orphan, or not in platform map
+      return false;
+    });
     filteredUploadsFinal.push(...orphanUploads);
 
     // --- SEARCH LOGIC ---
