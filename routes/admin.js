@@ -4,7 +4,10 @@ const router = express.Router();
 const { loadJSONFromS3 } = require('../utils/s3Utils');
 const slugify = require('slugify');
 const fetch = require('node-fetch'); // For text file preview
-const cron = require('node-cron');
+
+// ==== Gemini AI integration ====
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 const s3 = new AWS.S3({
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
@@ -64,6 +67,54 @@ async function saveUploads(uploads) {
   await s3.putObject(params).promise();
 }
 
+// === Gemini AI Judging Helper ===
+async function judgeGemini({ imageUrl, caption, contestTitle, isCaptionContest }) {
+  let basePrompt;
+  if (isCaptionContest) {
+    basePrompt =
+      `You are a judge for a caption contest titled "${contestTitle}". ` +
+      `Score each entry for creativity (1-10), humor (1-10), and fit with theme (1-10). ` +
+      `Also rate caption creativity (1-10). ` +
+      `Return your response as JSON: {"creativity":<int>,"humor":<int>,"theme":<int>,"caption":<int>,"total":<int>,"justification":"..."}`;
+  } else {
+    basePrompt =
+      `You are a judge for a contest titled "${contestTitle}". ` +
+      `Score each entry for creativity (1-10), technique (1-10), and fit with theme (1-10). ` +
+      `If there is a caption, also rate caption creativity (1-10). ` +
+      `Return your response as JSON: {"creativity":<int>,"technique":<int>,"theme":<int>,"caption":<int>,"total":<int>,"justification":"..."}`;
+  }
+
+  let imagePart = undefined;
+  if (imageUrl) {
+    const res = await fetch(imageUrl);
+    const buf = await res.arrayBuffer();
+    imagePart = {
+      inlineData: { data: Buffer.from(buf).toString('base64'), mimeType: "image/jpeg" }
+    };
+  }
+  const parts = [{ text: basePrompt }];
+  if (imagePart) parts.push(imagePart);
+  if (caption) parts.push({ text: `Caption: ${caption}` });
+
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  const result = await model.generateContent({ contents: [{ role: "user", parts }] });
+  const text = result.response.text();
+  const match = text.match(/\{[\s\S]*\}/);
+  if (match) {
+    try { return JSON.parse(match[0]); } catch {}
+  }
+  // The return always has all possible keys, to avoid undefined fields
+  return {
+    creativity: 0,
+    humor: isCaptionContest ? 0 : undefined,
+    technique: isCaptionContest ? undefined : 0,
+    theme: 0,
+    caption: 0,
+    total: 0,
+    justification: text
+  };
+}
+
 // Basic Auth middleware
 router.use((req, res, next) => {
   const auth = {
@@ -80,6 +131,85 @@ router.use((req, res, next) => {
 
   res.set('WWW-Authenticate', 'Basic realm="401"');
   res.status(401).send('Authentication required.');
+});
+
+// === Contest Judging Route ===
+router.post('/judge-expired-contests', async (req, res) => {
+  try {
+    const now = Date.now();
+    let uploads = await loadUploads();
+    const creators = await loadCreators();
+
+    let uploadsChanged = false;
+    for (const creatorContest of creators) {
+      if (!creatorContest.endDate) continue;
+      const endMs = new Date(creatorContest.endDate).getTime();
+      if (isNaN(endMs) || endMs > now) continue;
+      if (creatorContest.slug && creatorContest.slug.startsWith('trivia-contest-')) continue;
+
+      const isCaptionContest =
+        creatorContest.slug &&
+        creatorContest.slug.startsWith('caption-contest-');
+
+      const contestUploads = uploads.filter(u =>
+        u.contestName === creatorContest.slug &&
+        !u.isDisqualified &&
+        !u.isWinner
+      );
+      if (contestUploads.length === 0) continue;
+      const scored = [];
+      for (const u of contestUploads) {
+        if (!u.geminiScore) {
+          let imageUrl = null, caption = null;
+          if (u.fileUrl && isImageFile(u.filename)) {
+            try {
+              const url = new URL(u.fileUrl);
+              const key = url.pathname.startsWith('/') ? url.pathname.slice(1) : url.pathname;
+              imageUrl = await getPresignedUrl(key);
+            } catch (e) { imageUrl = u.fileUrl; }
+          }
+          if (u.fileContent && isTextFile(u.filename)) caption = u.fileContent;
+          if (isCaptionContest) {
+            if (creatorContest.fileUrl) {
+              try {
+                const url = new URL(creatorContest.fileUrl);
+                const key = url.pathname.startsWith('/') ? url.pathname.slice(1) : url.pathname;
+                imageUrl = await getPresignedUrl(key);
+              } catch (e) { imageUrl = creatorContest.fileUrl; }
+            }
+            caption = u.fileContent;
+          }
+          const result = await judgeGemini({
+            imageUrl,
+            caption,
+            contestTitle: creatorContest.contestTitle || creatorContest.slug,
+            isCaptionContest
+          });
+          u.geminiScore = result;
+          uploadsChanged = true;
+        }
+        scored.push({ upload: u, score: (u.geminiScore && u.geminiScore.total) || 0 });
+      }
+      if (scored.length === 0) continue;
+      scored.sort((a, b) => b.score - a.score || (a.upload.timestamp || 0) - (b.upload.timestamp || 0));
+      const winner = scored[0].upload;
+      for (const u of contestUploads) {
+        if (u.sessionId === winner.sessionId && !u.isWinner) {
+          u.isWinner = true;
+          uploadsChanged = true;
+        } else if (u.sessionId !== winner.sessionId && u.isWinner) {
+          u.isWinner = false;
+          uploadsChanged = true;
+        }
+      }
+    }
+    if (uploadsChanged) await saveUploads(uploads);
+
+    res.json({ success: true, message: "Expired contests judged and winners assigned." });
+  } catch (err) {
+    console.error('Failed to judge expired contests:', err);
+    res.status(500).json({ success: false, error: 'Failed to judge expired contests.' });
+  }
 });
 
 // JSON view of Stripe entries

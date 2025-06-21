@@ -42,5 +42,27 @@
     "slug": "caption-contest-1749680405849",
     "fileUrl": "https://contests-unlimited.s3.us-east-2.amazonaws.com/creator-files/caption-contest-1749680405849-gadiel-lazcano-Qi_e-n0poRM-unsplash.jpg",
     "status": "approved"
+  },
+  {
+    "sessionId": "89114d9a-8230-4c39-9081-49c2f5bd98e1",
+    "contestTitle": "Trivia Contest",
+    "creator": "Swim Wear LLC",
+    "email": "jdoe@fmail.com",
+    "address": "test456",
+    "city": "testcity",
+    "state": "KS",
+    "zipcode": "12345",
+    "theme": "Summer Fun",
+    "description": "descriptoin",
+    "passwordHash": "$2b$10$zV8tpVJeB5fCtBCMErRSrO021mi4eTavX7psdhDu5b70Hu/VVwX/C",
+    "approved": false,
+    "timestamp": "2025-05-21T04:31:29.539Z",
+    "endDate": "2025-06-21T04:31:29.539Z",
+    "durationMonths": 1,
+    "seedAmount": 250,
+    "minEntries": 50,
+    "slug": "trivia-contest-1750480289539",
+    "fileUrl": null,
+    "status": "approved"
   }
 ]
