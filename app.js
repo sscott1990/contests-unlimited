@@ -852,165 +852,6 @@ app.get('/creator-dashboard/:slug', async (req, res) => {
   }
 });
 
-app.get('/api/gallery', async (req, res) => {
-  try {
-    const uploads = await getUploads();
-    const creators = await getCreators();
-
-    // --- Attach host (creator) to each upload ---
-    const uploadsWithHost = uploads.map(u => {
-      const creatorMatch = creators.find(c =>
-        (c.slug && u.contestName === c.slug) ||
-        (c.contestTitle && u.contestName && c.contestTitle.toLowerCase() === u.contestName.toLowerCase())
-      );
-      return {
-        ...u,
-        host: creatorMatch && creatorMatch.creator ? creatorMatch.creator : "Contests Unlimited"
-      };
-    });
-
-    // --- SEARCH LOGIC: contest name, entrant name, host ---
-    const search = (req.query.search || '').trim().toLowerCase();
-    let filteredUploads = uploadsWithHost;
-    if (search) {
-      filteredUploads = uploadsWithHost.filter(u =>
-        (u.contestName || '').toLowerCase().includes(search) ||
-        (u.name || '').toLowerCase().includes(search) ||
-        (u.host || '').toLowerCase().includes(search)
-      );
-    }
-
-    // --- Pagination ---
-    const page = parseInt(req.query.page, 10) || 1;
-    const perPage = 25;
-    const totalUploads = filteredUploads.length;
-    const totalPages = Math.ceil(totalUploads / perPage);
-    const start = (page - 1) * perPage;
-    const paginatedUploads = filteredUploads.slice(start, start + perPage);
-
-    // Helpers
-    const getPresignedUrl = async (key) =>
-      await s3.getSignedUrlPromise('getObject', {
-        Bucket: ENTRIES_BUCKET,
-        Key: key,
-        Expires: 900,
-      });
-
-    const getTextFileContents = async (url) => {
-      try {
-        const response = await fetch(url);
-        if (!response.ok) return null;
-        return await response.text();
-      } catch {
-        return null;
-      }
-    };
-
-    const isTextFile = (filename) => filename && /\.(txt|md|csv|json)$/i.test(filename);
-    const isImageFile = (filename) => filename && /\.(jpe?g|png|gif|webp)$/i.test(filename);
-
-    // Compose API JSON with presigned URLs
-    const uploadsWithDetails = await Promise.all(
-      paginatedUploads.map(async (upload) => {
-        let presignedUrl = null;
-        let filename = null;
-        let fileContent = null;
-        let contestImageUrl = null;
-        let captionText = null;
-        let isImageFileFlag = false;
-
-        if (upload.fileUrl) {
-          try {
-            const url = new URL(upload.fileUrl);
-            const key = url.pathname.startsWith('/') ? url.pathname.slice(1) : url.pathname;
-            filename = url.pathname.split('/').pop();
-            presignedUrl = await getPresignedUrl(key);
-            isImageFileFlag = isImageFile(filename);
-            if (isTextFile(filename)) {
-              fileContent = await getTextFileContents(presignedUrl);
-            }
-          } catch (e) {
-            presignedUrl = upload.fileUrl;
-          }
-        }
-
-        // Find contest info for custom contests
-        const creatorContest = creators.find(c =>
-          (c.slug && upload.contestName === c.slug) ||
-          (c.contestTitle && upload.contestName === c.contestTitle)
-        );
-
-        // Default Caption Contest
-        if (
-          upload.contestName === 'caption-contest-default' &&
-          upload.fileUrl && isTextFile(filename)
-        ) {
-          try {
-            const data = await s3.getObject({
-              Bucket: ENTRIES_BUCKET,
-              Key: 'caption-contest.json'
-            }).promise();
-            const json = JSON.parse(data.Body.toString('utf-8'));
-            let imageUrl = json.image;
-            if (imageUrl && !/^https?:\/\//.test(imageUrl)) {
-              const key = imageUrl.replace(/^\//, '');
-              contestImageUrl = await getPresignedUrl(key);
-            } else {
-              contestImageUrl = imageUrl;
-            }
-          } catch (e) {
-            contestImageUrl = null;
-          }
-          captionText = fileContent;
-        }
-        // Custom Caption Contest
-        else if (
-          creatorContest &&
-          creatorContest.fileUrl &&
-          upload.contestName &&
-          upload.contestName.startsWith('caption-contest-') &&
-          upload.contestName !== 'caption-contest-default'
-        ) {
-          try {
-            const url = new URL(creatorContest.fileUrl);
-            const key = url.pathname.startsWith('/') ? url.pathname.slice(1) : url.pathname;
-            contestImageUrl = await getPresignedUrl(key);
-          } catch (e) {
-            contestImageUrl = creatorContest.fileUrl;
-          }
-          if (fileContent) captionText = fileContent;
-        } else if (isImageFileFlag) {
-          contestImageUrl = presignedUrl;
-        }
-
-        let host = upload.host || "Contests Unlimited";
-
-        return {
-          ...upload,
-          presignedUrl,
-          filename,
-          fileContent,
-          contestImageUrl,
-          captionText,
-          isImageFile: isImageFileFlag,
-          host,
-        };
-      })
-    );
-
-    res.json({
-      uploads: uploadsWithDetails,
-      page,
-      perPage,
-      totalPages,
-      totalUploads
-    });
-  } catch (err) {
-    console.error('Failed to load gallery API:', err);
-    res.status(500).json({ error: 'Failed to load gallery.' });
-  }
-});
-
 // ===Gallery Route ===
 app.get('/gallery', async (req, res) => {
   try {
@@ -1019,9 +860,8 @@ app.get('/gallery', async (req, res) => {
     const now = Date.now();
     const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
-    // --- Attach host (creator) to each upload ---
+    // Attach host (creator) to each upload
     const uploadsWithHost = uploads.map(u => {
-      // Try slug match first, then contestTitle match (case insensitive)
       const creatorMatch = creators.find(c =>
         (c.slug && u.contestName === c.slug) ||
         (c.contestTitle && u.contestName && c.contestTitle.toLowerCase() === u.contestName.toLowerCase())
@@ -1032,7 +872,6 @@ app.get('/gallery', async (req, res) => {
       };
     });
 
-    // --- Filter uploads according to contest status and winner display rule ---
     // Group uploads by contest key (slug and contestTitle, lowercase)
     const contestUploadsMap = {};
     uploadsWithHost.forEach(u => {
@@ -1042,9 +881,6 @@ app.get('/gallery', async (req, res) => {
       contestUploadsMap[key].push(u);
     });
 
-    // Build filteredUploadsFinal
-    let filteredUploadsFinal = [];
-
     // Build a set of all possible contest keys for matching
     const knownContestKeys = new Set();
     creators.forEach(c => {
@@ -1052,13 +888,14 @@ app.get('/gallery', async (req, res) => {
       if (c.contestTitle) knownContestKeys.add(c.contestTitle.toLowerCase());
     });
 
+    let filteredUploadsFinal = [];
+
     for (const creator of creators) {
-      // Try matching by slug first, then contestTitle
       const contestKeys = [];
       if (creator.slug) contestKeys.push(creator.slug.toLowerCase());
       if (creator.contestTitle) contestKeys.push(creator.contestTitle.toLowerCase());
 
-      // Gather all uploads for this contest (by any recognized key)
+      // Gather all uploads for this contest
       let contestUploads = [];
       contestKeys.forEach(key => {
         if (contestUploadsMap[key]) contestUploads = contestUploads.concat(contestUploadsMap[key]);
@@ -1081,7 +918,7 @@ app.get('/gallery', async (req, res) => {
       // else: expired & over 30 days, show nothing for this contest
     }
 
-    // --- No orphan uploads block ---
+    // --- NO orphan uploads block ---
 
     // --- SEARCH LOGIC: contest name, entrant name, host ---
     const search = (req.query.search || '').trim().toLowerCase();
