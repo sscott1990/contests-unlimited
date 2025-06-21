@@ -53,6 +53,17 @@ function getPresignedUrl(key) {
   return s3.getSignedUrlPromise('getObject', params);
 }
 
+// === S3 saveUploads helper ===
+async function saveUploads(uploads) {
+  const params = {
+    Bucket: BUCKET_NAME,
+    Key: 'uploads.json',
+    Body: JSON.stringify(uploads, null, 2),
+    ContentType: 'application/json'
+  };
+  await s3.putObject(params).promise();
+}
+
 // Basic Auth middleware
 router.use((req, res, next) => {
   const auth = {
