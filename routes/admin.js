@@ -155,11 +155,20 @@ router.post('/judge-expired-contests', async (req, res) => {
       // LOG: Contest info
       console.log(`Processing contest: ${creatorContest.slug} (caption contest: ${isCaptionContest})`);
 
-      const contestUploads = uploads.filter(u =>
+      // --- Skip contests that already have a winner ---
+      const contestUploadsAll = uploads.filter(u =>
         u.contestName === creatorContest.slug &&
-        !u.isDisqualified &&
-        !u.isWinner
+        !u.isDisqualified
       );
+      const alreadyHasWinner = contestUploadsAll.some(u => u.isWinner);
+      if (alreadyHasWinner) {
+        console.log(`Skipping contest ${creatorContest.slug} (winner already assigned)`);
+        continue;
+      }
+
+      // Only non-winner uploads are considered for judging
+      const contestUploads = contestUploadsAll.filter(u => !u.isWinner);
+
       // LOG: Uploads considered
       console.log(`Uploads considered for contest ${creatorContest.slug}:`, contestUploads.length);
 
@@ -169,26 +178,31 @@ router.post('/judge-expired-contests', async (req, res) => {
       }
       const scored = [];
       for (const u of contestUploads) {
-        if (!u.geminiScore) {
-          let imageUrl = null, caption = null;
-          if (u.fileUrl && isImageFile(u.filename)) {
+        // --- Skip if both imageUrl and caption are null ---
+        let imageUrl = null, caption = null;
+        if (u.fileUrl && isImageFile(u.filename)) {
+          try {
+            const url = new URL(u.fileUrl);
+            const key = url.pathname.startsWith('/') ? url.pathname.slice(1) : url.pathname;
+            imageUrl = await getPresignedUrl(key);
+          } catch (e) { imageUrl = u.fileUrl; }
+        }
+        if (u.fileContent && isTextFile(u.filename)) caption = u.fileContent;
+        if (isCaptionContest) {
+          if (creatorContest.fileUrl) {
             try {
-              const url = new URL(u.fileUrl);
+              const url = new URL(creatorContest.fileUrl);
               const key = url.pathname.startsWith('/') ? url.pathname.slice(1) : url.pathname;
               imageUrl = await getPresignedUrl(key);
-            } catch (e) { imageUrl = u.fileUrl; }
+            } catch (e) { imageUrl = creatorContest.fileUrl; }
           }
-          if (u.fileContent && isTextFile(u.filename)) caption = u.fileContent;
-          if (isCaptionContest) {
-            if (creatorContest.fileUrl) {
-              try {
-                const url = new URL(creatorContest.fileUrl);
-                const key = url.pathname.startsWith('/') ? url.pathname.slice(1) : url.pathname;
-                imageUrl = await getPresignedUrl(key);
-              } catch (e) { imageUrl = creatorContest.fileUrl; }
-            }
-            caption = u.fileContent;
-          }
+          caption = u.fileContent;
+        }
+        if (!imageUrl && !caption) {
+          console.log(`Skipping upload for sessionId ${u.sessionId} (no image or caption)`);
+          continue;
+        }
+        if (!u.geminiScore) {
           // LOG: What is being sent to Gemini
           console.log(`Calling Gemini for sessionId ${u.sessionId} with imageUrl: ${imageUrl}, caption: ${caption}`);
           const result = await judgeGemini({
@@ -801,6 +815,26 @@ router.get('/uploads', async (req, res) => {
     }
     paginationControls += `</div>`;
 
+    // --- Judge Expired Contests Button ---
+    const judgeBtn = `
+      <button id="judge-expired-btn">Judge Expired Contests (AI)</button>
+      <script>
+        document.getElementById('judge-expired-btn').onclick = function() {
+          if (!confirm("Run AI judging for expired contests now?")) return;
+          fetch('/api/admin/judge-expired-contests', {
+            method: 'POST',
+            headers: { 'Authorization': 'Basic ' + btoa('admin:heythere#1') }
+          })
+            .then(res => res.json())
+            .then(data => {
+              alert(data.message || data.error || "Done!");
+              location.reload();
+            })
+            .catch(() => alert("Judging request failed."));
+        };
+      </script>
+    `;
+
     res.send(`
       <!DOCTYPE html>
       <html lang="en">
@@ -836,6 +870,7 @@ router.get('/uploads', async (req, res) => {
           <a href="/api/admin/logout">Logout</a>
         </nav>
         <h2>Uploaded Files</h2>
+        ${judgeBtn}
         <form class="search-bar" method="get" action="/api/admin/uploads">
           <input type="text" name="search" value="${search.replace(/"/g, "&quot;")}" placeholder="Search by contest, host, or name..." />
           <button type="submit">Search</button>
