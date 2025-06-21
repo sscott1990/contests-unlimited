@@ -310,7 +310,6 @@ router.get('/uploads', async (req, res) => {
     let uploadsChanged = false;
     for (const upload of uploads) {
       try {
-        // Use last name from upload name for robust matching
         const uploadLastName = (upload.name || '').split(' ').slice(-1)[0].trim().toLowerCase();
         const uploadEmail = (upload.email || '').trim().toLowerCase();
 
@@ -333,7 +332,79 @@ router.get('/uploads', async (req, res) => {
         console.error('Error processing upload for disqualification:', upload, e);
       }
     }
-    if (uploadsChanged) await saveUploads(uploads);
+
+    // === AUTO-SELECT TRIVIA WINNER FOR EXPIRED CONTESTS ===
+    let winnersChanged = false;
+    const now = Date.now();
+
+    // Load trivia data just once
+    const defaultTriviaData = await loadJSONFromS3('trivia-contest.json');
+    const customTriviaData = await loadJSONFromS3('custom-trivia.json');
+
+    // Find all trivia contests that have expired
+    const triviaContests = creators.filter(c =>
+      (c.slug && c.slug.startsWith('trivia-contest-')) && c.endDate && (new Date(c.endDate).getTime() < now)
+    );
+
+    for (const contest of triviaContests) {
+      // Find all uploads for this contest that are not disqualified and have trivia answers
+      const contestUploads = uploads.filter(u =>
+        u.contestName === contest.slug &&
+        !u.isDisqualified &&
+        (
+          (Array.isArray(u.triviaAnswers) && u.triviaAnswers.length > 0) ||
+          (typeof u.correctCount === 'number' && typeof u.timeTaken === 'number')
+        )
+      );
+      if (contestUploads.length === 0) continue;
+
+      // Calculate correct answers for this contest
+      let correctAnswers = [];
+      if (contest.slug !== 'trivia-contest-default') {
+        const custom = customTriviaData.find(t => t.slug === contest.slug);
+        if (custom && Array.isArray(custom.questions))
+          correctAnswers = custom.questions.map(q => q.answer);
+      } else {
+        correctAnswers = defaultTriviaData.map(q => q.answer);
+      }
+
+      // Score each upload
+      const scoredUploads = contestUploads.map(u => {
+        let score = 0;
+        if (Array.isArray(u.triviaAnswers)) {
+          score = u.triviaAnswers.reduce((sum, answer, i) => {
+            if (i >= correctAnswers.length) return sum;
+            const userAns = String(answer.selected || '').trim().toLowerCase();
+            const correctAns = String(correctAnswers[i]).trim().toLowerCase();
+            return sum + (userAns === correctAns ? 1 : 0);
+          }, 0);
+        } else if (typeof u.correctCount === 'number') {
+          score = u.correctCount;
+        }
+        return { ...u, score };
+      });
+
+      // Sort: highest score, then lowest timeTaken
+      scoredUploads.sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        return (a.timeTaken || Infinity) - (b.timeTaken || Infinity);
+      });
+
+      // Winner is first in sorted list
+      const winner = scoredUploads[0];
+      // Mark winner and others in uploads
+      for (const upload of contestUploads) {
+        if (upload.sessionId === winner.sessionId && !upload.isWinner) {
+          upload.isWinner = true;
+          winnersChanged = true;
+        } else if (upload.sessionId !== winner.sessionId && upload.isWinner) {
+          upload.isWinner = false;
+          winnersChanged = true;
+        }
+      }
+    }
+
+    if (uploadsChanged || winnersChanged) await saveUploads(uploads);
 
     // SEARCH LOGIC
     const search = (req.query.search || '').trim().toLowerCase();
@@ -404,7 +475,7 @@ router.get('/uploads', async (req, res) => {
     });
 
     // --- Get contest end time for each upload for "expired" highlight ---
-    const now = Date.now();
+    // (now is already set)
 
     const rows = await Promise.all(uploadsWithHost.map(async upload => {
       const date = new Date(upload.timestamp).toLocaleString();
@@ -419,7 +490,6 @@ router.get('/uploads', async (req, res) => {
 
       // --- Add restricted state flag for uploads ---
       let restrictedFlag = '';
-      // Use last name + email for both disqualify and display logic
       if (upload.isDisqualified) {
         try {
           const uploadLastName = (upload.name || '').split(' ').slice(-1)[0].trim().toLowerCase();
@@ -538,7 +608,6 @@ router.get('/uploads', async (req, res) => {
 
       // --- Winner / Disqualify logic ---
       let winnerCell = '';
-      // If upload is disqualified, always show Disqualified and do not show winner button
       if (upload.isDisqualified) {
         winnerCell = '<b style="color:red;">Disqualified</b>';
       } else if (upload.isWinner) {
